@@ -1,8 +1,8 @@
 /**
- * QMD Store - Core data access and retrieval functions
+ * QKB Store - Core data access and retrieval functions
  *
  * This module provides all database operations, search functions, and document
- * retrieval for QMD. It returns raw data structures that can be formatted by
+ * retrieval for QKB. It returns raw data structures that can be formatted by
  * CLI or MCP consumers.
  *
  * Usage:
@@ -515,7 +515,7 @@ export function resolve(...paths: string[]): string {
   return finalPath;
 }
 
-// Flag to indicate production mode (set by qmd.ts at startup)
+// Flag to indicate production mode (set by qkb.ts at startup)
 let _productionMode = false;
 
 export function enableProductionMode(): void {
@@ -1097,7 +1097,7 @@ function ensureVecTableInternal(db: Database, dimensions: number): void {
     if (existingDims !== null && existingDims !== dimensions) {
       throw new Error(
         `Embedding dimension mismatch: existing vectors are ${existingDims}d but the current model produces ${dimensions}d. ` +
-        `Run 'qmd embed -f' to re-embed with the new model.`
+        `Run 'qkb embed -f' to re-embed with the new model.`
       );
     }
     db.exec("DROP TABLE IF EXISTS vectors_vec");
@@ -2146,7 +2146,7 @@ export function findActiveDocument(
  * FTS entry. Embeddings are keyed by content hash, so the rename is
  * safe — no re-embedding required.
  *
- * @internal Used by reindexCollection and indexFiles during qmd update.
+ * @internal Used by reindexCollection and indexFiles during qkb update.
  * Returns null if the document does not exist under either path.
  */
 export function findOrMigrateLegacyDocument(
@@ -4388,7 +4388,7 @@ export async function vectorSearchQuery(
 
 /**
  * A single sub-search in a structured search request.
- * Matches the format used in QMD training data.
+ * Matches the format used in QKB training data.
  */
 export interface StructuredSearchOptions {
   collections?: string[];   // Filter to specific collections (OR match)

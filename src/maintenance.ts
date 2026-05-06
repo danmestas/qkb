@@ -1,5 +1,5 @@
 /**
- * Maintenance - Database cleanup operations for QMD.
+ * Maintenance - Database cleanup operations for QKB.
  *
  * Wraps low-level store operations that the CLI needs for housekeeping.
  * Takes an internal Store in the constructor — allowed to access DB directly.

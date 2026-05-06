@@ -1,5 +1,5 @@
 /**
- * Scoring functions for the QMD benchmark harness.
+ * Scoring functions for the QKB benchmark harness.
  *
  * Computes precision@k, recall, MRR, and F1 for search results
  * against ground-truth expected files.

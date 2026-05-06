@@ -8,8 +8,8 @@
 import { describe, test, expect } from "vitest";
 import { parseArgs } from "node:util";
 
-// Reproduce the filterByCollections logic from qmd.ts for testing
-// (the function is private in qmd.ts)
+// Reproduce the filterByCollections logic from qkb.ts for testing
+// (the function is private in qkb.ts)
 function filterByCollections<T extends { filepath?: string; file?: string }>(
   results: T[],
   collectionNames: string[],

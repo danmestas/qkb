@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build a container image with qmd installed via npm and bun, then run smoke tests.
+# Build a container image with qkb installed via npm and bun, then run smoke tests.
 # Works with docker or podman (whichever is available).
 #
 # Usage:
@@ -21,14 +21,14 @@ else
   exit 1
 fi
 
-IMAGE=qmd-smoke
+IMAGE=qkb-smoke
 
 build_image() {
   echo "==> Building TypeScript..."
   npm run build --silent
 
   echo "==> Packing tarball..."
-  rm -f test/tobilu-qmd-*.tgz
+  rm -f test/tobilu-qkb-*.tgz
   TARBALL=$(npm pack --pack-destination test/ 2>/dev/null | tail -1)
   echo "    $TARBALL"
 
@@ -44,7 +44,7 @@ build_image() {
   $CTR build -f test/Containerfile -t "$IMAGE" test/
 
   # Clean up
-  rm -f test/tobilu-qmd-*.tgz
+  rm -f test/tobilu-qkb-*.tgz
   rm -rf test/test-src
   echo "==> Image ready: $IMAGE"
 }
@@ -82,25 +82,25 @@ smoke_test_output() {
 
 run_smoke_tests() {
   # ------------------------------------------------------------------
-  # Node (npm-installed qmd)
+  # Node (npm-installed qkb)
   # ------------------------------------------------------------------
   local NODE_BIN='$(mise where node@latest)/bin'
   echo "=== Node (npm install) ==="
 
-  smoke_test_output "qmd shows help" "Usage:" \
-    "export PATH=$NODE_BIN:\$PATH; qmd"
+  smoke_test_output "qkb shows help" "Usage:" \
+    "export PATH=$NODE_BIN:\$PATH; qkb"
 
-  smoke_test "qmd collection list" \
-    "export PATH=$NODE_BIN:\$PATH; qmd collection list"
+  smoke_test "qkb collection list" \
+    "export PATH=$NODE_BIN:\$PATH; qkb collection list"
 
-  smoke_test "qmd status" \
-    "export PATH=$NODE_BIN:\$PATH; qmd status"
+  smoke_test "qkb status" \
+    "export PATH=$NODE_BIN:\$PATH; qkb status"
 
   smoke_test "sqlite-vec loads" \
     "export PATH=$NODE_BIN:\$PATH;
      NPM_GLOBAL=\$(npm root -g);
      node -e \"
-      const {openDatabase, loadSqliteVec} = await import('\$NPM_GLOBAL/@tobilu/qmd/dist/db.js');
+      const {openDatabase, loadSqliteVec} = await import('\$NPM_GLOBAL/@tobilu/qkb/dist/db.js');
       const db = openDatabase(':memory:');
       loadSqliteVec(db);
       const r = db.prepare('SELECT vec_version() as v').get();
@@ -109,27 +109,27 @@ run_smoke_tests() {
     \""
 
   smoke_test "vitest (node)" \
-    "export PATH=$NODE_BIN:\$PATH; cd /opt/qmd && npx vitest run --reporter=verbose test/store.test.ts 2>&1 | tail -5"
+    "export PATH=$NODE_BIN:\$PATH; cd /opt/qkb && npx vitest run --reporter=verbose test/store.test.ts 2>&1 | tail -5"
 
   # ------------------------------------------------------------------
-  # Bun (bun-installed qmd)
+  # Bun (bun-installed qkb)
   # ------------------------------------------------------------------
   local BUN_BIN='$(mise where bun@latest)/bin'
   echo ""
   echo "=== Bun (bun install) ==="
 
-  smoke_test_output "qmd shows help" "Usage:" \
-    "export PATH=$BUN_BIN:$NODE_BIN:\$PATH; \$HOME/.bun/bin/qmd"
+  smoke_test_output "qkb shows help" "Usage:" \
+    "export PATH=$BUN_BIN:$NODE_BIN:\$PATH; \$HOME/.bun/bin/qkb"
 
-  smoke_test "qmd collection list" \
-    "export PATH=$BUN_BIN:$NODE_BIN:\$PATH; \$HOME/.bun/bin/qmd collection list"
+  smoke_test "qkb collection list" \
+    "export PATH=$BUN_BIN:$NODE_BIN:\$PATH; \$HOME/.bun/bin/qkb collection list"
 
-  smoke_test "qmd status" \
-    "export PATH=$BUN_BIN:$NODE_BIN:\$PATH; \$HOME/.bun/bin/qmd status"
+  smoke_test "qkb status" \
+    "export PATH=$BUN_BIN:$NODE_BIN:\$PATH; \$HOME/.bun/bin/qkb status"
 
   smoke_test "sqlite-vec loads (bun)" \
     "export PATH=$BUN_BIN:\$PATH; bun -e \"
-      const {openDatabase, loadSqliteVec} = await import('\$HOME/.bun/install/global/node_modules/@tobilu/qmd/dist/db.js');
+      const {openDatabase, loadSqliteVec} = await import('\$HOME/.bun/install/global/node_modules/@tobilu/qkb/dist/db.js');
       const db = openDatabase(':memory:');
       loadSqliteVec(db);
       const r = db.prepare('SELECT vec_version() as v').get();
@@ -138,7 +138,7 @@ run_smoke_tests() {
     \""
 
   smoke_test "bun test store" \
-    "export PATH=$BUN_BIN:\$PATH; cd /opt/qmd && bun test --preload ./src/test-preload.ts --timeout 30000 test/store.test.ts 2>&1 | tail -10"
+    "export PATH=$BUN_BIN:\$PATH; cd /opt/qkb && bun test --preload ./src/test-preload.ts --timeout 30000 test/store.test.ts 2>&1 | tail -10"
 
   # ------------------------------------------------------------------
   echo ""

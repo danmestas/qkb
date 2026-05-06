@@ -1,8 +1,8 @@
 /**
  * CLI Integration Tests
  *
- * Tests all qmd CLI commands using a temporary test database via INDEX_PATH.
- * These tests spawn actual qmd processes to verify end-to-end functionality.
+ * Tests all qkb CLI commands using a temporary test database via INDEX_PATH.
+ * These tests spawn actual qkb processes to verify end-to-end functionality.
  */
 
 import { describe, test, expect, beforeAll, afterAll, beforeEach } from "vitest";
@@ -25,7 +25,7 @@ let testCounter = 0; // Unique counter for each test run
 // Get the directory where this test file lives
 const thisDir = dirname(fileURLToPath(import.meta.url));
 const projectRoot = join(thisDir, "..");
-const qmdScript = join(projectRoot, "src", "cli", "qkb.ts");
+const qkbScript = join(projectRoot, "src", "cli", "qkb.ts");
 // Resolve tsx binary from project's node_modules (not cwd-dependent)
 const tsxBin = (() => {
   const candidate = join(projectRoot, "node_modules", ".bin", "tsx");
@@ -35,15 +35,15 @@ const tsxBin = (() => {
   return join(process.cwd(), "node_modules", ".bin", "tsx");
 })();
 
-// Helper to run qmd command with test database
-async function runQmd(
+// Helper to run qkb command with test database
+async function runQkb(
   args: string[],
   options: { cwd?: string; env?: Record<string, string>; dbPath?: string; configDir?: string } = {}
 ): Promise<{ stdout: string; stderr: string; exitCode: number }> {
   const workingDir = options.cwd || fixturesDir;
   const dbPath = options.dbPath || testDbPath;
   const configDir = options.configDir || testConfigDir;
-  const proc = spawn(tsxBin, [qmdScript, ...args], {
+  const proc = spawn(tsxBin, [qkbScript, ...args], {
     cwd: workingDir,
     env: {
       ...process.env,
@@ -96,7 +96,7 @@ async function createIsolatedTestEnv(prefix: string): Promise<{ dbPath: string; 
 // Setup test fixtures
 beforeAll(async () => {
   // Create temp directory structure
-  testDir = await mkdtemp(join(tmpdir(), "qmd-test-"));
+  testDir = await mkdtemp(join(tmpdir(), "qkb-test-"));
   testDbPath = join(testDir, "test.sqlite");
   testConfigDir = join(testDir, "config");
   fixturesDir = join(testDir, "fixtures");
@@ -117,7 +117,7 @@ beforeAll(async () => {
     join(fixturesDir, "README.md"),
     `# Test Project
 
-This is a test project for QMD CLI testing.
+This is a test project for QKB CLI testing.
 
 ## Features
 
@@ -227,7 +227,7 @@ beforeEach(async () => {
 
 describe("CLI Help", () => {
   test("shows help with --help flag", async () => {
-    const { stdout, exitCode } = await runQmd(["--help"]);
+    const { stdout, exitCode } = await runQkb(["--help"]);
     expect(exitCode).toBe(0);
     expect(stdout).toContain("Usage:");
     expect(stdout).toContain("qkb collection add");
@@ -236,7 +236,7 @@ describe("CLI Help", () => {
   });
 
   test("shows help with no arguments", async () => {
-    const { stdout, exitCode } = await runQmd([]);
+    const { stdout, exitCode } = await runQkb([]);
     expect(exitCode).toBe(1);
     expect(stdout).toContain("Usage:");
   });
@@ -244,13 +244,13 @@ describe("CLI Help", () => {
 
 describe("CLI Embed", () => {
   test("rejects invalid --max-docs-per-batch", async () => {
-    const { stderr, exitCode } = await runQmd(["embed", "--max-docs-per-batch", "0"]);
+    const { stderr, exitCode } = await runQkb(["embed", "--max-docs-per-batch", "0"]);
     expect(exitCode).toBe(1);
     expect(stderr).toContain("maxDocsPerBatch");
   });
 
   test("rejects invalid --max-batch-mb", async () => {
-    const { stderr, exitCode } = await runQmd(["embed", "--max-batch-mb", "0"]);
+    const { stderr, exitCode } = await runQkb(["embed", "--max-batch-mb", "0"]);
     expect(exitCode).toBe(1);
     expect(stderr).toContain("maxBatchBytes");
   });
@@ -258,15 +258,15 @@ describe("CLI Embed", () => {
 
 describe("CLI Skill Commands", () => {
   test("shows embedded skill with --skill alias", async () => {
-    const { stdout, exitCode } = await runQmd(["--skill"]);
+    const { stdout, exitCode } = await runQkb(["--skill"]);
     expect(exitCode).toBe(0);
-    expect(stdout).toContain("QMD Skill (embedded)");
-    expect(stdout).toContain("name: qmd");
-    expect(stdout).toContain("allowed-tools: Bash(qmd:*), mcp__qmd__*");
+    expect(stdout).toContain("QKB Skill (embedded)");
+    expect(stdout).toContain("name: qkb");
+    expect(stdout).toContain("allowed-tools: Bash(qkb:*), mcp__qkb__*");
   });
 
   test("shows skill help with -h", async () => {
-    const { stdout, exitCode } = await runQmd(["skill", "-h"]);
+    const { stdout, exitCode } = await runQkb(["skill", "-h"]);
     expect(exitCode).toBe(0);
     expect(stdout).toContain("Usage: qkb skill <show|install> [options]");
     expect(stdout).toContain("install");
@@ -277,14 +277,14 @@ describe("CLI Skill Commands", () => {
     const projectDir = join(testDir, "skill-project");
     await mkdir(projectDir, { recursive: true });
 
-    const { stdout, exitCode } = await runQmd(["skill", "install"], { cwd: projectDir });
+    const { stdout, exitCode } = await runQkb(["skill", "install"], { cwd: projectDir });
     expect(exitCode).toBe(0);
 
-    const skillDir = join(projectDir, ".agents", "skills", "qmd");
-    expect(readFileSync(join(skillDir, "SKILL.md"), "utf-8")).toContain("name: qmd");
+    const skillDir = join(projectDir, ".agents", "skills", "qkb");
+    expect(readFileSync(join(skillDir, "SKILL.md"), "utf-8")).toContain("name: qkb");
     expect(readFileSync(join(skillDir, "references", "mcp-setup.md"), "utf-8")).toContain("Claude Code");
-    expect(existsSync(join(projectDir, ".claude", "skills", "qmd"))).toBe(false);
-    expect(stdout).toContain(`✓ Installed QMD skill to ${skillDir}`);
+    expect(existsSync(join(projectDir, ".claude", "skills", "qkb"))).toBe(false);
+    expect(stdout).toContain(`✓ Installed QKB skill to ${skillDir}`);
     expect(stdout).toContain("Tip: create a Claude symlink manually");
   });
 
@@ -292,35 +292,35 @@ describe("CLI Skill Commands", () => {
     const fakeHome = join(testDir, "skill-home");
     await mkdir(fakeHome, { recursive: true });
 
-    const { stdout, exitCode } = await runQmd(["skill", "install", "--global", "--yes"], {
+    const { stdout, exitCode } = await runQkb(["skill", "install", "--global", "--yes"], {
       env: { HOME: fakeHome },
     });
     expect(exitCode).toBe(0);
 
-    const skillDir = join(fakeHome, ".agents", "skills", "qmd");
-    const claudeLink = join(fakeHome, ".claude", "skills", "qmd");
+    const skillDir = join(fakeHome, ".agents", "skills", "qkb");
+    const claudeLink = join(fakeHome, ".claude", "skills", "qkb");
 
-    expect(readFileSync(join(skillDir, "SKILL.md"), "utf-8")).toContain("name: qmd");
+    expect(readFileSync(join(skillDir, "SKILL.md"), "utf-8")).toContain("name: qkb");
     expect(lstatSync(claudeLink).isSymbolicLink()).toBe(true);
-    expect(readFileSync(join(claudeLink, "SKILL.md"), "utf-8")).toContain("name: qmd");
-    expect(stdout).toContain(`✓ Installed QMD skill to ${skillDir}`);
+    expect(readFileSync(join(claudeLink, "SKILL.md"), "utf-8")).toContain("name: qkb");
+    expect(stdout).toContain(`✓ Installed QKB skill to ${skillDir}`);
     expect(stdout).toContain(`✓ Linked Claude skill at ${claudeLink}`);
   });
 
-  test("skips Claude qmd symlink when .claude/skills already points to .agents/skills", async () => {
+  test("skips Claude qkb symlink when .claude/skills already points to .agents/skills", async () => {
     const fakeHome = join(testDir, "skill-home-shared");
     await mkdir(join(fakeHome, ".agents"), { recursive: true });
     await mkdir(join(fakeHome, ".claude"), { recursive: true });
     symlinkSync(join(fakeHome, ".agents", "skills"), join(fakeHome, ".claude", "skills"), "dir");
 
-    const { stdout, exitCode } = await runQmd(["skill", "install", "--global", "--yes"], {
+    const { stdout, exitCode } = await runQkb(["skill", "install", "--global", "--yes"], {
       env: { HOME: fakeHome },
     });
     expect(exitCode).toBe(0);
 
-    const skillDir = join(fakeHome, ".agents", "skills", "qmd");
+    const skillDir = join(fakeHome, ".agents", "skills", "qkb");
     expect(lstatSync(skillDir).isSymbolicLink()).toBe(false);
-    expect(readFileSync(join(skillDir, "SKILL.md"), "utf-8")).toContain("name: qmd");
+    expect(readFileSync(join(skillDir, "SKILL.md"), "utf-8")).toContain("name: qkb");
     expect(stdout).toContain(`✓ Claude already sees the skill via ${join(fakeHome, ".claude", "skills")}`);
   });
 
@@ -328,10 +328,10 @@ describe("CLI Skill Commands", () => {
     const projectDir = join(testDir, "skill-project-force");
     await mkdir(projectDir, { recursive: true });
 
-    const first = await runQmd(["skill", "install"], { cwd: projectDir });
+    const first = await runQkb(["skill", "install"], { cwd: projectDir });
     expect(first.exitCode).toBe(0);
 
-    const second = await runQmd(["skill", "install"], { cwd: projectDir });
+    const second = await runQkb(["skill", "install"], { cwd: projectDir });
     expect(second.exitCode).toBe(1);
     expect(second.stderr).toContain("Skill already exists");
     expect(second.stderr).toContain("--force");
@@ -340,14 +340,14 @@ describe("CLI Skill Commands", () => {
 
 describe("CLI Add Command", () => {
   test("adds files from current directory", async () => {
-    const { stdout, exitCode } = await runQmd(["collection", "add", "."]);
+    const { stdout, exitCode } = await runQkb(["collection", "add", "."]);
     expect(exitCode).toBe(0);
     expect(stdout).toContain("Collection:");
     expect(stdout).toContain("Indexed:");
   });
 
   test("adds files with custom glob pattern", async () => {
-    const { stdout, stderr, exitCode } = await runQmd(["collection", "add", ".", "--mask", "notes/*.md"]);
+    const { stdout, stderr, exitCode } = await runQkb(["collection", "add", ".", "--mask", "notes/*.md"]);
     if (exitCode !== 0) {
       console.error("Command failed:", stderr);
     }
@@ -359,11 +359,11 @@ describe("CLI Add Command", () => {
 
   test("can recreate collection with remove and add", async () => {
     // First add
-    await runQmd(["collection", "add", "."]);
+    await runQkb(["collection", "add", "."]);
     // Remove it
-    await runQmd(["collection", "remove", "fixtures"]);
+    await runQkb(["collection", "remove", "fixtures"]);
     // Re-add
-    const { stdout, exitCode } = await runQmd(["collection", "add", "."]);
+    const { stdout, exitCode } = await runQkb(["collection", "add", "."]);
     expect(exitCode).toBe(0);
     expect(stdout).toContain("Collection 'fixtures' created successfully");
   });
@@ -372,18 +372,18 @@ describe("CLI Add Command", () => {
 describe("CLI Status Command", () => {
   beforeEach(async () => {
     // Ensure we have indexed files
-    await runQmd(["collection", "add", "."]);
+    await runQkb(["collection", "add", "."]);
   });
 
   test("shows index status", async () => {
-    const { stdout, exitCode } = await runQmd(["status"]);
+    const { stdout, exitCode } = await runQkb(["status"]);
     expect(exitCode).toBe(0);
     // Should show collection info
     expect(stdout).toContain("Collection");
   });
 
   test("skips device probing by default", async () => {
-    const { stdout, exitCode } = await runQmd(["status"]);
+    const { stdout, exitCode } = await runQkb(["status"]);
     expect(exitCode).toBe(0);
     expect(stdout).not.toContain("Device");
   });
@@ -392,92 +392,92 @@ describe("CLI Status Command", () => {
 describe("CLI Search Command", () => {
   beforeEach(async () => {
     // Ensure we have indexed files
-    await runQmd(["collection", "add", "."]);
+    await runQkb(["collection", "add", "."]);
   });
 
   test("searches for documents with BM25", async () => {
-    const { stdout, exitCode } = await runQmd(["search", "meeting"]);
+    const { stdout, exitCode } = await runQkb(["search", "meeting"]);
     expect(exitCode).toBe(0);
     // Should find meeting.md
     expect(stdout.toLowerCase()).toContain("meeting");
   });
 
   test("searches with limit option", async () => {
-    const { stdout, exitCode } = await runQmd(["search", "-n", "1", "test"]);
+    const { stdout, exitCode } = await runQkb(["search", "-n", "1", "test"]);
     expect(exitCode).toBe(0);
   });
 
   test("searches with all results option", async () => {
-    const { stdout, exitCode } = await runQmd(["search", "--all", "the"]);
+    const { stdout, exitCode } = await runQkb(["search", "--all", "the"]);
     expect(exitCode).toBe(0);
   });
 
   test("returns no results message for non-matching query", async () => {
-    const { stdout, exitCode } = await runQmd(["search", "xyznonexistent123"]);
+    const { stdout, exitCode } = await runQkb(["search", "xyznonexistent123"]);
     expect(exitCode).toBe(0);
     expect(stdout).toContain("No results");
   });
 
   test("returns empty JSON array for non-matching query with --json", async () => {
-    const { stdout, exitCode } = await runQmd(["search", "xyznonexistent123", "--json"]);
+    const { stdout, exitCode } = await runQkb(["search", "xyznonexistent123", "--json"]);
     expect(exitCode).toBe(0);
     expect(JSON.parse(stdout)).toEqual([]);
   });
 
   test("returns CSV header only for non-matching query with --csv", async () => {
-    const { stdout, exitCode } = await runQmd(["search", "xyznonexistent123", "--csv"]);
+    const { stdout, exitCode } = await runQkb(["search", "xyznonexistent123", "--csv"]);
     expect(exitCode).toBe(0);
     expect(stdout.trim()).toBe("docid,score,file,title,context,line,snippet");
   });
 
   test("returns empty XML container for non-matching query with --xml", async () => {
-    const { stdout, exitCode } = await runQmd(["search", "xyznonexistent123", "--xml"]);
+    const { stdout, exitCode } = await runQkb(["search", "xyznonexistent123", "--xml"]);
     expect(exitCode).toBe(0);
     expect(stdout.trim()).toBe("<results></results>");
   });
 
   test("returns empty output for non-matching query with --md", async () => {
-    const { stdout, exitCode } = await runQmd(["search", "xyznonexistent123", "--md"]);
+    const { stdout, exitCode } = await runQkb(["search", "xyznonexistent123", "--md"]);
     expect(exitCode).toBe(0);
     expect(stdout.trim()).toBe("");
   });
 
   test("returns empty output for non-matching query with --files", async () => {
-    const { stdout, exitCode } = await runQmd(["search", "xyznonexistent123", "--files"]);
+    const { stdout, exitCode } = await runQkb(["search", "xyznonexistent123", "--files"]);
     expect(exitCode).toBe(0);
     expect(stdout.trim()).toBe("");
   });
 
   test("returns min-score threshold message for default CLI output", async () => {
-    const { stdout, exitCode } = await runQmd(["search", "test", "--min-score", "2"]);
+    const { stdout, exitCode } = await runQkb(["search", "test", "--min-score", "2"]);
     expect(exitCode).toBe(0);
     expect(stdout).toContain("No results found above minimum score threshold.");
   });
 
   test("returns format-safe empty output when --min-score filters all results", async () => {
-    const json = await runQmd(["search", "test", "--json", "--min-score", "2"]);
+    const json = await runQkb(["search", "test", "--json", "--min-score", "2"]);
     expect(json.exitCode).toBe(0);
     expect(JSON.parse(json.stdout)).toEqual([]);
 
-    const csv = await runQmd(["search", "test", "--csv", "--min-score", "2"]);
+    const csv = await runQkb(["search", "test", "--csv", "--min-score", "2"]);
     expect(csv.exitCode).toBe(0);
     expect(csv.stdout.trim()).toBe("docid,score,file,title,context,line,snippet");
 
-    const xml = await runQmd(["search", "test", "--xml", "--min-score", "2"]);
+    const xml = await runQkb(["search", "test", "--xml", "--min-score", "2"]);
     expect(xml.exitCode).toBe(0);
     expect(xml.stdout.trim()).toBe("<results></results>");
 
-    const md = await runQmd(["search", "test", "--md", "--min-score", "2"]);
+    const md = await runQkb(["search", "test", "--md", "--min-score", "2"]);
     expect(md.exitCode).toBe(0);
     expect(md.stdout.trim()).toBe("");
 
-    const files = await runQmd(["search", "test", "--files", "--min-score", "2"]);
+    const files = await runQkb(["search", "test", "--files", "--min-score", "2"]);
     expect(files.exitCode).toBe(0);
     expect(files.stdout.trim()).toBe("");
   });
 
   test("requires query argument", async () => {
-    const { stdout, stderr, exitCode } = await runQmd(["search"]);
+    const { stdout, stderr, exitCode } = await runQkb(["search"]);
     expect(exitCode).toBe(1);
     // Error message goes to stderr
     expect(stderr).toContain("Usage:");
@@ -487,23 +487,23 @@ describe("CLI Search Command", () => {
 describe("CLI Get Command", () => {
   beforeEach(async () => {
     // Ensure we have indexed files
-    await runQmd(["collection", "add", "."]);
+    await runQkb(["collection", "add", "."]);
   });
 
   test("retrieves document content by path", async () => {
-    const { stdout, exitCode } = await runQmd(["get", "README.md"]);
+    const { stdout, exitCode } = await runQkb(["get", "README.md"]);
     expect(exitCode).toBe(0);
     expect(stdout).toContain("Test Project");
   });
 
   test("retrieves document from subdirectory", async () => {
-    const { stdout, exitCode } = await runQmd(["get", "notes/meeting.md"]);
+    const { stdout, exitCode } = await runQkb(["get", "notes/meeting.md"]);
     expect(exitCode).toBe(0);
     expect(stdout).toContain("Team Meeting");
   });
 
   test("handles non-existent file", async () => {
-    const { stdout, exitCode } = await runQmd(["get", "nonexistent.md"]);
+    const { stdout, exitCode } = await runQkb(["get", "nonexistent.md"]);
     // Should indicate file not found
     expect(exitCode).toBe(1);
   });
@@ -516,7 +516,7 @@ describe("CLI Multi-Get Command", () => {
     // Use fresh database for each test
     localDbPath = getFreshDbPath();
     // Ensure we have indexed files
-    const addResult = await runQmd(["collection", "add", ".", "--name", "fixtures"], { dbPath: localDbPath });
+    const addResult = await runQkb(["collection", "add", ".", "--name", "fixtures"], { dbPath: localDbPath });
     if (addResult.exitCode !== 0) {
       throw new Error(`Failed to add collection: ${addResult.stderr}`);
     }
@@ -524,7 +524,7 @@ describe("CLI Multi-Get Command", () => {
 
   test("retrieves multiple documents by pattern", async () => {
     // Test glob pattern matching
-    const { stdout, stderr, exitCode } = await runQmd(["multi-get", "notes/*.md"], { dbPath: localDbPath });
+    const { stdout, stderr, exitCode } = await runQkb(["multi-get", "notes/*.md"], { dbPath: localDbPath });
     expect(exitCode).toBe(0);
     // Should contain content from both notes files
     expect(stdout).toContain("Meeting");
@@ -532,7 +532,7 @@ describe("CLI Multi-Get Command", () => {
   });
 
   test("retrieves documents by comma-separated paths", async () => {
-    const { stdout, exitCode } = await runQmd([
+    const { stdout, exitCode } = await runQkb([
       "multi-get",
       "README.md,notes/meeting.md",
     ], { dbPath: localDbPath });
@@ -549,11 +549,11 @@ describe("CLI Update Command", () => {
     // Use a fresh database for this test suite
     localDbPath = getFreshDbPath();
     // Ensure we have indexed files
-    await runQmd(["collection", "add", "."], { dbPath: localDbPath });
+    await runQkb(["collection", "add", "."], { dbPath: localDbPath });
   });
 
   test("updates all collections", async () => {
-    const { stdout, exitCode } = await runQmd(["update"], { dbPath: localDbPath });
+    const { stdout, exitCode } = await runQkb(["update"], { dbPath: localDbPath });
     expect(exitCode).toBe(0);
     expect(stdout).toContain("Updating");
   });
@@ -575,23 +575,23 @@ ${token}
 `
     );
 
-    const add = await runQmd(
+    const add = await runQkb(
       ["collection", "add", collectionDir, "--name", "empty-check"],
       { dbPath, configDir }
     );
     expect(add.exitCode).toBe(0);
 
-    const before = await runQmd(["get", "qkb://empty-check/only.md"], { dbPath, configDir });
+    const before = await runQkb(["get", "qkb://empty-check/only.md"], { dbPath, configDir });
     expect(before.exitCode).toBe(0);
     expect(before.stdout).toContain(token);
 
     unlinkSync(docPath);
 
-    const update = await runQmd(["update"], { dbPath, configDir });
+    const update = await runQkb(["update"], { dbPath, configDir });
     expect(update.exitCode).toBe(0);
     expect(update.stdout).toContain("0 new, 0 updated, 0 unchanged, 1 removed");
 
-    const after = await runQmd(["get", "qkb://empty-check/only.md"], { dbPath, configDir });
+    const after = await runQkb(["get", "qkb://empty-check/only.md"], { dbPath, configDir });
     expect(after.exitCode).toBe(1);
   });
 });
@@ -607,7 +607,7 @@ describe("CLI Add-Context Command", () => {
     localConfigDir = env.configDir;
 
     // Add collection with known name
-    const { exitCode, stderr } = await runQmd(
+    const { exitCode, stderr } = await runQkb(
       ["collection", "add", fixturesDir, "--name", collName],
       { dbPath: localDbPath, configDir: localConfigDir }
     );
@@ -617,7 +617,7 @@ describe("CLI Add-Context Command", () => {
 
   test("adds context to a path", async () => {
     // Add context to the collection root using virtual path
-    const { stdout, exitCode } = await runQmd([
+    const { stdout, exitCode } = await runQkb([
       "context",
       "add",
       `qkb://${collName}/`,
@@ -628,7 +628,7 @@ describe("CLI Add-Context Command", () => {
   });
 
   test("requires path and text arguments", async () => {
-    const { stderr, exitCode } = await runQmd(["context", "add"], { dbPath: localDbPath, configDir: localConfigDir });
+    const { stderr, exitCode } = await runQkb(["context", "add"], { dbPath: localDbPath, configDir: localConfigDir });
     expect(exitCode).toBe(1);
     // Error message goes to stderr
     expect(stderr).toContain("Usage:");
@@ -638,18 +638,18 @@ describe("CLI Add-Context Command", () => {
 describe("CLI Cleanup Command", () => {
   beforeEach(async () => {
     // Ensure we have indexed files
-    await runQmd(["collection", "add", "."]);
+    await runQkb(["collection", "add", "."]);
   });
 
   test("cleans up orphaned entries", async () => {
-    const { stdout, exitCode } = await runQmd(["cleanup"]);
+    const { stdout, exitCode } = await runQkb(["cleanup"]);
     expect(exitCode).toBe(0);
   });
 });
 
 describe("CLI Error Handling", () => {
   test("handles unknown command", async () => {
-    const { stderr, exitCode } = await runQmd(["unknowncommand"]);
+    const { stderr, exitCode } = await runQkb(["unknowncommand"]);
     expect(exitCode).toBe(1);
     // Should indicate unknown command
     expect(stderr).toContain("Unknown command");
@@ -658,7 +658,7 @@ describe("CLI Error Handling", () => {
   test("uses INDEX_PATH environment variable", async () => {
     // Verify the test DB path is being used by creating a separate index
     const customDbPath = join(testDir, "custom.sqlite");
-    const { exitCode } = await runQmd(["collection", "add", "."], {
+    const { exitCode } = await runQkb(["collection", "add", "."], {
       env: { INDEX_PATH: customDbPath },
     });
     expect(exitCode).toBe(0);
@@ -670,11 +670,11 @@ describe("CLI Error Handling", () => {
 
 describe("CLI Output Formats", () => {
   beforeEach(async () => {
-    await runQmd(["collection", "add", "."]);
+    await runQkb(["collection", "add", "."]);
   });
 
   test("search with --json flag outputs JSON", async () => {
-    const { stdout, exitCode } = await runQmd(["search", "--json", "test"]);
+    const { stdout, exitCode } = await runQkb(["search", "--json", "test"]);
     expect(exitCode).toBe(0);
     // Should be valid JSON
     const parsed = JSON.parse(stdout);
@@ -682,13 +682,13 @@ describe("CLI Output Formats", () => {
   });
 
   test("search with --files flag outputs file paths", async () => {
-    const { stdout, exitCode } = await runQmd(["search", "--files", "meeting"]);
+    const { stdout, exitCode } = await runQkb(["search", "--files", "meeting"]);
     expect(exitCode).toBe(0);
     expect(stdout).toContain(".md");
   });
 
   test("search output includes snippets by default", async () => {
-    const { stdout, exitCode } = await runQmd(["search", "API"]);
+    const { stdout, exitCode } = await runQkb(["search", "API"]);
     expect(exitCode).toBe(0);
     // If results found, should have snippet content
     if (!stdout.includes("No results")) {
@@ -704,12 +704,12 @@ describe("CLI Search with Collection Filter", () => {
     // Use a fresh database for this test suite
     localDbPath = getFreshDbPath();
     // Create multiple collections with explicit names
-    await runQmd(["collection", "add", ".", "--name", "notes", "--mask", "notes/*.md"], { dbPath: localDbPath });
-    await runQmd(["collection", "add", ".", "--name", "docs", "--mask", "docs/*.md"], { dbPath: localDbPath });
+    await runQkb(["collection", "add", ".", "--name", "notes", "--mask", "notes/*.md"], { dbPath: localDbPath });
+    await runQkb(["collection", "add", ".", "--name", "docs", "--mask", "docs/*.md"], { dbPath: localDbPath });
   });
 
   test("filters search by collection name", async () => {
-    const { stdout, stderr, exitCode } = await runQmd([
+    const { stdout, stderr, exitCode } = await runQkb([
       "search",
       "-c",
       "notes",
@@ -731,11 +731,11 @@ describe("CLI Context Management", () => {
     // Use a fresh database for this test suite
     localDbPath = getFreshDbPath();
     // Index some files first
-    await runQmd(["collection", "add", "."], { dbPath: localDbPath });
+    await runQkb(["collection", "add", "."], { dbPath: localDbPath });
   });
 
   test("add global context with /", async () => {
-    const { stdout, exitCode } = await runQmd([
+    const { stdout, exitCode } = await runQkb([
       "context",
       "add",
       "/",
@@ -748,14 +748,14 @@ describe("CLI Context Management", () => {
 
   test("list contexts", async () => {
     // Add a global context first
-    await runQmd([
+    await runQkb([
       "context",
       "add",
       "/",
       "Test context",
     ], { dbPath: localDbPath });
 
-    const { stdout, exitCode } = await runQmd([
+    const { stdout, exitCode } = await runQkb([
       "context",
       "list",
     ], { dbPath: localDbPath });
@@ -766,7 +766,7 @@ describe("CLI Context Management", () => {
 
   test("add context to virtual path", async () => {
     // Collection name should be "fixtures" (basename of the fixtures directory)
-    const { stdout, exitCode } = await runQmd([
+    const { stdout, exitCode } = await runQkb([
       "context",
       "add",
       "qkb://fixtures/notes",
@@ -778,14 +778,14 @@ describe("CLI Context Management", () => {
 
   test("remove global context", async () => {
     // Add a global context first
-    await runQmd([
+    await runQkb([
       "context",
       "add",
       "/",
       "Global context to remove",
     ], { dbPath: localDbPath });
 
-    const { stdout, exitCode } = await runQmd([
+    const { stdout, exitCode } = await runQkb([
       "context",
       "rm",
       "/",
@@ -796,14 +796,14 @@ describe("CLI Context Management", () => {
 
   test("remove virtual path context", async () => {
     // Add a context first
-    await runQmd([
+    await runQkb([
       "context",
       "add",
       "qkb://fixtures/notes",
       "Context to remove",
     ], { dbPath: localDbPath });
 
-    const { stdout, exitCode } = await runQmd([
+    const { stdout, exitCode } = await runQkb([
       "context",
       "rm",
       "qkb://fixtures/notes",
@@ -813,7 +813,7 @@ describe("CLI Context Management", () => {
   });
 
   test("fails to remove non-existent context", async () => {
-    const { stdout, stderr, exitCode } = await runQmd([
+    const { stdout, stderr, exitCode } = await runQkb([
       "context",
       "rm",
       "qkb://nonexistent/path",
@@ -830,18 +830,18 @@ describe("CLI ls Command", () => {
     // Use a fresh database for this test suite
     localDbPath = getFreshDbPath();
     // Index some files first
-    await runQmd(["collection", "add", "."], { dbPath: localDbPath });
+    await runQkb(["collection", "add", "."], { dbPath: localDbPath });
   });
 
   test("lists all collections", async () => {
-    const { stdout, exitCode } = await runQmd(["ls"], { dbPath: localDbPath });
+    const { stdout, exitCode } = await runQkb(["ls"], { dbPath: localDbPath });
     expect(exitCode).toBe(0);
     expect(stdout).toContain("Collections:");
     expect(stdout).toContain("qkb://fixtures/");
   });
 
   test("lists files in a collection", async () => {
-    const { stdout, exitCode } = await runQmd(["ls", "fixtures"], { dbPath: localDbPath });
+    const { stdout, exitCode } = await runQkb(["ls", "fixtures"], { dbPath: localDbPath });
     expect(exitCode).toBe(0);
     // handelize preserves original case
     expect(stdout).toContain("qkb://fixtures/README.md");
@@ -849,7 +849,7 @@ describe("CLI ls Command", () => {
   });
 
   test("lists files with path prefix", async () => {
-    const { stdout, exitCode } = await runQmd(["ls", "fixtures/notes"], { dbPath: localDbPath });
+    const { stdout, exitCode } = await runQkb(["ls", "fixtures/notes"], { dbPath: localDbPath });
     expect(exitCode).toBe(0);
     expect(stdout).toContain("qkb://fixtures/notes/meeting.md");
     expect(stdout).toContain("qkb://fixtures/notes/ideas.md");
@@ -858,13 +858,13 @@ describe("CLI ls Command", () => {
   });
 
   test("lists files with virtual path", async () => {
-    const { stdout, exitCode } = await runQmd(["ls", "qkb://fixtures/docs"], { dbPath: localDbPath });
+    const { stdout, exitCode } = await runQkb(["ls", "qkb://fixtures/docs"], { dbPath: localDbPath });
     expect(exitCode).toBe(0);
     expect(stdout).toContain("qkb://fixtures/docs/api.md");
   });
 
   test("handles non-existent collection", async () => {
-    const { stderr, exitCode } = await runQmd(["ls", "nonexistent"], { dbPath: localDbPath });
+    const { stderr, exitCode } = await runQkb(["ls", "nonexistent"], { dbPath: localDbPath });
     expect(exitCode).toBe(1);
     expect(stderr).toContain("Collection not found");
   });
@@ -877,11 +877,11 @@ describe("CLI Collection Commands", () => {
     // Use a fresh database for this test suite
     localDbPath = getFreshDbPath();
     // Index some files first to create a collection
-    await runQmd(["collection", "add", "."], { dbPath: localDbPath });
+    await runQkb(["collection", "add", "."], { dbPath: localDbPath });
   });
 
   test("lists collections", async () => {
-    const { stdout, exitCode } = await runQmd(["collection", "list"], { dbPath: localDbPath });
+    const { stdout, exitCode } = await runQkb(["collection", "list"], { dbPath: localDbPath });
     expect(exitCode).toBe(0);
     expect(stdout).toContain("Collections");
     expect(stdout).toContain("fixtures");
@@ -892,67 +892,67 @@ describe("CLI Collection Commands", () => {
 
   test("removes a collection", async () => {
     // First verify the collection exists
-    const { stdout: listBefore } = await runQmd(["collection", "list"], { dbPath: localDbPath });
+    const { stdout: listBefore } = await runQkb(["collection", "list"], { dbPath: localDbPath });
     expect(listBefore).toContain("fixtures");
 
     // Remove it
-    const { stdout, exitCode } = await runQmd(["collection", "remove", "fixtures"], { dbPath: localDbPath });
+    const { stdout, exitCode } = await runQkb(["collection", "remove", "fixtures"], { dbPath: localDbPath });
     expect(exitCode).toBe(0);
     expect(stdout).toContain("✓ Removed collection 'fixtures'");
     expect(stdout).toContain("Deleted");
 
     // Verify it's gone
-    const { stdout: listAfter } = await runQmd(["collection", "list"], { dbPath: localDbPath });
+    const { stdout: listAfter } = await runQkb(["collection", "list"], { dbPath: localDbPath });
     expect(listAfter).not.toContain("fixtures");
   });
 
   test("handles removing non-existent collection", async () => {
-    const { stderr, exitCode } = await runQmd(["collection", "remove", "nonexistent"], { dbPath: localDbPath });
+    const { stderr, exitCode } = await runQkb(["collection", "remove", "nonexistent"], { dbPath: localDbPath });
     expect(exitCode).toBe(1);
     expect(stderr).toContain("Collection not found");
   });
 
   test("handles missing remove argument", async () => {
-    const { stderr, exitCode } = await runQmd(["collection", "remove"], { dbPath: localDbPath });
+    const { stderr, exitCode } = await runQkb(["collection", "remove"], { dbPath: localDbPath });
     expect(exitCode).toBe(1);
     expect(stderr).toContain("Usage:");
   });
 
   test("handles unknown subcommand", async () => {
-    const { stderr, exitCode } = await runQmd(["collection", "invalid"], { dbPath: localDbPath });
+    const { stderr, exitCode } = await runQkb(["collection", "invalid"], { dbPath: localDbPath });
     expect(exitCode).toBe(1);
     expect(stderr).toContain("Unknown subcommand");
   });
 
   test("renames a collection", async () => {
     // First verify the collection exists
-    const { stdout: listBefore } = await runQmd(["collection", "list"], { dbPath: localDbPath });
+    const { stdout: listBefore } = await runQkb(["collection", "list"], { dbPath: localDbPath });
     expect(listBefore).toContain("qkb://fixtures/");
 
     // Rename it
-    const { stdout, exitCode } = await runQmd(["collection", "rename", "fixtures", "my-fixtures"], { dbPath: localDbPath });
+    const { stdout, exitCode } = await runQkb(["collection", "rename", "fixtures", "my-fixtures"], { dbPath: localDbPath });
     expect(exitCode).toBe(0);
     expect(stdout).toContain("✓ Renamed collection 'fixtures' to 'my-fixtures'");
     expect(stdout).toContain("qkb://fixtures/");
     expect(stdout).toContain("qkb://my-fixtures/");
 
     // Verify the new name exists and old name is gone
-    const { stdout: listAfter } = await runQmd(["collection", "list"], { dbPath: localDbPath });
+    const { stdout: listAfter } = await runQkb(["collection", "list"], { dbPath: localDbPath });
     expect(listAfter).toContain("qkb://my-fixtures/");
     expect(listAfter).not.toContain("qkb://fixtures/"); // Old collection should not appear
   });
 
   test("handles renaming non-existent collection", async () => {
-    const { stderr, exitCode } = await runQmd(["collection", "rename", "nonexistent", "newname"], { dbPath: localDbPath });
+    const { stderr, exitCode } = await runQkb(["collection", "rename", "nonexistent", "newname"], { dbPath: localDbPath });
     expect(exitCode).toBe(1);
     expect(stderr).toContain("Collection not found");
   });
 
   test("handles renaming to existing collection name", async () => {
     // Create a second collection in a temp directory
-    const tempDir = await mkdtemp(join(tmpdir(), "qmd-second-"));
+    const tempDir = await mkdtemp(join(tmpdir(), "qkb-second-"));
     await writeFile(join(tempDir, "test.md"), "# Test");
-    const addResult = await runQmd(["collection", "add", tempDir, "--name", "second"], { dbPath: localDbPath });
+    const addResult = await runQkb(["collection", "add", tempDir, "--name", "second"], { dbPath: localDbPath });
 
     if (addResult.exitCode !== 0) {
       console.error("Failed to add second collection:", addResult.stderr);
@@ -960,22 +960,22 @@ describe("CLI Collection Commands", () => {
     expect(addResult.exitCode).toBe(0);
 
     // Verify both collections exist
-    const { stdout: listBoth } = await runQmd(["collection", "list"], { dbPath: localDbPath });
+    const { stdout: listBoth } = await runQkb(["collection", "list"], { dbPath: localDbPath });
     expect(listBoth).toContain("qkb://fixtures/");
     expect(listBoth).toContain("qkb://second/");
 
     // Try to rename fixtures to second (which already exists)
-    const { stderr, exitCode } = await runQmd(["collection", "rename", "fixtures", "second"], { dbPath: localDbPath });
+    const { stderr, exitCode } = await runQkb(["collection", "rename", "fixtures", "second"], { dbPath: localDbPath });
     expect(exitCode).toBe(1);
     expect(stderr).toContain("Collection name already exists");
   });
 
   test("handles missing rename arguments", async () => {
-    const { stderr: stderr1, exitCode: exitCode1 } = await runQmd(["collection", "rename"], { dbPath: localDbPath });
+    const { stderr: stderr1, exitCode: exitCode1 } = await runQkb(["collection", "rename"], { dbPath: localDbPath });
     expect(exitCode1).toBe(1);
     expect(stderr1).toContain("Usage:");
 
-    const { stderr: stderr2, exitCode: exitCode2 } = await runQmd(["collection", "rename", "fixtures"], { dbPath: localDbPath });
+    const { stderr: stderr2, exitCode: exitCode2 } = await runQkb(["collection", "rename", "fixtures"], { dbPath: localDbPath });
     expect(exitCode2).toBe(1);
     expect(stderr2).toContain("Usage:");
   });
@@ -1026,7 +1026,7 @@ describe("collection ignore patterns", () => {
 `
     );
 
-    const { stdout, exitCode } = await runQmd(["update"], {
+    const { stdout, exitCode } = await runQkb(["update"], {
       cwd: ignoreTestDir,
       dbPath: localDbPath,
       configDir: localConfigDir,
@@ -1037,7 +1037,7 @@ describe("collection ignore patterns", () => {
   });
 
   test("ignored files are not searchable", async () => {
-    const { stdout, exitCode } = await runQmd(["search", "session", "-n", "10"], {
+    const { stdout, exitCode } = await runQkb(["search", "session", "-n", "10"], {
       cwd: ignoreTestDir,
       dbPath: localDbPath,
       configDir: localConfigDir,
@@ -1050,7 +1050,7 @@ describe("collection ignore patterns", () => {
   });
 
   test("non-ignored files are searchable", async () => {
-    const { stdout, exitCode } = await runQmd(["search", "personal note", "-n", "10"], {
+    const { stdout, exitCode } = await runQkb(["search", "personal note", "-n", "10"], {
       cwd: ignoreTestDir,
       dbPath: localDbPath,
       configDir: localConfigDir,
@@ -1060,7 +1060,7 @@ describe("collection ignore patterns", () => {
   });
 
   test("status shows ignore patterns", async () => {
-    const { stdout, exitCode } = await runQmd(["collection", "list"], {
+    const { stdout, exitCode } = await runQkb(["collection", "list"], {
       cwd: ignoreTestDir,
       dbPath: localDbPath,
       configDir: localConfigDir,
@@ -1083,7 +1083,7 @@ describe("collection ignore patterns", () => {
 `
     );
 
-    const { stdout, exitCode } = await runQmd(["update"], {
+    const { stdout, exitCode } = await runQkb(["update"], {
       cwd: ignoreTestDir,
       dbPath: env2.dbPath,
       configDir: env2.configDir,
@@ -1109,7 +1109,7 @@ describe("search output formats", () => {
     localConfigDir = env.configDir;
 
     // Add collection
-    const { exitCode, stderr } = await runQmd(
+    const { exitCode, stderr } = await runQkb(
       ["collection", "add", fixturesDir, "--name", collName],
       { dbPath: localDbPath, configDir: localConfigDir }
     );
@@ -1117,11 +1117,11 @@ describe("search output formats", () => {
     expect(exitCode).toBe(0);
 
     // Add context
-    await runQmd(["context", "add", `qkb://${collName}/`, "Test fixtures for QMD"], { dbPath: localDbPath, configDir: localConfigDir });
+    await runQkb(["context", "add", `qkb://${collName}/`, "Test fixtures for QKB"], { dbPath: localDbPath, configDir: localConfigDir });
   });
 
   test("search --json includes qkb:// path, docid, and context", async () => {
-    const { stdout, exitCode } = await runQmd(["search", "test", "--json", "-n", "1"], { dbPath: localDbPath, configDir: localConfigDir });
+    const { stdout, exitCode } = await runQkb(["search", "test", "--json", "-n", "1"], { dbPath: localDbPath, configDir: localConfigDir });
     expect(exitCode).toBe(0);
 
     const results = JSON.parse(stdout);
@@ -1130,13 +1130,13 @@ describe("search output formats", () => {
     const result = results[0];
     expect(result.file).toMatch(new RegExp(`^qkb://${collName}/`));
     expect(result.docid).toMatch(/^#[a-f0-9]{6}$/);
-    expect(result.context).toBe("Test fixtures for QMD");
+    expect(result.context).toBe("Test fixtures for QKB");
     // Ensure no full filesystem paths
     expect(result.file).not.toMatch(/^\/Users\//);
     expect(result.file).not.toMatch(/^\/home\//);
   });
 
-  test("custom-index search links include ?index= and can be passed back to qmd get", async () => {
+  test("custom-index search links include ?index= and can be passed back to qkb get", async () => {
     const env = await createIsolatedTestEnv("custom-index-links");
     const customColl = "fixtures-alt";
     const customIndex = "release-notes";
@@ -1148,13 +1148,13 @@ describe("search output formats", () => {
       XDG_CACHE_HOME: customCacheDir,
     };
 
-    const addResult = await runQmd(
+    const addResult = await runQkb(
       ["--index", customIndex, "collection", "add", fixturesDir, "--name", customColl],
       { dbPath: env.dbPath, configDir: env.configDir, env: sharedEnv }
     );
     expect(addResult.exitCode).toBe(0);
 
-    const searchResult = await runQmd(
+    const searchResult = await runQkb(
       ["--index", customIndex, "search", "test", "--json", "-n", "1"],
       { dbPath: env.dbPath, configDir: env.configDir, env: sharedEnv }
     );
@@ -1164,7 +1164,7 @@ describe("search output formats", () => {
     const file = results[0]?.file;
     expect(file).toMatch(new RegExp(`^qkb://${customColl}/.+\\?index=${customIndex}$`));
 
-    const getResult = await runQmd(
+    const getResult = await runQkb(
       ["get", file, "-l", "2"],
       { dbPath: env.dbPath, configDir: env.configDir, env: sharedEnv }
     );
@@ -1173,57 +1173,57 @@ describe("search output formats", () => {
   });
 
   test("search --files includes qkb:// path, docid, and context", async () => {
-    const { stdout, exitCode } = await runQmd(["search", "test", "--files", "-n", "1"], { dbPath: localDbPath, configDir: localConfigDir });
+    const { stdout, exitCode } = await runQkb(["search", "test", "--files", "-n", "1"], { dbPath: localDbPath, configDir: localConfigDir });
     expect(exitCode).toBe(0);
 
     // Format: #docid,score,qkb://collection/path,"context"
     expect(stdout).toMatch(new RegExp(`^#[a-f0-9]{6},[\\d.]+,qkb://${collName}/`, "m"));
-    expect(stdout).toContain("Test fixtures for QMD");
+    expect(stdout).toContain("Test fixtures for QKB");
     // Ensure no full filesystem paths
     expect(stdout).not.toMatch(/\/Users\//);
     expect(stdout).not.toMatch(/\/home\//);
   });
 
   test("search --csv includes qkb:// path, docid, and context", async () => {
-    const { stdout, exitCode } = await runQmd(["search", "test", "--csv", "-n", "1"], { dbPath: localDbPath, configDir: localConfigDir });
+    const { stdout, exitCode } = await runQkb(["search", "test", "--csv", "-n", "1"], { dbPath: localDbPath, configDir: localConfigDir });
     expect(exitCode).toBe(0);
 
     // Header should include context
     expect(stdout).toMatch(/^docid,score,file,title,context,line,snippet$/m);
     // Data rows should have qkb:// paths and context
     expect(stdout).toMatch(new RegExp(`#[a-f0-9]{6},[\\d.]+,qkb://${collName}/`));
-    expect(stdout).toContain("Test fixtures for QMD");
+    expect(stdout).toContain("Test fixtures for QKB");
     // Ensure no full filesystem paths
     expect(stdout).not.toMatch(/\/Users\//);
     expect(stdout).not.toMatch(/\/home\//);
   });
 
   test("search --md includes docid and context", async () => {
-    const { stdout, exitCode } = await runQmd(["search", "test", "--md", "-n", "1"], { dbPath: localDbPath, configDir: localConfigDir });
+    const { stdout, exitCode } = await runQkb(["search", "test", "--md", "-n", "1"], { dbPath: localDbPath, configDir: localConfigDir });
     expect(exitCode).toBe(0);
 
     expect(stdout).toMatch(/\*\*docid:\*\* `#[a-f0-9]{6}`/);
-    expect(stdout).toContain("**context:** Test fixtures for QMD");
+    expect(stdout).toContain("**context:** Test fixtures for QKB");
   });
 
   test("search --xml includes qkb:// path, docid, and context", async () => {
-    const { stdout, exitCode } = await runQmd(["search", "test", "--xml", "-n", "1"], { dbPath: localDbPath, configDir: localConfigDir });
+    const { stdout, exitCode } = await runQkb(["search", "test", "--xml", "-n", "1"], { dbPath: localDbPath, configDir: localConfigDir });
     expect(exitCode).toBe(0);
 
     expect(stdout).toMatch(new RegExp(`<file docid="#[a-f0-9]{6}" name="qkb://${collName}/`));
-    expect(stdout).toContain('context="Test fixtures for QMD"');
+    expect(stdout).toContain('context="Test fixtures for QKB"');
     // Ensure no full filesystem paths
     expect(stdout).not.toMatch(/\/Users\//);
     expect(stdout).not.toMatch(/\/home\//);
   });
 
   test("search default CLI format includes plain qkb:// path, docid, and context in non-TTY mode", async () => {
-    const { stdout, exitCode } = await runQmd(["search", "test", "-n", "1"], { dbPath: localDbPath, configDir: localConfigDir });
+    const { stdout, exitCode } = await runQkb(["search", "test", "-n", "1"], { dbPath: localDbPath, configDir: localConfigDir });
     expect(exitCode).toBe(0);
 
-    // runQmd uses piped stdio, so stdout is non-TTY and should not contain OSC 8 links.
+    // runQkb uses piped stdio, so stdout is non-TTY and should not contain OSC 8 links.
     expect(stdout).toMatch(new RegExp(`^qkb://${collName}/.*#[a-f0-9]{6}`, "m"));
-    expect(stdout).toContain("Context: Test fixtures for QMD");
+    expect(stdout).toContain("Context: Test fixtures for QKB");
     expect(stdout).not.toContain("\x1b]8;;");
     // Ensure no full filesystem paths
     expect(stdout).not.toMatch(/\/Users\//);
@@ -1281,7 +1281,7 @@ describe("get command path normalization", () => {
     localDbPath = env.dbPath;
     localConfigDir = env.configDir;
 
-    const { exitCode, stderr } = await runQmd(
+    const { exitCode, stderr } = await runQkb(
       ["collection", "add", fixturesDir, "--name", collName],
       { dbPath: localDbPath, configDir: localConfigDir }
     );
@@ -1290,38 +1290,38 @@ describe("get command path normalization", () => {
   });
 
   test("get with qkb://collection/path format", async () => {
-    const { stdout, exitCode } = await runQmd(["get", `qkb://${collName}/test1.md`, "-l", "3"], { dbPath: localDbPath, configDir: localConfigDir });
+    const { stdout, exitCode } = await runQkb(["get", `qkb://${collName}/test1.md`, "-l", "3"], { dbPath: localDbPath, configDir: localConfigDir });
     expect(exitCode).toBe(0);
     expect(stdout).toContain("Test Document 1");
   });
 
   test("get with collection/path format (no scheme)", async () => {
-    const { stdout, exitCode } = await runQmd(["get", `${collName}/test1.md`, "-l", "3"], { dbPath: localDbPath, configDir: localConfigDir });
+    const { stdout, exitCode } = await runQkb(["get", `${collName}/test1.md`, "-l", "3"], { dbPath: localDbPath, configDir: localConfigDir });
     expect(exitCode).toBe(0);
     expect(stdout).toContain("Test Document 1");
   });
 
   test("get with //collection/path format", async () => {
-    const { stdout, exitCode } = await runQmd(["get", `//${collName}/test1.md`, "-l", "3"], { dbPath: localDbPath, configDir: localConfigDir });
+    const { stdout, exitCode } = await runQkb(["get", `//${collName}/test1.md`, "-l", "3"], { dbPath: localDbPath, configDir: localConfigDir });
     expect(exitCode).toBe(0);
     expect(stdout).toContain("Test Document 1");
   });
 
   test("get with qkb:////collection/path format (extra slashes)", async () => {
-    const { stdout, exitCode } = await runQmd(["get", `qkb:////${collName}/test1.md`, "-l", "3"], { dbPath: localDbPath, configDir: localConfigDir });
+    const { stdout, exitCode } = await runQkb(["get", `qkb:////${collName}/test1.md`, "-l", "3"], { dbPath: localDbPath, configDir: localConfigDir });
     expect(exitCode).toBe(0);
     expect(stdout).toContain("Test Document 1");
   });
 
   test("get with path:line format", async () => {
-    const { stdout, exitCode } = await runQmd(["get", `${collName}/test1.md:3`, "-l", "2"], { dbPath: localDbPath, configDir: localConfigDir });
+    const { stdout, exitCode } = await runQkb(["get", `${collName}/test1.md:3`, "-l", "2"], { dbPath: localDbPath, configDir: localConfigDir });
     expect(exitCode).toBe(0);
     // Should start from line 3, not line 1
     expect(stdout).not.toMatch(/^# Test Document 1$/m);
   });
 
   test("get with qkb://path:line format", async () => {
-    const { stdout, exitCode } = await runQmd(["get", `qkb://${collName}/test1.md:3`, "-l", "2"], { dbPath: localDbPath, configDir: localConfigDir });
+    const { stdout, exitCode } = await runQkb(["get", `qkb://${collName}/test1.md:3`, "-l", "2"], { dbPath: localDbPath, configDir: localConfigDir });
     expect(exitCode).toBe(0);
     // Should start from line 3, not line 1
     expect(stdout).not.toMatch(/^# Test Document 1$/m);
@@ -1342,7 +1342,7 @@ describe("status and collection list hide filesystem paths", () => {
     localDbPath = env.dbPath;
     localConfigDir = env.configDir;
 
-    const { exitCode, stderr } = await runQmd(
+    const { exitCode, stderr } = await runQkb(
       ["collection", "add", fixturesDir, "--name", collName],
       { dbPath: localDbPath, configDir: localConfigDir }
     );
@@ -1351,7 +1351,7 @@ describe("status and collection list hide filesystem paths", () => {
   });
 
   test("status does not show full filesystem paths", async () => {
-    const { stdout, exitCode } = await runQmd(["status"], { dbPath: localDbPath, configDir: localConfigDir });
+    const { stdout, exitCode } = await runQkb(["status"], { dbPath: localDbPath, configDir: localConfigDir });
     expect(exitCode).toBe(0);
 
     // Should show qkb:// URIs
@@ -1363,7 +1363,7 @@ describe("status and collection list hide filesystem paths", () => {
   });
 
   test("collection list does not show full filesystem paths", async () => {
-    const { stdout, exitCode } = await runQmd(["collection", "list"], { dbPath: localDbPath, configDir: localConfigDir });
+    const { stdout, exitCode } = await runQkb(["collection", "list"], { dbPath: localDbPath, configDir: localConfigDir });
     expect(exitCode).toBe(0);
 
     // Should show qkb:// URIs
@@ -1391,11 +1391,11 @@ describe("mcp http daemon", () => {
     return join(daemonCacheDir, "qkb", "mcp.pid");
   }
 
-  /** Run qmd with test-isolated env (cache, db, config) */
-  async function runDaemonQmd(
+  /** Run qkb with test-isolated env (cache, db, config) */
+  async function runDaemonQkb(
     args: string[],
   ): Promise<{ stdout: string; stderr: string; exitCode: number }> {
-    return runQmd(args, {
+    return runQkb(args, {
       dbPath: daemonDbPath,
       configDir: daemonConfigDir,
       env: { XDG_CACHE_HOME: daemonCacheDir },
@@ -1404,7 +1404,7 @@ describe("mcp http daemon", () => {
 
   /** Spawn a foreground HTTP server (non-blocking) and return the process */
   function spawnHttpServer(port: number): import("child_process").ChildProcess {
-    const proc = spawn(tsxBin, [qmdScript, "mcp", "--http", "--port", String(port)], {
+    const proc = spawn(tsxBin, [qkbScript, "mcp", "--http", "--port", String(port)], {
       cwd: fixturesDir,
       env: {
         ...process.env,
@@ -1436,7 +1436,7 @@ describe("mcp http daemon", () => {
   }
 
   beforeAll(async () => {
-    daemonTestDir = await mkdtemp(join(tmpdir(), "qmd-daemon-test-"));
+    daemonTestDir = await mkdtemp(join(tmpdir(), "qkb-daemon-test-"));
     daemonCacheDir = join(daemonTestDir, "cache");
     daemonDbPath = join(daemonTestDir, "test.sqlite");
     daemonConfigDir = join(daemonTestDir, "config");
@@ -1492,7 +1492,7 @@ describe("mcp http daemon", () => {
 
   test("--daemon writes PID file and starts server", async () => {
     const port = randomPort();
-    const { stdout, exitCode } = await runDaemonQmd([
+    const { stdout, exitCode } = await runDaemonQkb([
       "mcp", "--http", "--daemon", "--port", String(port),
     ]);
     expect(exitCode).toBe(0);
@@ -1517,7 +1517,7 @@ describe("mcp http daemon", () => {
   test("stop kills daemon and removes PID file", async () => {
     const port = randomPort();
     // Start daemon
-    const { exitCode: startCode } = await runDaemonQmd([
+    const { exitCode: startCode } = await runDaemonQkb([
       "mcp", "--http", "--daemon", "--port", String(port),
     ]);
     expect(startCode).toBe(0);
@@ -1528,7 +1528,7 @@ describe("mcp http daemon", () => {
     await waitForServer(port);
 
     // Stop it
-    const { stdout: stopOut, exitCode: stopCode } = await runDaemonQmd(["mcp", "stop"]);
+    const { stdout: stopOut, exitCode: stopCode } = await runDaemonQkb(["mcp", "stop"]);
     expect(stopCode).toBe(0);
     expect(stopOut).toContain("Stopped");
 
@@ -1544,7 +1544,7 @@ describe("mcp http daemon", () => {
     // Write a PID file pointing to a dead process
     writeFileSync(pidPath(), "999999999");
 
-    const { stdout, exitCode } = await runDaemonQmd(["mcp", "stop"]);
+    const { stdout, exitCode } = await runDaemonQkb(["mcp", "stop"]);
     expect(exitCode).toBe(0);
     expect(stdout).toContain("stale");
 
@@ -1555,7 +1555,7 @@ describe("mcp http daemon", () => {
   test("--daemon rejects if already running", async () => {
     const port = randomPort();
     // Start first daemon
-    const { exitCode: firstCode } = await runDaemonQmd([
+    const { exitCode: firstCode } = await runDaemonQkb([
       "mcp", "--http", "--daemon", "--port", String(port),
     ]);
     expect(firstCode).toBe(0);
@@ -1566,7 +1566,7 @@ describe("mcp http daemon", () => {
     await waitForServer(port);
 
     // Try to start second daemon — should fail
-    const { stderr, exitCode } = await runDaemonQmd([
+    const { stderr, exitCode } = await runDaemonQkb([
       "mcp", "--http", "--daemon", "--port", String(port + 1),
     ]);
     expect(exitCode).toBe(1);
@@ -1583,7 +1583,7 @@ describe("mcp http daemon", () => {
     writeFileSync(pidPath(), "999999999");
 
     const port = randomPort();
-    const { exitCode, stdout } = await runDaemonQmd([
+    const { exitCode, stdout } = await runDaemonQkb([
       "mcp", "--http", "--daemon", "--port", String(port),
     ]);
     expect(exitCode).toBe(0);

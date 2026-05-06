@@ -42,9 +42,9 @@ describe("getConfigDir via getConfigPath", () => {
   });
 
   test("QKB_CONFIG_DIR takes highest priority", () => {
-    process.env.QKB_CONFIG_DIR = "/custom/qmd-config";
+    process.env.QKB_CONFIG_DIR = "/custom/qkb-config";
     process.env.XDG_CONFIG_HOME = "/xdg/config";
-    expect(getConfigPath()).toBe(join("/custom/qmd-config", "index.yml"));
+    expect(getConfigPath()).toBe(join("/custom/qkb-config", "index.yml"));
   });
 
   test("XDG_CONFIG_HOME is used when QKB_CONFIG_DIR is not set", () => {

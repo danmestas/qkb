@@ -1,6 +1,6 @@
-# QMD Query Syntax
+# QKB Query Syntax
 
-QMD queries are structured documents with typed sub-queries. Each line specifies a search type and query text.
+QKB queries are structured documents with typed sub-queries. Each line specifies a search type and query text.
 
 ## Grammar
 
@@ -28,7 +28,7 @@ newline        = "\n" ;
 
 ## Default Behavior
 
-A QMD query is either a single expand query or a multi-line query document. Any single-line query with no prefix is treated as an expand query and passed to the expansion model, which emits lex, vec, and hyde variants automatically.
+A QKB query is either a single expand query or a multi-line query document. Any single-line query with no prefix is treated as an expand query and passed to the expansion model, which emits lex, vec, and hyde variants automatically.
 
 ```
 # These are equivalent and cannot be combined with typed lines:
@@ -165,17 +165,17 @@ With intent:
 
 ```bash
 # Single line (implicit expand)
-qmd query "how does auth work"
+qkb query "how does auth work"
 
 # Multi-line with types
-qmd query $'lex: auth token\nvec: how does authentication work'
+qkb query $'lex: auth token\nvec: how does authentication work'
 
 # Structured
-qmd query $'lex: keywords\nvec: question\nhyde: hypothetical answer...'
+qkb query $'lex: keywords\nvec: question\nhyde: hypothetical answer...'
 
 # With intent (inline)
-qmd query $'intent: web performance and latency\nlex: performance\nvec: how to improve performance'
+qkb query $'intent: web performance and latency\nlex: performance\nvec: how to improve performance'
 
 # With intent (flag)
-qmd query --intent "web performance and latency" "performance"
+qkb query --intent "web performance and latency" "performance"
 ```

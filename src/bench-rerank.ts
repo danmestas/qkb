@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * QMD Reranker Benchmark
+ * QKB Reranker Benchmark
  *
  * Measures reranking performance across different configurations.
  * Reports device, parallelism, memory, VRAM, and throughput.
@@ -188,7 +188,7 @@ async function benchmarkConfig(
 
 async function main() {
   console.log("═══════════════════════════════════════════════════════════════");
-  console.log("  QMD Reranker Benchmark");
+  console.log("  QKB Reranker Benchmark");
   console.log("═══════════════════════════════════════════════════════════════\n");
 
   const llama = await getLlama({

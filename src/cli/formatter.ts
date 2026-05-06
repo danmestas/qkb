@@ -1,5 +1,5 @@
 /**
- * formatter.ts - Output formatting utilities for QMD
+ * formatter.ts - Output formatting utilities for QKB
  *
  * Provides methods to format search results and documents into various output formats:
  * JSON, CSV, XML, Markdown, files list, and CLI (colored terminal output).

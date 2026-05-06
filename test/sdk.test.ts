@@ -1,7 +1,7 @@
 /**
- * sdk.test.ts - Unit tests for the QMD SDK (library mode)
+ * sdk.test.ts - Unit tests for the QKB SDK (library mode)
  *
- * Tests the public API exposed via `@tobilu/qmd` (src/index.ts).
+ * Tests the public API exposed via `@tobilu/qkb` (src/index.ts).
  * Uses inline config (no YAML files) to verify the SDK works self-contained.
  */
 
@@ -13,7 +13,7 @@ import { existsSync, writeFileSync, mkdirSync, readFileSync } from "node:fs";
 import YAML from "yaml";
 import {
   createStore,
-  type QMDStore,
+  type QKBStore,
   type CollectionConfig,
   type StoreOptions,
   type UpdateProgress,
@@ -33,7 +33,7 @@ let docsDir: string;
 let notesDir: string;
 
 beforeAll(async () => {
-  testDir = await mkdtemp(join(tmpdir(), "qmd-sdk-test-"));
+  testDir = await mkdtemp(join(tmpdir(), "qkb-sdk-test-"));
   docsDir = join(testDir, "docs");
   notesDir = join(testDir, "notes");
 
@@ -153,7 +153,7 @@ describe("createStore", () => {
 // =============================================================================
 
 describe("collection management", () => {
-  let store: QMDStore;
+  let store: QKBStore;
 
   beforeEach(async () => {
     store = await createStore({
@@ -238,7 +238,7 @@ describe("collection management", () => {
 // =============================================================================
 
 describe("context management", () => {
-  let store: QMDStore;
+  let store: QKBStore;
 
   beforeEach(async () => {
     store = await createStore({
@@ -484,7 +484,7 @@ describe("YAML config file mode", () => {
 // =============================================================================
 
 describe("searchLex (BM25)", () => {
-  let store: QMDStore;
+  let store: QKBStore;
   let dbPath: string;
 
   beforeAll(async () => {
@@ -580,7 +580,7 @@ describe("searchLex (BM25)", () => {
 // =============================================================================
 
 describe("search (unified API)", () => {
-  let store: QMDStore;
+  let store: QKBStore;
 
   beforeAll(async () => {
     store = await createStore({
@@ -642,7 +642,7 @@ describe("search (unified API)", () => {
         rerank: false,
       });
       for (const r of results) {
-        expect(r.file).toMatch(/^qmd:\/\/docs\//);
+        expect(r.file).toMatch(/^qkb:\/\/docs\//);
       }
     });
 
@@ -653,7 +653,7 @@ describe("search (unified API)", () => {
         rerank: false,
       });
       for (const r of results) {
-        expect(r.file).toMatch(/^qmd:\/\/docs\//);
+        expect(r.file).toMatch(/^qkb:\/\/docs\//);
       }
     });
 
@@ -674,7 +674,7 @@ describe("search (unified API)", () => {
 // =============================================================================
 
 describe("get and multiGet", () => {
-  let store: QMDStore;
+  let store: QKBStore;
 
   beforeAll(async () => {
     store = await createStore({
@@ -757,7 +757,7 @@ describe("get and multiGet", () => {
 // =============================================================================
 
 describe("index health", () => {
-  let store: QMDStore;
+  let store: QKBStore;
 
   beforeEach(async () => {
     store = await createStore({
@@ -1161,7 +1161,7 @@ describe("type exports", () => {
     expect(config.collections).toHaveProperty("test");
   });
 
-  test("QMDStore type exposes expected methods", async () => {
+  test("QKBStore type exposes expected methods", async () => {
     const store = await createStore({
       dbPath: freshDbPath(),
       config: { collections: {} },

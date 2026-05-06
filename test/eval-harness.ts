@@ -1,5 +1,5 @@
 /**
- * Evaluation Harness for QMD Search
+ * Evaluation Harness for QKB Search
  *
  * Tests search quality with synthetic queries against known documents.
  * Run: bun test/eval-harness.ts
@@ -201,7 +201,7 @@ function evaluate(mode: "search" | "query") {
 }
 
 // Main
-console.log("QMD Evaluation Harness");
+console.log("QKB Evaluation Harness");
 console.log("=".repeat(50));
 console.log(`Testing ${evalQueries.length} queries across 6 documents`);
 

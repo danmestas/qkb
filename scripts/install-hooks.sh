@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Self-installing git hooks for qmd
+# Self-installing git hooks for qkb
 # Called from package.json "prepare" script after bun install
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"

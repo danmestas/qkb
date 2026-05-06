@@ -2,16 +2,44 @@
 
 ## [Unreleased]
 
+### BREAKING
+
+- **Project rename: `qmd` → `qkb` (Query Knowledge Base).** This is a hard
+  rename of every user-facing surface; consumers must update their setup.
+  - Package: `@tobilu/qmd` → `@tobilu/qkb`. Reinstall with
+    `npm install -g @tobilu/qkb` (or the bun equivalent).
+  - CLI binary: `qmd` → `qkb`. All command examples in docs and skills
+    updated. Old `qmd` invocations no longer resolve.
+  - Environment variables: every `QMD_*` env var is now `QKB_*`
+    (`QMD_EMBED_MODEL` → `QKB_EMBED_MODEL`, `QMD_LLAMA_GPU` →
+    `QKB_LLAMA_GPU`, `QMD_RERANK_CONTEXT_SIZE` → `QKB_RERANK_CONTEXT_SIZE`,
+    `QMD_EMBED_CONTEXT_SIZE` → `QKB_EMBED_CONTEXT_SIZE`,
+    `QMD_GENERATE_MODEL` → `QKB_GENERATE_MODEL`, `QMD_RERANK_MODEL` →
+    `QKB_RERANK_MODEL`, `QMD_EDITOR_URI` → `QKB_EDITOR_URI`,
+    `QMD_STATUS_DEVICE_PROBE` → `QKB_STATUS_DEVICE_PROBE`, etc.).
+  - Disk paths: cache moved from `~/.cache/qmd/` to `~/.cache/qkb/`,
+    config from `~/.config/qmd/` to `~/.config/qkb/`. Existing index DBs
+    will need to be moved or rebuilt; the SQLite schema is unchanged.
+  - Virtual URL scheme: `qmd://` → `qkb://` everywhere (search results,
+    `get`/`multi-get` arguments, context paths, MCP resource URIs). The
+    store opens with a one-shot data migration that rewrites legacy
+    `qmd://` literals stored in `store_collections.context`,
+    `store_collections.update_command`, and `store_config` to `qkb://`,
+    so previously-saved contexts continue to resolve.
+  - Embedded skill: `skills/qmd/` → `skills/qkb/`; the skill installer
+    now writes to `.agents/skills/qkb` and `.claude/skills/qkb`.
+  - MCP server identity: `serverInfo.name` is now `"qkb"`.
+
 ### Fixes
 
-- GPU: respect explicit `QMD_LLAMA_GPU=metal|vulkan|cuda` backend overrides instead of always using auto GPU selection. #529
+- GPU: respect explicit `QKB_LLAMA_GPU=metal|vulkan|cuda` backend overrides instead of always using auto GPU selection. #529
 - Fix: preserve original filename case in `handelize()`. The previous
   `.toLowerCase()` call made indexed paths unreachable on case-sensitive
-  filesystems (Linux). `qmd update` automatically migrates legacy
+  filesystems (Linux). `qkb update` automatically migrates legacy
   lowercase paths without re-embedding.
-- CLI: make `qmd status` skip native `node-llama-cpp` device probing by
+- CLI: make `qkb status` skip native `node-llama-cpp` device probing by
   default so status stays safe on machines with broken or unsupported GPU
-  drivers. Set `QMD_STATUS_DEVICE_PROBE=1` to opt in.
+  drivers. Set `QKB_STATUS_DEVICE_PROBE=1` to opt in.
 
 ## [2.1.0] - 2026-04-05
 

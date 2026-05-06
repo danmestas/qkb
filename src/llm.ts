@@ -1,5 +1,5 @@
 /**
- * llm.ts - LLM abstraction layer for QMD using node-llama-cpp
+ * llm.ts - LLM abstraction layer for QKB using node-llama-cpp
  *
  * Provides embeddings, text generation, and reranking using local GGUF models.
  */
@@ -285,10 +285,10 @@ function validateGgufFile(filePath: string, modelUri: string): void {
       `Model: ${modelUri}\n` +
       `Path:  ${filePath}\n\n` +
       `To fix this, either:\n` +
-      `  1. Try a HuggingFace mirror:  HF_ENDPOINT=https://hf-mirror.com qmd embed\n` +
+      `  1. Try a HuggingFace mirror:  HF_ENDPOINT=https://hf-mirror.com qkb embed\n` +
       `  2. Download the model manually and set the env var, e.g.:\n` +
-      `       QKB_EMBED_MODEL=/path/to/model.gguf qmd embed\n\n` +
-      `Note: 'qmd search' works without any model downloads.`
+      `       QKB_EMBED_MODEL=/path/to/model.gguf qkb embed\n\n` +
+      `Note: 'qkb search' works without any model downloads.`
     );
   }
 
@@ -446,7 +446,7 @@ export function resolveLlamaGpuMode(envValue = process.env.QKB_LLAMA_GPU): Llama
   if (["false", "off", "none", "disable", "disabled", "0"].includes(normalized)) return false;
   if (normalized === "metal" || normalized === "vulkan" || normalized === "cuda") return normalized;
 
-  process.stderr.write(`QMD Warning: invalid QKB_LLAMA_GPU="${envValue}", using auto GPU selection.\n`);
+  process.stderr.write(`QKB Warning: invalid QKB_LLAMA_GPU="${envValue}", using auto GPU selection.\n`);
   return "auto";
 }
 
@@ -464,7 +464,7 @@ function resolveExpandContextSize(configValue?: number): number {
   const parsed = Number.parseInt(envValue, 10);
   if (!Number.isInteger(parsed) || parsed <= 0) {
     process.stderr.write(
-      `QMD Warning: invalid QKB_EXPAND_CONTEXT_SIZE="${envValue}", using default ${DEFAULT_EXPAND_CONTEXT_SIZE}.\n`
+      `QKB Warning: invalid QKB_EXPAND_CONTEXT_SIZE="${envValue}", using default ${DEFAULT_EXPAND_CONTEXT_SIZE}.\n`
     );
     return DEFAULT_EXPAND_CONTEXT_SIZE;
   }
@@ -635,9 +635,9 @@ export class LlamaCpp implements LLM {
           llama = await loadLlama(gpuMode);
         } catch (err) {
           // GPU backend (e.g. Vulkan on headless/driverless machines) can throw at init.
-          // Fall back to CPU so qmd still works.
+          // Fall back to CPU so qkb still works.
           process.stderr.write(
-            `QMD Warning: GPU init failed${gpuMode === "auto" ? "" : ` for QKB_LLAMA_GPU=${gpuMode}`} (${err instanceof Error ? err.message : String(err)}), falling back to CPU.\n`
+            `QKB Warning: GPU init failed${gpuMode === "auto" ? "" : ` for QKB_LLAMA_GPU=${gpuMode}`} (${err instanceof Error ? err.message : String(err)}), falling back to CPU.\n`
           );
           llama = await loadLlama(false);
         }
@@ -645,7 +645,7 @@ export class LlamaCpp implements LLM {
 
       if (llama.gpu === false) {
         process.stderr.write(
-          "QMD Warning: no GPU acceleration, running on CPU (slow). Run 'qmd status' for details.\n"
+          "QKB Warning: no GPU acceleration, running on CPU (slow). Run 'qkb status' for details.\n"
         );
       }
       this.llama = llama;

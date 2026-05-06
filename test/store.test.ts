@@ -1,5 +1,5 @@
 /**
- * store.test.ts - Comprehensive unit tests for the QMD store module
+ * store.test.ts - Comprehensive unit tests for the QKB store module
  *
  * Run with: bun test store.test.ts
  *
@@ -250,7 +250,7 @@ async function addGlobalContext(contextText: string): Promise<void> {
 // =============================================================================
 
 beforeAll(async () => {
-  testDir = await mkdtemp(join(tmpdir(), "qmd-test-"));
+  testDir = await mkdtemp(join(tmpdir(), "qkb-test-"));
 });
 
 afterAll(async () => {
@@ -3134,7 +3134,7 @@ describe("normalizeVirtualPath", () => {
     expect(normalizeVirtualPath("qkb://journals/2025-01-01.md")).toBe("qkb://journals/2025-01-01.md");
   });
 
-  test("handles //collection/path format (missing qmd: prefix)", () => {
+  test("handles //collection/path format (missing qkb: prefix)", () => {
     expect(normalizeVirtualPath("//collection/path.md")).toBe("qkb://collection/path.md");
     expect(normalizeVirtualPath("//journals/2025-01-01.md")).toBe("qkb://journals/2025-01-01.md");
   });

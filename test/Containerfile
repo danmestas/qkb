@@ -14,14 +14,14 @@ ENV PATH="/root/.local/bin:$PATH"
 RUN mise use -g node@latest bun@latest
 
 # Copy the packed tarball and install via both package managers
-COPY tobilu-qmd-*.tgz /tmp/
-RUN mise exec node@latest -- npm install -g /tmp/tobilu-qmd-*.tgz
-RUN mise exec bun@latest -- bun install -g /tmp/tobilu-qmd-*.tgz
+COPY tobilu-qkb-*.tgz /tmp/
+RUN mise exec node@latest -- npm install -g /tmp/tobilu-qkb-*.tgz
+RUN mise exec bun@latest -- bun install -g /tmp/tobilu-qkb-*.tgz
 
 # Copy test project (src + test + configs) and install deps
-COPY test-src/ /opt/qmd/
-RUN cd /opt/qmd && mise exec node@latest -- npm install 2>/dev/null
-RUN cd /opt/qmd && mise exec bun@latest -- bun install 2>/dev/null || true
+COPY test-src/ /opt/qkb/
+RUN cd /opt/qkb && mise exec node@latest -- npm install 2>/dev/null
+RUN cd /opt/qkb && mise exec bun@latest -- bun install 2>/dev/null || true
 
 # Put everything on PATH
 ENV PATH="/root/.bun/bin:/root/.local/share/mise/shims:/root/.local/bin:$PATH"

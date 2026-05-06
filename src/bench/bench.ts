@@ -1,11 +1,11 @@
 /**
- * QMD Benchmark Harness
+ * QKB Benchmark Harness
  *
  * Runs queries from a fixture file against multiple search backends
  * and measures precision@k, recall, MRR, F1, and latency.
  *
  * Usage:
- *   qmd bench <fixture.json> [--json] [--collection <name>]
+ *   qkb bench <fixture.json> [--json] [--collection <name>]
  *
  * Backends tested:
  *   - bm25: BM25 keyword search (searchLex)
@@ -19,7 +19,7 @@ import { resolve } from "node:path";
 import {
   createStore,
   getDefaultDbPath,
-  type QMDStore,
+  type QKBStore,
   type SearchResult,
   type HybridQueryResult,
 } from "../index.js";
@@ -34,7 +34,7 @@ import type {
 
 type Backend = {
   name: string;
-  run: (store: QMDStore, query: string, limit: number, collection?: string) => Promise<string[]>;
+  run: (store: QKBStore, query: string, limit: number, collection?: string) => Promise<string[]>;
 };
 
 const BACKENDS: Backend[] = [
@@ -69,7 +69,7 @@ const BACKENDS: Backend[] = [
 ];
 
 async function runQuery(
-  store: QMDStore,
+  store: QKBStore,
   backend: Backend,
   query: BenchmarkQuery,
   collection?: string,

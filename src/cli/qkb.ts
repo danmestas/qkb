@@ -99,7 +99,7 @@ import {
   setConfigIndexName,
   loadConfig,
 } from "../collections.js";
-import { getEmbeddedQmdSkillContent, getEmbeddedQmdSkillFiles } from "../embedded-skills.js";
+import { getEmbeddedQkbSkillContent, getEmbeddedQkbSkillFiles } from "../embedded-skills.js";
 
 // NOTE: enableProductionMode() is intentionally NOT called at module scope here.
 // Importing this module for its exports (e.g. buildEditorUri, termLink from
@@ -343,7 +343,7 @@ async function showStatus(): Promise<void> {
   // Most recent update across all collections
   const mostRecent = db.prepare(`SELECT MAX(modified_at) as latest FROM documents WHERE active = 1`).get() as { latest: string | null };
 
-  console.log(`${c.bold}QMD Status${c.reset}\n`);
+  console.log(`${c.bold}QKB Status${c.reset}\n`);
   console.log(`Index: ${dbPath}`);
   console.log(`Size:  ${formatBytes(indexSize)}`);
 
@@ -1948,7 +1948,7 @@ function outputResults(results: OutputRow[], query: string, opts: OutputOptions)
   }
 
   // Helper to create qkb:// URI from displayPath
-  const toQmdPath = (displayPath: string) => {
+  const toQkbPath = (displayPath: string) => {
     const [collectionName, ...segments] = displayPath.split("/");
     if (!collectionName || segments.length === 0) {
       return `qkb://${displayPath}`;
@@ -1975,7 +1975,7 @@ function outputResults(results: OutputRow[], query: string, opts: OutputOptions)
       return {
         ...(docid && { docid: `#${docid}` }),
         score: Math.round(row.score * 100) / 100,
-        file: toQmdPath(row.displayPath),
+        file: toQkbPath(row.displayPath),
         ...(snippetInfo && { line: snippetInfo.line }),
         title: row.title,
         ...(row.context && { context: row.context }),
@@ -1990,7 +1990,7 @@ function outputResults(results: OutputRow[], query: string, opts: OutputOptions)
     for (const row of filtered) {
       const docid = row.docid || (row.hash ? row.hash.slice(0, 6) : "");
       const ctx = row.context ? `,"${row.context.replace(/"/g, '""')}"` : "";
-      console.log(`#${docid},${row.score.toFixed(2)},${toQmdPath(row.displayPath)}${ctx}`);
+      console.log(`#${docid},${row.score.toFixed(2)},${toQkbPath(row.displayPath)}${ctx}`);
     }
   } else if (opts.format === "cli") {
     const editorUriTemplate = getEditorUriTemplate();
@@ -2003,11 +2003,11 @@ function outputResults(results: OutputRow[], query: string, opts: OutputOptions)
       const docid = row.docid || (row.hash ? row.hash.slice(0, 6) : undefined);
 
       // Line 1: filepath with docid
-      const virtualPath = row.file.startsWith("qkb://") ? row.file : toQmdPath(row.displayPath);
+      const virtualPath = row.file.startsWith("qkb://") ? row.file : toQkbPath(row.displayPath);
       const parsed = parseVirtualPath(virtualPath);
       const absolutePath = resolveVirtualPath(linkDb, virtualPath);
 
-      const legacyPath = toQmdPath(row.displayPath);
+      const legacyPath = toQkbPath(row.displayPath);
       const displayPath = parsed?.path || row.displayPath;
 
       // Only show :line if we actually found a term match in the snippet body (exclude header line).
@@ -2093,7 +2093,7 @@ function outputResults(results: OutputRow[], query: string, opts: OutputOptions)
       if (opts.lineNumbers) {
         content = addLineNumbers(content);
       }
-      console.log(`<file docid="#${docid}" name="${toQmdPath(row.displayPath)}"${titleAttr}${contextAttr}>\n${content}\n</file>\n`);
+      console.log(`<file docid="#${docid}" name="${toQkbPath(row.displayPath)}"${titleAttr}${contextAttr}>\n${content}\n</file>\n`);
     }
   } else {
     // CSV format
@@ -2106,7 +2106,7 @@ function outputResults(results: OutputRow[], query: string, opts: OutputOptions)
       }
       const docid = row.docid || (row.hash ? row.hash.slice(0, 6) : "");
       const snippetText = content || "";
-      console.log(`#${docid},${row.score.toFixed(4)},${escapeCSV(toQmdPath(row.displayPath))},${escapeCSV(row.title || "")},${escapeCSV(row.context || "")},${line},${escapeCSV(snippetText)}`);
+      console.log(`#${docid},${row.score.toFixed(4)},${escapeCSV(toQkbPath(row.displayPath))},${escapeCSV(row.title || "")},${escapeCSV(row.context || "")},${line},${escapeCSV(snippetText)}`);
     }
   }
 }
@@ -2578,14 +2578,14 @@ function parseCLI() {
 
 function getSkillInstallDir(globalInstall: boolean): string {
   return globalInstall
-    ? resolve(homedir(), ".agents", "skills", "qmd")
-    : resolve(getPwd(), ".agents", "skills", "qmd");
+    ? resolve(homedir(), ".agents", "skills", "qkb")
+    : resolve(getPwd(), ".agents", "skills", "qkb");
 }
 
 function getClaudeSkillLinkPath(globalInstall: boolean): string {
   return globalInstall
-    ? resolve(homedir(), ".claude", "skills", "qmd")
-    : resolve(getPwd(), ".claude", "skills", "qmd");
+    ? resolve(homedir(), ".claude", "skills", "qkb")
+    : resolve(getPwd(), ".claude", "skills", "qkb");
 }
 
 function pathExists(path: string): boolean {
@@ -2607,9 +2607,9 @@ function removePath(path: string): void {
 }
 
 function showSkill(): void {
-  console.log("QMD Skill (embedded)");
+  console.log("QKB Skill (embedded)");
   console.log("");
-  const content = getEmbeddedQmdSkillContent();
+  const content = getEmbeddedQkbSkillContent();
   process.stdout.write(content.endsWith("\n") ? content : content + "\n");
 }
 
@@ -2622,7 +2622,7 @@ function writeEmbeddedSkill(targetDir: string, force: boolean): void {
   }
 
   mkdirSync(targetDir, { recursive: true });
-  for (const file of getEmbeddedQmdSkillFiles()) {
+  for (const file of getEmbeddedQkbSkillFiles()) {
     const destination = resolve(targetDir, file.relativePath);
     mkdirSync(dirname(destination), { recursive: true });
     writeFileSync(destination, file.content, "utf-8");
@@ -2636,7 +2636,7 @@ function ensureClaudeSymlink(linkPath: string, targetDir: string, force: boolean
     const resolvedLinkParent = realpathSync(parentDir);
 
     // If .claude/skills already resolves to the same directory as .agents/skills,
-    // the skill is already visible to Claude and creating qmd -> qmd would loop.
+    // the skill is already visible to Claude and creating qkb -> qkb would loop.
     if (resolvedTargetDir === resolvedLinkParent) {
       return false;
     }
@@ -2687,7 +2687,7 @@ async function shouldCreateClaudeSymlink(linkPath: string, autoYes: boolean): Pr
 async function installSkill(globalInstall: boolean, force: boolean, autoYes: boolean): Promise<void> {
   const installDir = getSkillInstallDir(globalInstall);
   writeEmbeddedSkill(installDir, force);
-  console.log(`✓ Installed QMD skill to ${installDir}`);
+  console.log(`✓ Installed QKB skill to ${installDir}`);
 
   const claudeLinkPath = getClaudeSkillLinkPath(globalInstall);
   if (!(await shouldCreateClaudeSymlink(claudeLinkPath, autoYes))) {
@@ -2715,7 +2715,7 @@ function showHelp(): void {
   console.log("  qkb vsearch <query>           - Vector similarity only");
   console.log("  qkb get <file>[:line] [-l N]  - Show a single document, optional line slice");
   console.log("  qkb multi-get <pattern>       - Batch fetch via glob or comma-separated list");
-  console.log("  qkb skill show/install        - Show or install the packaged QMD skill");
+  console.log("  qkb skill show/install        - Show or install the packaged QKB skill");
   console.log("  qkb mcp                       - Start the MCP server (stdio transport for AI agents)");
   console.log("  qkb bench <fixture.json>      - Run search quality benchmarks against a fixture file");
   console.log("");
@@ -2733,7 +2733,7 @@ function showHelp(): void {
   console.log("  qkb cleanup                   - Clear caches, vacuum DB");
   console.log("");
   console.log("Query syntax (qkb query):");
-  console.log("  QMD queries are either a single expand query (no prefix) or a multi-line");
+  console.log("  QKB queries are either a single expand query (no prefix) or a multi-line");
   console.log("  document where every line is typed with lex:, vec:, or hyde:. This grammar");
   console.log("  matches the docs in docs/SYNTAX.md and is enforced in the CLI.");
   console.log("");
@@ -2768,8 +2768,8 @@ function showHelp(): void {
   console.log("");
   console.log("AI agents & integrations:");
   console.log("  - Run `qkb mcp` to expose the MCP server (stdio) to agents/IDEs.");
-  console.log("  - `qkb skill install` installs the QMD skill into ./.agents/skills/qmd.");
-  console.log("  - Use `qkb skill install --global` for ~/.agents/skills/qmd.");
+  console.log("  - `qkb skill install` installs the QKB skill into ./.agents/skills/qkb.");
+  console.log("  - Use `qkb skill install --global` for ~/.agents/skills/qkb.");
   console.log("  - `qkb --skill` is kept as an alias for `qkb skill show`.");
   console.log("  - Advanced: `qkb mcp --http ...` and `qkb mcp --http --daemon` are optional for custom transports.");
   console.log("");
@@ -2845,11 +2845,11 @@ if (isMain) {
     console.log("Usage: qkb skill <show|install> [options]");
     console.log("");
     console.log("Commands:");
-    console.log("  show                 Print the packaged QMD skill");
-    console.log("  install              Install into ./.agents/skills/qmd");
+    console.log("  show                 Print the packaged QKB skill");
+    console.log("  install              Install into ./.agents/skills/qkb");
     console.log("");
     console.log("Options:");
-    console.log("  --global             Install into ~/.agents/skills/qmd");
+    console.log("  --global             Install into ~/.agents/skills/qkb");
     console.log("  --yes                Also create the .claude/skills/qkb symlink");
     console.log("  -f, --force          Replace existing install or symlink");
     process.exit(0);
@@ -3219,7 +3219,7 @@ if (isMain) {
           process.kill(pid, 0); // alive?
           process.kill(pid, "SIGTERM");
           unlinkSync(pidPath);
-          console.log(`Stopped QMD MCP server (PID ${pid}).`);
+          console.log(`Stopped QKB MCP server (PID ${pid}).`);
         } catch {
           unlinkSync(pidPath);
           console.log("Cleaned up stale PID file (server was not running).");
@@ -3308,11 +3308,11 @@ if (isMain) {
           console.log("Usage: qkb skill <show|install> [options]");
           console.log("");
           console.log("Commands:");
-          console.log("  show                 Print the packaged QMD skill");
-          console.log("  install              Install into ./.agents/skills/qmd");
+          console.log("  show                 Print the packaged QKB skill");
+          console.log("  install              Install into ./.agents/skills/qkb");
           console.log("");
           console.log("Options:");
-          console.log("  --global             Install into ~/.agents/skills/qmd");
+          console.log("  --global             Install into ~/.agents/skills/qkb");
           console.log("  --yes                Also create the .claude/skills/qkb symlink");
           console.log("  -f, --force          Replace existing install or symlink");
           process.exit(0);
