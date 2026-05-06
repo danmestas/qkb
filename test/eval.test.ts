@@ -1,5 +1,5 @@
 /**
- * Evaluation Tests for QMD Search Quality
+ * Evaluation Tests for QKB Search Quality
  *
  * Tests search quality against synthetic documents with known-answer queries.
  * Validates that search improvements don't regress quality.
@@ -21,7 +21,7 @@ import { fileURLToPath } from "url";
 import { dirname } from "path";
 
 // Set INDEX_PATH before importing store to prevent using global index
-const tempDir = mkdtempSync(join(tmpdir(), "qmd-eval-"));
+const tempDir = mkdtempSync(join(tmpdir(), "qkb-eval-"));
 process.env.INDEX_PATH = join(tempDir, "eval.sqlite");
 
 import {

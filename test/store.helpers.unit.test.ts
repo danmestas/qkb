@@ -221,17 +221,17 @@ describe("handelize", () => {
   });
 
   test("normalizes virtual paths", () => {
-    expect(normalizeVirtualPath("qmd://docs/readme.md")).toBe("qmd://docs/readme.md");
+    expect(normalizeVirtualPath("qkb://docs/readme.md")).toBe("qkb://docs/readme.md");
     expect(normalizeVirtualPath("docs/readme.md")).toBe("docs/readme.md");
   });
 
   test("detects virtual paths", () => {
-    expect(isVirtualPath("qmd://docs/readme.md")).toBe(true);
+    expect(isVirtualPath("qkb://docs/readme.md")).toBe(true);
     expect(isVirtualPath("/tmp/file.md")).toBe(false);
   });
 
   test("parses virtual paths", () => {
-    expect(parseVirtualPath("qmd://docs/readme.md")).toEqual({
+    expect(parseVirtualPath("qkb://docs/readme.md")).toEqual({
       collectionName: "docs",
       path: "readme.md",
     });

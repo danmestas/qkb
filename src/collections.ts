@@ -1,7 +1,7 @@
 /**
  * Collections configuration management
  *
- * This module manages the YAML-based collection configuration at ~/.config/qmd/index.yml.
+ * This module manages the YAML-based collection configuration at ~/.config/qkb/index.yml.
  * Collections define which directories to index and their associated contexts.
  */
 
@@ -29,7 +29,7 @@ export interface Collection {
   pattern: string;           // Glob pattern (e.g., "**/*.md")
   ignore?: string[];         // Glob patterns to exclude (e.g., ["Sessions/**"])
   context?: ContextMap;      // Optional context definitions
-  update?: string;           // Optional bash command to run during qmd update
+  update?: string;           // Optional bash command to run during qkb update
   includeByDefault?: boolean; // Include in queries by default (default: true)
 }
 
@@ -96,7 +96,7 @@ export function setConfigSource(source?: { configPath?: string; config?: Collect
 
 /**
  * Set the current index name for config file lookup
- * Config file will be ~/.config/qmd/{indexName}.yml
+ * Config file will be ~/.config/qkb/{indexName}.yml
  */
 export function setConfigIndexName(name: string): void {
   // Resolve relative paths to absolute paths and sanitize for use as filename
@@ -112,15 +112,15 @@ export function setConfigIndexName(name: string): void {
 }
 
 function getConfigDir(): string {
-  // Allow override via QMD_CONFIG_DIR for testing
-  if (process.env.QMD_CONFIG_DIR) {
-    return process.env.QMD_CONFIG_DIR;
+  // Allow override via QKB_CONFIG_DIR for testing
+  if (process.env.QKB_CONFIG_DIR) {
+    return process.env.QKB_CONFIG_DIR;
   }
   // Respect XDG Base Directory specification (consistent with store.ts)
   if (process.env.XDG_CONFIG_HOME) {
-    return join(process.env.XDG_CONFIG_HOME, "qmd");
+    return join(process.env.XDG_CONFIG_HOME, "qkb");
   }
-  return join(homedir(), ".config", "qmd");
+  return join(homedir(), ".config", "qkb");
 }
 
 function getConfigFilePath(): string {
@@ -144,7 +144,7 @@ function ensureConfigDir(): void {
 /**
  * Load configuration from the configured source.
  * - Inline config: returns the in-memory object directly
- * - File-based: reads from YAML file (default ~/.config/qmd/index.yml)
+ * - File-based: reads from YAML file (default ~/.config/qkb/index.yml)
  * Returns empty config if file doesn't exist
  */
 export function loadConfig(): CollectionConfig {
@@ -177,7 +177,7 @@ export function loadConfig(): CollectionConfig {
 /**
  * Save configuration to the configured source.
  * - Inline config: updates the in-memory object (no file I/O)
- * - File-based: writes to YAML file (default ~/.config/qmd/index.yml)
+ * - File-based: writes to YAML file (default ~/.config/qkb/index.yml)
  */
 export function saveConfig(config: CollectionConfig): void {
   // SDK inline config mode: update in place, no file I/O

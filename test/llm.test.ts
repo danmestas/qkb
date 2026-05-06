@@ -56,7 +56,7 @@ describe("LlamaCpp.modelExists", () => {
   });
 });
 
-describe("QMD_LLAMA_GPU resolution", () => {
+describe("QKB_LLAMA_GPU resolution", () => {
   test("uses auto when unset or blank", () => {
     expect(resolveLlamaGpuMode(undefined)).toBe("auto");
     expect(resolveLlamaGpuMode("   ")).toBe("auto");
@@ -81,7 +81,7 @@ describe("QMD_LLAMA_GPU resolution", () => {
     try {
       expect(resolveLlamaGpuMode("rocm")).toBe("auto");
       expect(stderrSpy).toHaveBeenCalled();
-      expect(String(stderrSpy.mock.calls[0]?.[0] || "")).toContain("QMD_LLAMA_GPU");
+      expect(String(stderrSpy.mock.calls[0]?.[0] || "")).toContain("QKB_LLAMA_GPU");
     } finally {
       stderrSpy.mockRestore();
     }
@@ -92,54 +92,54 @@ describe("LlamaCpp expand context size config", () => {
   const defaultExpandContextSize = 2048;
 
   test("uses default expand context size when no config or env is set", () => {
-    const prev = process.env.QMD_EXPAND_CONTEXT_SIZE;
-    delete process.env.QMD_EXPAND_CONTEXT_SIZE;
+    const prev = process.env.QKB_EXPAND_CONTEXT_SIZE;
+    delete process.env.QKB_EXPAND_CONTEXT_SIZE;
     try {
       const llm = new LlamaCpp({}) as any;
       expect(llm.expandContextSize).toBe(defaultExpandContextSize);
     } finally {
-      if (prev === undefined) delete process.env.QMD_EXPAND_CONTEXT_SIZE;
-      else process.env.QMD_EXPAND_CONTEXT_SIZE = prev;
+      if (prev === undefined) delete process.env.QKB_EXPAND_CONTEXT_SIZE;
+      else process.env.QKB_EXPAND_CONTEXT_SIZE = prev;
     }
   });
 
-  test("uses QMD_EXPAND_CONTEXT_SIZE when set to a positive integer", () => {
-    const prev = process.env.QMD_EXPAND_CONTEXT_SIZE;
-    process.env.QMD_EXPAND_CONTEXT_SIZE = "3072";
+  test("uses QKB_EXPAND_CONTEXT_SIZE when set to a positive integer", () => {
+    const prev = process.env.QKB_EXPAND_CONTEXT_SIZE;
+    process.env.QKB_EXPAND_CONTEXT_SIZE = "3072";
     try {
       const llm = new LlamaCpp({}) as any;
       expect(llm.expandContextSize).toBe(3072);
     } finally {
-      if (prev === undefined) delete process.env.QMD_EXPAND_CONTEXT_SIZE;
-      else process.env.QMD_EXPAND_CONTEXT_SIZE = prev;
+      if (prev === undefined) delete process.env.QKB_EXPAND_CONTEXT_SIZE;
+      else process.env.QKB_EXPAND_CONTEXT_SIZE = prev;
     }
   });
 
-  test("config value overrides QMD_EXPAND_CONTEXT_SIZE", () => {
-    const prev = process.env.QMD_EXPAND_CONTEXT_SIZE;
-    process.env.QMD_EXPAND_CONTEXT_SIZE = "4096";
+  test("config value overrides QKB_EXPAND_CONTEXT_SIZE", () => {
+    const prev = process.env.QKB_EXPAND_CONTEXT_SIZE;
+    process.env.QKB_EXPAND_CONTEXT_SIZE = "4096";
     try {
       const llm = new LlamaCpp({ expandContextSize: 1536 }) as any;
       expect(llm.expandContextSize).toBe(1536);
     } finally {
-      if (prev === undefined) delete process.env.QMD_EXPAND_CONTEXT_SIZE;
-      else process.env.QMD_EXPAND_CONTEXT_SIZE = prev;
+      if (prev === undefined) delete process.env.QKB_EXPAND_CONTEXT_SIZE;
+      else process.env.QKB_EXPAND_CONTEXT_SIZE = prev;
     }
   });
 
-  test("falls back to default and warns when QMD_EXPAND_CONTEXT_SIZE is invalid", () => {
-    const prev = process.env.QMD_EXPAND_CONTEXT_SIZE;
-    process.env.QMD_EXPAND_CONTEXT_SIZE = "bad";
+  test("falls back to default and warns when QKB_EXPAND_CONTEXT_SIZE is invalid", () => {
+    const prev = process.env.QKB_EXPAND_CONTEXT_SIZE;
+    process.env.QKB_EXPAND_CONTEXT_SIZE = "bad";
     const stderrSpy = vi.spyOn(process.stderr, "write").mockReturnValue(true);
     try {
       const llm = new LlamaCpp({}) as any;
       expect(llm.expandContextSize).toBe(defaultExpandContextSize);
       expect(stderrSpy).toHaveBeenCalled();
-      expect(String(stderrSpy.mock.calls[0]?.[0] || "")).toContain("QMD_EXPAND_CONTEXT_SIZE");
+      expect(String(stderrSpy.mock.calls[0]?.[0] || "")).toContain("QKB_EXPAND_CONTEXT_SIZE");
     } finally {
       stderrSpy.mockRestore();
-      if (prev === undefined) delete process.env.QMD_EXPAND_CONTEXT_SIZE;
-      else process.env.QMD_EXPAND_CONTEXT_SIZE = prev;
+      if (prev === undefined) delete process.env.QKB_EXPAND_CONTEXT_SIZE;
+      else process.env.QKB_EXPAND_CONTEXT_SIZE = prev;
     }
   });
 
@@ -156,40 +156,40 @@ describe("LlamaCpp model resolution (config > env > default)", () => {
   const HARDCODED_GENERATE = "hf:tobil/qmd-query-expansion-1.7B-gguf/qmd-query-expansion-1.7B-q4_k_m.gguf";
 
   test("uses hardcoded default when no config or env is set", () => {
-    const prev = process.env.QMD_EMBED_MODEL;
-    delete process.env.QMD_EMBED_MODEL;
+    const prev = process.env.QKB_EMBED_MODEL;
+    delete process.env.QKB_EMBED_MODEL;
     try {
       const llm = new LlamaCpp({}) as any;
       expect(llm.embedModelUri).toBe(HARDCODED_EMBED);
       expect(llm.rerankModelUri).toBe(HARDCODED_RERANK);
       expect(llm.generateModelUri).toBe(HARDCODED_GENERATE);
     } finally {
-      if (prev === undefined) delete process.env.QMD_EMBED_MODEL;
-      else process.env.QMD_EMBED_MODEL = prev;
+      if (prev === undefined) delete process.env.QKB_EMBED_MODEL;
+      else process.env.QKB_EMBED_MODEL = prev;
     }
   });
 
   test("env var overrides hardcoded default", () => {
-    const prev = process.env.QMD_EMBED_MODEL;
-    process.env.QMD_EMBED_MODEL = "hf:custom/embed-model.gguf";
+    const prev = process.env.QKB_EMBED_MODEL;
+    process.env.QKB_EMBED_MODEL = "hf:custom/embed-model.gguf";
     try {
       const llm = new LlamaCpp({}) as any;
       expect(llm.embedModelUri).toBe("hf:custom/embed-model.gguf");
     } finally {
-      if (prev === undefined) delete process.env.QMD_EMBED_MODEL;
-      else process.env.QMD_EMBED_MODEL = prev;
+      if (prev === undefined) delete process.env.QKB_EMBED_MODEL;
+      else process.env.QKB_EMBED_MODEL = prev;
     }
   });
 
   test("config overrides env var", () => {
-    const prev = process.env.QMD_EMBED_MODEL;
-    process.env.QMD_EMBED_MODEL = "hf:env/model.gguf";
+    const prev = process.env.QKB_EMBED_MODEL;
+    process.env.QKB_EMBED_MODEL = "hf:env/model.gguf";
     try {
       const llm = new LlamaCpp({ embedModel: "hf:config/model.gguf" }) as any;
       expect(llm.embedModelUri).toBe("hf:config/model.gguf");
     } finally {
-      if (prev === undefined) delete process.env.QMD_EMBED_MODEL;
-      else process.env.QMD_EMBED_MODEL = prev;
+      if (prev === undefined) delete process.env.QKB_EMBED_MODEL;
+      else process.env.QKB_EMBED_MODEL = prev;
     }
   });
 });

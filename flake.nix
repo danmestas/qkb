@@ -11,17 +11,17 @@
       homeModules.default = { config, lib, pkgs, ... }:
         with lib;
         let
-          cfg = config.programs.qmd;
+          cfg = config.programs.qkb;
         in
         {
-          options.programs.qmd = {
+          options.programs.qkb = {
             enable = mkEnableOption "QMD - on-device search engine for markdown notes";
 
             package = mkOption {
               type = types.package;
               default = self.packages.${pkgs.stdenv.hostPlatform.system}.default;
-              defaultText = literalExpression "inputs.qmd.packages.\${pkgs.stdenv.hostPlatform.system}.default";
-              description = "The qmd package to use.";
+              defaultText = literalExpression "inputs.qkb.packages.\${pkgs.stdenv.hostPlatform.system}.default";
+              description = "The qkb package to use.";
             };
           };
 
@@ -53,7 +53,7 @@
         };
 
         nodeModules = pkgs.stdenvNoCC.mkDerivation {
-          pname = "qmd-node-modules";
+          pname = "qkb-node-modules";
           inherit version;
 
           src = ./.;
@@ -92,8 +92,8 @@
           outputHashMode = "recursive";
         };
 
-        qmd = pkgs.stdenv.mkDerivation {
-          pname = "qmd";
+        qkb = pkgs.stdenv.mkDerivation {
+          pname = "qkb";
           inherit version;
 
           src = ./.;
@@ -120,15 +120,15 @@
           '';
 
           installPhase = ''
-            mkdir -p $out/lib/qmd
+            mkdir -p $out/lib/qkb
             mkdir -p $out/bin
 
-            cp -r node_modules $out/lib/qmd/
-            cp -r src $out/lib/qmd/
-            cp package.json $out/lib/qmd/
+            cp -r node_modules $out/lib/qkb/
+            cp -r src $out/lib/qkb/
+            cp package.json $out/lib/qkb/
 
-            makeWrapper ${pkgs.bun}/bin/bun $out/bin/qmd \
-              --add-flags "$out/lib/qmd/src/cli/qmd.ts" \
+            makeWrapper ${pkgs.bun}/bin/bun $out/bin/qkb \
+              --add-flags "$out/lib/qkb/src/cli/qkb.ts" \
               --set DYLD_LIBRARY_PATH "${pkgs.sqlite.out}/lib" \
               --set LD_LIBRARY_PATH "${pkgs.sqlite.out}/lib"
           '';
@@ -143,13 +143,13 @@
       in
       {
         packages = {
-          default = qmd;
-          qmd = qmd;
+          default = qkb;
+          qkb = qkb;
         };
 
         apps.default = {
           type = "app";
-          program = "${qmd}/bin/qmd";
+          program = "${qkb}/bin/qkb";
         };
 
         devShells.default = pkgs.mkShell {
@@ -161,7 +161,7 @@
           shellHook = ''
             export BREW_PREFIX="''${BREW_PREFIX:-${sqliteWithExtensions.out}}"
             echo "QMD development shell"
-            echo "Run: bun src/cli/qmd.ts <command>"
+            echo "Run: bun src/cli/qkb.ts <command>"
           '';
         };
       }

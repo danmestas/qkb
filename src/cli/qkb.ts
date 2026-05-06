@@ -99,14 +99,14 @@ import {
   setConfigIndexName,
   loadConfig,
 } from "../collections.js";
-import { getEmbeddedQmdSkillContent, getEmbeddedQmdSkillFiles } from "../embedded-skills.js";
+import { getEmbeddedQkbSkillContent, getEmbeddedQkbSkillFiles } from "../embedded-skills.js";
 
 // NOTE: enableProductionMode() is intentionally NOT called at module scope here.
 // Importing this module for its exports (e.g. buildEditorUri, termLink from
 // test/cli.test.ts) must not flip the global production flag, as that leaks
 // into unrelated tests that rely on the default (development) database path
 // resolution. The flag is flipped inside the CLI's main-module guard below so
-// it only fires when qmd is actually invoked as a script.
+// it only fires when qkb is actually invoked as a script.
 
 // =============================================================================
 // Store/DB lifecycle (no legacy singletons in store.ts)
@@ -246,15 +246,15 @@ function checkIndexHealth(db: Database): void {
   if (needsEmbedding > 0) {
     const pct = Math.round((needsEmbedding / totalDocs) * 100);
     if (pct >= 10) {
-      process.stderr.write(`${c.yellow}Warning: ${needsEmbedding} documents (${pct}%) need embeddings. Run 'qmd embed' for better results.${c.reset}\n`);
+      process.stderr.write(`${c.yellow}Warning: ${needsEmbedding} documents (${pct}%) need embeddings. Run 'qkb embed' for better results.${c.reset}\n`);
     } else {
-      process.stderr.write(`${c.dim}Tip: ${needsEmbedding} documents need embeddings. Run 'qmd embed' to index them.${c.reset}\n`);
+      process.stderr.write(`${c.dim}Tip: ${needsEmbedding} documents need embeddings. Run 'qkb embed' to index them.${c.reset}\n`);
     }
   }
 
   // Check if most recent document update is older than 2 weeks
   if (daysStale !== null && daysStale >= 14) {
-    process.stderr.write(`${c.dim}Tip: Index last updated ${daysStale} days ago. Run 'qmd update' to refresh.${c.reset}\n`);
+    process.stderr.write(`${c.dim}Tip: Index last updated ${daysStale} days ago. Run 'qkb update' to refresh.${c.reset}\n`);
   }
 }
 
@@ -343,14 +343,14 @@ async function showStatus(): Promise<void> {
   // Most recent update across all collections
   const mostRecent = db.prepare(`SELECT MAX(modified_at) as latest FROM documents WHERE active = 1`).get() as { latest: string | null };
 
-  console.log(`${c.bold}QMD Status${c.reset}\n`);
+  console.log(`${c.bold}QKB Status${c.reset}\n`);
   console.log(`Index: ${dbPath}`);
   console.log(`Size:  ${formatBytes(indexSize)}`);
 
   // MCP daemon status (check PID file liveness)
   const mcpCacheDir = process.env.XDG_CACHE_HOME
-    ? resolve(process.env.XDG_CACHE_HOME, "qmd")
-    : resolve(homedir(), ".cache", "qmd");
+    ? resolve(process.env.XDG_CACHE_HOME, "qkb")
+    : resolve(homedir(), ".cache", "qkb");
   const mcpPidPath = resolve(mcpCacheDir, "mcp.pid");
   if (existsSync(mcpPidPath)) {
     const mcpPid = parseInt(readFileSync(mcpPidPath, "utf-8").trim());
@@ -368,7 +368,7 @@ async function showStatus(): Promise<void> {
   console.log(`  Total:    ${totalDocs.count} files indexed`);
   console.log(`  Vectors:  ${vectorCount.count} embedded`);
   if (needsEmbedding > 0) {
-    console.log(`  ${c.yellow}Pending:  ${needsEmbedding} need embedding${c.reset} (run 'qmd embed')`);
+    console.log(`  ${c.yellow}Pending:  ${needsEmbedding} need embedding${c.reset} (run 'qkb embed')`);
   }
   if (mostRecent.latest) {
     const lastUpdate = new Date(mostRecent.latest);
@@ -422,7 +422,7 @@ async function showStatus(): Promise<void> {
       const lastMod = col.last_modified ? formatTimeAgo(new Date(col.last_modified)) : "never";
       const contexts = contextsByCollection.get(col.name) || [];
 
-      console.log(`  ${c.cyan}${col.name}${c.reset} ${c.dim}(qmd://${col.name}/)${c.reset}`);
+      console.log(`  ${c.cyan}${col.name}${c.reset} ${c.dim}(qkb://${col.name}/)${c.reset}`);
       console.log(`    ${c.dim}Pattern:${c.reset}  ${col.glob_pattern}`);
       console.log(`    ${c.dim}Files:${c.reset}    ${col.active_count} (updated ${lastMod})`);
 
@@ -443,18 +443,18 @@ async function showStatus(): Promise<void> {
     console.log(`\n${c.bold}Examples${c.reset}`);
     console.log(`  ${c.dim}# List files in a collection${c.reset}`);
     if (collections.length > 0 && collections[0]) {
-      console.log(`  qmd ls ${collections[0].name}`);
+      console.log(`  qkb ls ${collections[0].name}`);
     }
     console.log(`  ${c.dim}# Get a document${c.reset}`);
     if (collections.length > 0 && collections[0]) {
-      console.log(`  qmd get qmd://${collections[0].name}/path/to/file.md`);
+      console.log(`  qkb get qkb://${collections[0].name}/path/to/file.md`);
     }
     console.log(`  ${c.dim}# Search within a collection${c.reset}`);
     if (collections.length > 0 && collections[0]) {
-      console.log(`  qmd search "query" -c ${collections[0].name}`);
+      console.log(`  qkb search "query" -c ${collections[0].name}`);
     }
   } else {
-    console.log(`\n${c.dim}No collections. Run 'qmd collection add .' to index markdown files.${c.reset}`);
+    console.log(`\n${c.dim}No collections. Run 'qkb collection add .' to index markdown files.${c.reset}`);
   }
 
   // Models
@@ -473,8 +473,8 @@ async function showStatus(): Promise<void> {
   // Device / GPU info
   // Important: probing node-llama-cpp can abort the whole process on machines with
   // incompatible GPU drivers (for example Vulkan loader present but no usable driver).
-  // Keep `qmd status` safe by default and make the expensive/native probe opt-in.
-  if (process.env.QMD_STATUS_DEVICE_PROBE === "1") {
+  // Keep `qkb status` safe by default and make the expensive/native probe opt-in.
+  if (process.env.QKB_STATUS_DEVICE_PROBE === "1") {
     console.log(`\n${c.bold}Device${c.reset}`);
     try {
       const llm = getDefaultLlamaCpp();
@@ -520,8 +520,8 @@ async function showStatus(): Promise<void> {
     const names = collectionsWithoutContext.map(c => c.name).slice(0, 3).join(', ');
     const more = collectionsWithoutContext.length > 3 ? ` +${collectionsWithoutContext.length - 3} more` : '';
     tips.push(`Add context to collections for better search results: ${names}${more}`);
-    tips.push(`  ${c.dim}qmd context add qmd://<name>/ "What this collection contains"${c.reset}`);
-    tips.push(`  ${c.dim}qmd context add qmd://<name>/meeting-notes "Weekly team meeting notes"${c.reset}`);
+    tips.push(`  ${c.dim}qkb context add qkb://<name>/ "What this collection contains"${c.reset}`);
+    tips.push(`  ${c.dim}qkb context add qkb://<name>/meeting-notes "Weekly team meeting notes"${c.reset}`);
   }
 
   // Check for collections without update commands
@@ -533,7 +533,7 @@ async function showStatus(): Promise<void> {
     const names = collectionsWithoutUpdate.map(c => c.name).slice(0, 3).join(', ');
     const more = collectionsWithoutUpdate.length > 3 ? ` +${collectionsWithoutUpdate.length - 3} more` : '';
     tips.push(`Add update commands to keep collections fresh: ${names}${more}`);
-    tips.push(`  ${c.dim}qmd collection update-cmd <name> 'git stash && git pull --rebase --ff-only && git stash pop'${c.reset}`);
+    tips.push(`  ${c.dim}qkb collection update-cmd <name> 'git stash && git pull --rebase --ff-only && git stash pop'${c.reset}`);
   }
 
   if (tips.length > 0) {
@@ -557,7 +557,7 @@ async function updateCollections(): Promise<void> {
   const collections = listCollections(db);
 
   if (collections.length === 0) {
-    console.log(`${c.dim}No collections found. Run 'qmd collection add .' to index markdown files.${c.reset}`);
+    console.log(`${c.dim}No collections found. Run 'qkb collection add .' to index markdown files.${c.reset}`);
     closeDb();
     return;
   }
@@ -635,7 +635,7 @@ async function updateCollections(): Promise<void> {
 
   console.log(`${c.green}✓ All collections updated.${c.reset}`);
   if (needsEmbedding > 0) {
-    console.log(`\nRun 'qmd embed' to update embeddings (${needsEmbedding} unique hashes need vectors)`);
+    console.log(`\nRun 'qkb embed' to update embeddings (${needsEmbedding} unique hashes need vectors)`);
   }
 }
 
@@ -694,11 +694,11 @@ async function contextAdd(pathArg: string | undefined, contextText: string): Pro
     fsPath = getPwd();
   } else if (fsPath.startsWith('~/')) {
     fsPath = homedir() + fsPath.slice(1);
-  } else if (!fsPath.startsWith('/') && !fsPath.startsWith('qmd://')) {
+  } else if (!fsPath.startsWith('/') && !fsPath.startsWith('qkb://')) {
     fsPath = resolve(getPwd(), fsPath);
   }
 
-  // Handle virtual paths (qmd://collection/path)
+  // Handle virtual paths (qkb://collection/path)
   if (isVirtualPath(fsPath)) {
     const parsed = parseVirtualPath(fsPath);
     if (!parsed) {
@@ -716,8 +716,8 @@ async function contextAdd(pathArg: string | undefined, contextText: string): Pro
     resyncConfig();
 
     const displayPath = parsed.path
-      ? `qmd://${parsed.collectionName}/${parsed.path}`
-      : `qmd://${parsed.collectionName}/ (collection root)`;
+      ? `qkb://${parsed.collectionName}/${parsed.path}`
+      : `qkb://${parsed.collectionName}/ (collection root)`;
     console.log(`${c.green}✓${c.reset} Added context for: ${displayPath}`);
     console.log(`${c.dim}Context: ${contextText}${c.reset}`);
     closeDb();
@@ -728,14 +728,14 @@ async function contextAdd(pathArg: string | undefined, contextText: string): Pro
   const detected = detectCollectionFromPath(db, fsPath);
   if (!detected) {
     console.error(`${c.yellow}Path is not in any indexed collection: ${fsPath}${c.reset}`);
-    console.error(`${c.dim}Run 'qmd status' to see indexed collections${c.reset}`);
+    console.error(`${c.dim}Run 'qkb status' to see indexed collections${c.reset}`);
     process.exit(1);
   }
 
   yamlAddContext(detected.collectionName, detected.relativePath, contextText);
   resyncConfig();
 
-  const displayPath = detected.relativePath ? `qmd://${detected.collectionName}/${detected.relativePath}` : `qmd://${detected.collectionName}/`;
+  const displayPath = detected.relativePath ? `qkb://${detected.collectionName}/${detected.relativePath}` : `qkb://${detected.collectionName}/`;
   console.log(`${c.green}✓${c.reset} Added context for: ${displayPath}`);
   console.log(`${c.dim}Context: ${contextText}${c.reset}`);
   closeDb();
@@ -747,7 +747,7 @@ function contextList(): void {
   const allContexts = listAllContexts();
 
   if (allContexts.length === 0) {
-    console.log(`${c.dim}No contexts configured. Use 'qmd context add' to add one.${c.reset}`);
+    console.log(`${c.dim}No contexts configured. Use 'qkb context add' to add one.${c.reset}`);
     closeDb();
     return;
   }
@@ -828,11 +828,11 @@ function contextRemove(pathArg: string): void {
   const success = yamlRemoveContext(detected.collectionName, detected.relativePath);
 
   if (!success) {
-    console.error(`${c.yellow}No context found for: qmd://${detected.collectionName}/${detected.relativePath}${c.reset}`);
+    console.error(`${c.yellow}No context found for: qkb://${detected.collectionName}/${detected.relativePath}${c.reset}`);
     process.exit(1);
   }
 
-  console.log(`${c.green}✓${c.reset} Removed context for: qmd://${detected.collectionName}/${detected.relativePath}`);
+  console.log(`${c.green}✓${c.reset} Removed context for: qkb://${detected.collectionName}/${detected.relativePath}`);
 }
 
 function getDocument(filename: string, fromLine?: number, maxLines?: number, lineNumbers?: boolean): void {
@@ -869,7 +869,7 @@ function getDocument(filename: string, fromLine?: number, maxLines?: number, lin
   let doc: { collectionName: string; path: string; body: string } | null = null;
   let virtualPath: string;
 
-  // Handle virtual paths (qmd://collection/path)
+  // Handle virtual paths (qkb://collection/path)
   if (isVirtualPath(inputPath)) {
     const parsed = parseVirtualPath(inputPath);
     if (!parsed) {
@@ -1043,7 +1043,7 @@ function multiGet(pattern: string, maxLines?: number, maxBytes: number = DEFAULT
           // Try exact match on collection + path
           doc = db.prepare(`
             SELECT
-              'qmd://' || d.collection || '/' || d.path as virtual_path,
+              'qkb://' || d.collection || '/' || d.path as virtual_path,
               LENGTH(content.doc) as body_length,
               d.collection,
               d.path
@@ -1056,7 +1056,7 @@ function multiGet(pattern: string, maxLines?: number, maxBytes: number = DEFAULT
         // Try exact match on path
         doc = db.prepare(`
           SELECT
-            'qmd://' || d.collection || '/' || d.path as virtual_path,
+            'qkb://' || d.collection || '/' || d.path as virtual_path,
             LENGTH(content.doc) as body_length,
             d.collection,
             d.path
@@ -1070,7 +1070,7 @@ function multiGet(pattern: string, maxLines?: number, maxBytes: number = DEFAULT
         if (!doc) {
           doc = db.prepare(`
             SELECT
-              'qmd://' || d.collection || '/' || d.path as virtual_path,
+              'qkb://' || d.collection || '/' || d.path as virtual_path,
               LENGTH(content.doc) as body_length,
               d.collection,
               d.path
@@ -1136,7 +1136,7 @@ function multiGet(pattern: string, maxLines?: number, maxBytes: number = DEFAULT
         body: "",
         context,
         skipped: true,
-        skipReason: `File too large (${Math.round(file.bodyLength / 1024)}KB > ${Math.round(maxBytes / 1024)}KB). Use 'qmd get ${file.displayPath}' to retrieve.`,
+        skipReason: `File too large (${Math.round(file.bodyLength / 1024)}KB > ${Math.round(maxBytes / 1024)}KB). Use 'qkb get ${file.displayPath}' to retrieve.`,
       });
       continue;
     }
@@ -1263,7 +1263,7 @@ function listFiles(pathArg?: string): void {
     const yamlCollections = yamlListCollections();
 
     if (yamlCollections.length === 0) {
-      console.log("No collections found. Run 'qmd collection add .' to index files.");
+      console.log("No collections found. Run 'qkb collection add .' to index files.");
       closeDb();
       return;
     }
@@ -1284,7 +1284,7 @@ function listFiles(pathArg?: string): void {
 
     console.log(`${c.bold}Collections:${c.reset}\n`);
     for (const coll of collections) {
-      console.log(`  ${c.dim}qmd://${c.reset}${c.cyan}${coll.name}/${c.reset}  ${c.dim}(${coll.file_count} files)${c.reset}`);
+      console.log(`  ${c.dim}qkb://${c.reset}${c.cyan}${coll.name}/${c.reset}  ${c.dim}(${coll.file_count} files)${c.reset}`);
     }
     closeDb();
     return;
@@ -1294,8 +1294,8 @@ function listFiles(pathArg?: string): void {
   let collectionName: string;
   let pathPrefix: string | null = null;
 
-  if (pathArg.startsWith('qmd://')) {
-    // Virtual path format: qmd://collection/path
+  if (pathArg.startsWith('qkb://')) {
+    // Virtual path format: qkb://collection/path
     const parsed = parseVirtualPath(pathArg);
     if (!parsed) {
       console.error(`Invalid virtual path: ${pathArg}`);
@@ -1317,7 +1317,7 @@ function listFiles(pathArg?: string): void {
   const coll = getCollectionFromYaml(collectionName);
   if (!coll) {
     console.error(`Collection not found: ${collectionName}`);
-    console.error(`Run 'qmd ls' to see available collections.`);
+    console.error(`Run 'qkb ls' to see available collections.`);
     closeDb();
     process.exit(1);
   }
@@ -1352,7 +1352,7 @@ function listFiles(pathArg?: string): void {
 
   if (files.length === 0) {
     if (pathPrefix) {
-      console.log(`No files found under qmd://${collectionName}/${pathPrefix}`);
+      console.log(`No files found under qkb://${collectionName}/${pathPrefix}`);
     } else {
       console.log(`No files found in collection: ${collectionName}`);
     }
@@ -1369,8 +1369,8 @@ function listFiles(pathArg?: string): void {
     const date = new Date(file.modified_at);
     const timeStr = formatLsTime(date);
 
-    // Dim the qmd:// prefix, highlight the filename
-    console.log(`${sizeStr}  ${timeStr}  ${c.dim}qmd://${collectionName}/${c.reset}${c.cyan}${file.path}${c.reset}`);
+    // Dim the qkb:// prefix, highlight the filename
+    console.log(`${sizeStr}  ${timeStr}  ${c.dim}qkb://${collectionName}/${c.reset}${c.cyan}${file.path}${c.reset}`);
   }
 
   closeDb();
@@ -1402,7 +1402,7 @@ function collectionList(): void {
   const collections = listCollections(db);
 
   if (collections.length === 0) {
-    console.log("No collections found. Run 'qmd collection add .' to create one.");
+    console.log("No collections found. Run 'qkb collection add .' to create one.");
     closeDb();
     return;
   }
@@ -1418,7 +1418,7 @@ function collectionList(): void {
     const excluded = yamlColl?.includeByDefault === false;
     const excludeTag = excluded ? ` ${c.yellow}[excluded]${c.reset}` : '';
 
-    console.log(`${c.cyan}${coll.name}${c.reset} ${c.dim}(qmd://${coll.name}/)${c.reset}${excludeTag}`);
+    console.log(`${c.cyan}${coll.name}${c.reset} ${c.dim}(qkb://${coll.name}/)${c.reset}${excludeTag}`);
     console.log(`  ${c.dim}Pattern:${c.reset}  ${coll.glob_pattern}`);
     if (yamlColl?.ignore?.length) {
       console.log(`  ${c.dim}Ignore:${c.reset}   ${yamlColl.ignore.join(', ')}`);
@@ -1453,9 +1453,9 @@ async function collectionAdd(pwd: string, globPattern: string, name?: string): P
 
   if (existingPwdGlob) {
     console.error(`${c.yellow}A collection already exists for this path and pattern:${c.reset}`);
-    console.error(`  Name: ${existingPwdGlob.name} (qmd://${existingPwdGlob.name}/)`);
+    console.error(`  Name: ${existingPwdGlob.name} (qkb://${existingPwdGlob.name}/)`);
     console.error(`  Pattern: ${globPattern}`);
-    console.error(`\nUse 'qmd update' to re-index it, or remove it first with 'qmd collection remove ${existingPwdGlob.name}'`);
+    console.error(`\nUse 'qkb update' to re-index it, or remove it first with 'qkb collection remove ${existingPwdGlob.name}'`);
     process.exit(1);
   }
 
@@ -1476,7 +1476,7 @@ function collectionRemove(name: string): void {
   const coll = getCollectionFromYaml(name);
   if (!coll) {
     console.error(`${c.yellow}Collection not found: ${name}${c.reset}`);
-    console.error(`Run 'qmd collection list' to see available collections.`);
+    console.error(`Run 'qkb collection list' to see available collections.`);
     process.exit(1);
   }
 
@@ -1498,7 +1498,7 @@ function collectionRename(oldName: string, newName: string): void {
   const coll = getCollectionFromYaml(oldName);
   if (!coll) {
     console.error(`${c.yellow}Collection not found: ${oldName}${c.reset}`);
-    console.error(`Run 'qmd collection list' to see available collections.`);
+    console.error(`Run 'qkb collection list' to see available collections.`);
     process.exit(1);
   }
 
@@ -1517,7 +1517,7 @@ function collectionRename(oldName: string, newName: string): void {
   closeDb();
 
   console.log(`${c.green}✓${c.reset} Renamed collection '${oldName}' to '${newName}'`);
-  console.log(`  Virtual paths updated: ${c.cyan}qmd://${oldName}/${c.reset} → ${c.cyan}qmd://${newName}/${c.reset}`);
+  console.log(`  Virtual paths updated: ${c.cyan}qkb://${oldName}/${c.reset} → ${c.cyan}qkb://${newName}/${c.reset}`);
 }
 
 async function indexFiles(pwd?: string, globPattern: string = DEFAULT_GLOB, collectionName?: string, suppressEmbedNotice: boolean = false, ignorePatterns?: string[]): Promise<void> {
@@ -1531,7 +1531,7 @@ async function indexFiles(pwd?: string, globPattern: string = DEFAULT_GLOB, coll
 
   // Collection name must be provided (from YAML)
   if (!collectionName) {
-    throw new Error("Collection name is required. Collections must be defined in ~/.config/qmd/index.yml");
+    throw new Error("Collection name is required. Collections must be defined in ~/.config/qkb/index.yml");
   }
 
   console.log(`Collection: ${resolvedPwd} (${globPattern})`);
@@ -1652,7 +1652,7 @@ async function indexFiles(pwd?: string, globPattern: string = DEFAULT_GLOB, coll
   }
 
   if (needsEmbedding > 0 && !suppressEmbedNotice) {
-    console.log(`\nRun 'qmd embed' to update embeddings (${needsEmbedding} unique hashes need vectors)`);
+    console.log(`\nRun 'qkb embed' to update embeddings (${needsEmbedding} unique hashes need vectors)`);
   }
 
   closeDb();
@@ -1897,7 +1897,7 @@ function encodePathForEditorUri(absolutePath: string): string {
 }
 
 function getEditorUriTemplate(): string {
-  const envTemplate = process.env.QMD_EDITOR_URI?.trim();
+  const envTemplate = process.env.QKB_EDITOR_URI?.trim();
   if (envTemplate) return envTemplate;
 
   try {
@@ -1947,11 +1947,11 @@ function outputResults(results: OutputRow[], query: string, opts: OutputOptions)
     return;
   }
 
-  // Helper to create qmd:// URI from displayPath
-  const toQmdPath = (displayPath: string) => {
+  // Helper to create qkb:// URI from displayPath
+  const toQkbPath = (displayPath: string) => {
     const [collectionName, ...segments] = displayPath.split("/");
     if (!collectionName || segments.length === 0) {
-      return `qmd://${displayPath}`;
+      return `qkb://${displayPath}`;
     }
     const indexName = getActiveIndexName();
     return buildVirtualPath(
@@ -1975,7 +1975,7 @@ function outputResults(results: OutputRow[], query: string, opts: OutputOptions)
       return {
         ...(docid && { docid: `#${docid}` }),
         score: Math.round(row.score * 100) / 100,
-        file: toQmdPath(row.displayPath),
+        file: toQkbPath(row.displayPath),
         ...(snippetInfo && { line: snippetInfo.line }),
         title: row.title,
         ...(row.context && { context: row.context }),
@@ -1990,7 +1990,7 @@ function outputResults(results: OutputRow[], query: string, opts: OutputOptions)
     for (const row of filtered) {
       const docid = row.docid || (row.hash ? row.hash.slice(0, 6) : "");
       const ctx = row.context ? `,"${row.context.replace(/"/g, '""')}"` : "";
-      console.log(`#${docid},${row.score.toFixed(2)},${toQmdPath(row.displayPath)}${ctx}`);
+      console.log(`#${docid},${row.score.toFixed(2)},${toQkbPath(row.displayPath)}${ctx}`);
     }
   } else if (opts.format === "cli") {
     const editorUriTemplate = getEditorUriTemplate();
@@ -2003,11 +2003,11 @@ function outputResults(results: OutputRow[], query: string, opts: OutputOptions)
       const docid = row.docid || (row.hash ? row.hash.slice(0, 6) : undefined);
 
       // Line 1: filepath with docid
-      const virtualPath = row.file.startsWith("qmd://") ? row.file : toQmdPath(row.displayPath);
+      const virtualPath = row.file.startsWith("qkb://") ? row.file : toQkbPath(row.displayPath);
       const parsed = parseVirtualPath(virtualPath);
       const absolutePath = resolveVirtualPath(linkDb, virtualPath);
 
-      const legacyPath = toQmdPath(row.displayPath);
+      const legacyPath = toQkbPath(row.displayPath);
       const displayPath = parsed?.path || row.displayPath;
 
       // Only show :line if we actually found a term match in the snippet body (exclude header line).
@@ -2093,7 +2093,7 @@ function outputResults(results: OutputRow[], query: string, opts: OutputOptions)
       if (opts.lineNumbers) {
         content = addLineNumbers(content);
       }
-      console.log(`<file docid="#${docid}" name="${toQmdPath(row.displayPath)}"${titleAttr}${contextAttr}>\n${content}\n</file>\n`);
+      console.log(`<file docid="#${docid}" name="${toQkbPath(row.displayPath)}"${titleAttr}${contextAttr}>\n${content}\n</file>\n`);
     }
   } else {
     // CSV format
@@ -2106,7 +2106,7 @@ function outputResults(results: OutputRow[], query: string, opts: OutputOptions)
       }
       const docid = row.docid || (row.hash ? row.hash.slice(0, 6) : "");
       const snippetText = content || "";
-      console.log(`#${docid},${row.score.toFixed(4)},${escapeCSV(toQmdPath(row.displayPath))},${escapeCSV(row.title || "")},${escapeCSV(row.context || "")},${line},${escapeCSV(snippetText)}`);
+      console.log(`#${docid},${row.score.toFixed(4)},${escapeCSV(toQkbPath(row.displayPath))},${escapeCSV(row.title || "")},${escapeCSV(row.context || "")},${line},${escapeCSV(snippetText)}`);
     }
   }
 }
@@ -2136,7 +2136,7 @@ function resolveCollectionFilter(raw: string | string[] | undefined, useDefaults
 // Post-filter results to only include files from specified collections.
 function filterByCollections<T extends { filepath?: string; file?: string }>(results: T[], collectionNames: string[]): T[] {
   if (collectionNames.length <= 1) return results;
-  const prefixes = collectionNames.map(n => `qmd://${n}/`);
+  const prefixes = collectionNames.map(n => `qkb://${n}/`);
   return results.filter(r => {
     const path = r.filepath || r.file || '';
     return prefixes.some(p => path.startsWith(p));
@@ -2311,7 +2311,7 @@ async function vectorSearch(query: string, opts: OutputOptions, _model: string =
     // Post-filter for multi-collection
     if (collectionNames.length > 1) {
       results = results.filter(r => {
-        const prefixes = collectionNames.map(n => `qmd://${n}/`);
+        const prefixes = collectionNames.map(n => `qkb://${n}/`);
         return prefixes.some(p => r.file.startsWith(p));
       });
     }
@@ -2440,7 +2440,7 @@ async function querySearch(query: string, opts: OutputOptions, _embedModel: stri
     // Post-filter for multi-collection
     if (collectionNames.length > 1) {
       results = results.filter(r => {
-        const prefixes = collectionNames.map(n => `qmd://${n}/`);
+        const prefixes = collectionNames.map(n => `qkb://${n}/`);
         return prefixes.some(p => r.file.startsWith(p));
       });
     }
@@ -2578,14 +2578,14 @@ function parseCLI() {
 
 function getSkillInstallDir(globalInstall: boolean): string {
   return globalInstall
-    ? resolve(homedir(), ".agents", "skills", "qmd")
-    : resolve(getPwd(), ".agents", "skills", "qmd");
+    ? resolve(homedir(), ".agents", "skills", "qkb")
+    : resolve(getPwd(), ".agents", "skills", "qkb");
 }
 
 function getClaudeSkillLinkPath(globalInstall: boolean): string {
   return globalInstall
-    ? resolve(homedir(), ".claude", "skills", "qmd")
-    : resolve(getPwd(), ".claude", "skills", "qmd");
+    ? resolve(homedir(), ".claude", "skills", "qkb")
+    : resolve(getPwd(), ".claude", "skills", "qkb");
 }
 
 function pathExists(path: string): boolean {
@@ -2607,9 +2607,9 @@ function removePath(path: string): void {
 }
 
 function showSkill(): void {
-  console.log("QMD Skill (embedded)");
+  console.log("QKB Skill (embedded)");
   console.log("");
-  const content = getEmbeddedQmdSkillContent();
+  const content = getEmbeddedQkbSkillContent();
   process.stdout.write(content.endsWith("\n") ? content : content + "\n");
 }
 
@@ -2622,7 +2622,7 @@ function writeEmbeddedSkill(targetDir: string, force: boolean): void {
   }
 
   mkdirSync(targetDir, { recursive: true });
-  for (const file of getEmbeddedQmdSkillFiles()) {
+  for (const file of getEmbeddedQkbSkillFiles()) {
     const destination = resolve(targetDir, file.relativePath);
     mkdirSync(dirname(destination), { recursive: true });
     writeFileSync(destination, file.content, "utf-8");
@@ -2636,7 +2636,7 @@ function ensureClaudeSymlink(linkPath: string, targetDir: string, force: boolean
     const resolvedLinkParent = realpathSync(parentDir);
 
     // If .claude/skills already resolves to the same directory as .agents/skills,
-    // the skill is already visible to Claude and creating qmd -> qmd would loop.
+    // the skill is already visible to Claude and creating qkb -> qkb would loop.
     if (resolvedTargetDir === resolvedLinkParent) {
       return false;
     }
@@ -2687,7 +2687,7 @@ async function shouldCreateClaudeSymlink(linkPath: string, autoYes: boolean): Pr
 async function installSkill(globalInstall: boolean, force: boolean, autoYes: boolean): Promise<void> {
   const installDir = getSkillInstallDir(globalInstall);
   writeEmbeddedSkill(installDir, force);
-  console.log(`✓ Installed QMD skill to ${installDir}`);
+  console.log(`✓ Installed QKB skill to ${installDir}`);
 
   const claudeLinkPath = getClaudeSkillLinkPath(globalInstall);
   if (!(await shouldCreateClaudeSymlink(claudeLinkPath, autoYes))) {
@@ -2703,37 +2703,37 @@ async function installSkill(globalInstall: boolean, force: boolean, autoYes: boo
 }
 
 function showHelp(): void {
-  console.log("qmd — Quick Markdown Search");
+  console.log("qkb — Quick Markdown Search");
   console.log("");
   console.log("Usage:");
-  console.log("  qmd <command> [options]");
+  console.log("  qkb <command> [options]");
   console.log("");
   console.log("Primary commands:");
-  console.log("  qmd query <query>             - Hybrid search with auto expansion + reranking (recommended)");
-  console.log("  qmd query 'lex:..\\nvec:...'   - Structured query document (you provide lex/vec/hyde lines)");
-  console.log("  qmd search <query>            - Full-text BM25 keywords (no LLM)");
-  console.log("  qmd vsearch <query>           - Vector similarity only");
-  console.log("  qmd get <file>[:line] [-l N]  - Show a single document, optional line slice");
-  console.log("  qmd multi-get <pattern>       - Batch fetch via glob or comma-separated list");
-  console.log("  qmd skill show/install        - Show or install the packaged QMD skill");
-  console.log("  qmd mcp                       - Start the MCP server (stdio transport for AI agents)");
-  console.log("  qmd bench <fixture.json>      - Run search quality benchmarks against a fixture file");
+  console.log("  qkb query <query>             - Hybrid search with auto expansion + reranking (recommended)");
+  console.log("  qkb query 'lex:..\\nvec:...'   - Structured query document (you provide lex/vec/hyde lines)");
+  console.log("  qkb search <query>            - Full-text BM25 keywords (no LLM)");
+  console.log("  qkb vsearch <query>           - Vector similarity only");
+  console.log("  qkb get <file>[:line] [-l N]  - Show a single document, optional line slice");
+  console.log("  qkb multi-get <pattern>       - Batch fetch via glob or comma-separated list");
+  console.log("  qkb skill show/install        - Show or install the packaged QKB skill");
+  console.log("  qkb mcp                       - Start the MCP server (stdio transport for AI agents)");
+  console.log("  qkb bench <fixture.json>      - Run search quality benchmarks against a fixture file");
   console.log("");
   console.log("Collections & context:");
-  console.log("  qmd collection add/list/remove/rename/show   - Manage indexed folders");
-  console.log("  qmd context add/list/rm                      - Attach human-written summaries");
-  console.log("  qmd ls [collection[/path]]                   - Inspect indexed files");
+  console.log("  qkb collection add/list/remove/rename/show   - Manage indexed folders");
+  console.log("  qkb context add/list/rm                      - Attach human-written summaries");
+  console.log("  qkb ls [collection[/path]]                   - Inspect indexed files");
   console.log("");
   console.log("Maintenance:");
-  console.log("  qmd status                    - View index + collection health");
-  console.log("  qmd update [--pull]           - Re-index collections (optionally git pull first)");
-  console.log("  qmd embed [-f]                - Generate/refresh vector embeddings");
+  console.log("  qkb status                    - View index + collection health");
+  console.log("  qkb update [--pull]           - Re-index collections (optionally git pull first)");
+  console.log("  qkb embed [-f]                - Generate/refresh vector embeddings");
   console.log("    --max-docs-per-batch <n>    - Cap docs loaded into memory per embedding batch");
   console.log("    --max-batch-mb <n>          - Cap UTF-8 MB loaded into memory per embedding batch");
-  console.log("  qmd cleanup                   - Clear caches, vacuum DB");
+  console.log("  qkb cleanup                   - Clear caches, vacuum DB");
   console.log("");
-  console.log("Query syntax (qmd query):");
-  console.log("  QMD queries are either a single expand query (no prefix) or a multi-line");
+  console.log("Query syntax (qkb query):");
+  console.log("  QKB queries are either a single expand query (no prefix) or a multi-line");
   console.log("  document where every line is typed with lex:, vec:, or hyde:. This grammar");
   console.log("  matches the docs in docs/SYNTAX.md and is enforced in the CLI.");
   console.log("");
@@ -2756,10 +2756,10 @@ function showHelp(): void {
   }
   console.log("");
   console.log("  Examples:");
-  console.log("    qmd query \"how does auth work\"                # single-line → implicit expand");
-  console.log("    qmd query $'lex: CAP theorem\\nvec: consistency'  # typed query document");
-  console.log("    qmd query $'lex: \"exact matches\" sports -baseball'  # phrase + negation lex search");
-  console.log("    qmd query $'hyde: Hypothetical answer text'       # hyde-only document");
+  console.log("    qkb query \"how does auth work\"                # single-line → implicit expand");
+  console.log("    qkb query $'lex: CAP theorem\\nvec: consistency'  # typed query document");
+  console.log("    qkb query $'lex: \"exact matches\" sports -baseball'  # phrase + negation lex search");
+  console.log("    qkb query $'hyde: Hypothetical answer text'       # hyde-only document");
   console.log("");
   console.log("  Constraints:");
   console.log("    - Standalone expand queries cannot mix with typed lines.");
@@ -2767,15 +2767,15 @@ function showHelp(): void {
   console.log("    - Each typed line must be single-line text with balanced quotes.");
   console.log("");
   console.log("AI agents & integrations:");
-  console.log("  - Run `qmd mcp` to expose the MCP server (stdio) to agents/IDEs.");
-  console.log("  - `qmd skill install` installs the QMD skill into ./.agents/skills/qmd.");
-  console.log("  - Use `qmd skill install --global` for ~/.agents/skills/qmd.");
-  console.log("  - `qmd --skill` is kept as an alias for `qmd skill show`.");
-  console.log("  - Advanced: `qmd mcp --http ...` and `qmd mcp --http --daemon` are optional for custom transports.");
+  console.log("  - Run `qkb mcp` to expose the MCP server (stdio) to agents/IDEs.");
+  console.log("  - `qkb skill install` installs the QKB skill into ./.agents/skills/qkb.");
+  console.log("  - Use `qkb skill install --global` for ~/.agents/skills/qkb.");
+  console.log("  - `qkb --skill` is kept as an alias for `qkb skill show`.");
+  console.log("  - Advanced: `qkb mcp --http ...` and `qkb mcp --http --daemon` are optional for custom transports.");
   console.log("");
   console.log("Global options:");
   console.log("  --index <name>             - Use a named index (default: index)");
-  console.log("  QMD_EDITOR_URI             - Editor link template for clickable TTY search output");
+  console.log("  QKB_EDITOR_URI             - Editor link template for clickable TTY search output");
   console.log("");
   console.log("Search options:");
   console.log("  -n <num>                   - Max results (default 5, or 20 for --files/--json)");
@@ -2813,15 +2813,15 @@ async function showVersion(): Promise<void> {
   }
 
   const versionStr = commit ? `${pkg.version} (${commit})` : pkg.version;
-  console.log(`qmd ${versionStr}`);
+  console.log(`qkb ${versionStr}`);
 }
 
 // Main CLI - only run if this is the main module
 const __filename = fileURLToPath(import.meta.url);
 const argv1 = process.argv[1];
 const isMain = argv1 === __filename
-  || argv1?.endsWith("/qmd.ts")
-  || argv1?.endsWith("/qmd.js")
+  || argv1?.endsWith("/qkb.ts")
+  || argv1?.endsWith("/qkb.js")
   || (argv1 != null && realpathSync(argv1) === __filename);
 if (isMain) {
   // Flip to production mode only when this module is executed as the CLI
@@ -2842,15 +2842,15 @@ if (isMain) {
   }
 
   if (cli.values.help && cli.command === "skill") {
-    console.log("Usage: qmd skill <show|install> [options]");
+    console.log("Usage: qkb skill <show|install> [options]");
     console.log("");
     console.log("Commands:");
-    console.log("  show                 Print the packaged QMD skill");
-    console.log("  install              Install into ./.agents/skills/qmd");
+    console.log("  show                 Print the packaged QKB skill");
+    console.log("  install              Install into ./.agents/skills/qkb");
     console.log("");
     console.log("Options:");
-    console.log("  --global             Install into ~/.agents/skills/qmd");
-    console.log("  --yes                Also create the .claude/skills/qmd symlink");
+    console.log("  --global             Install into ~/.agents/skills/qkb");
+    console.log("  --yes                Also create the .claude/skills/qkb symlink");
     console.log("  -f, --force          Replace existing install or symlink");
     process.exit(0);
   }
@@ -2864,30 +2864,30 @@ if (isMain) {
     case "context": {
       const subcommand = cli.args[0];
       if (!subcommand) {
-        console.error("Usage: qmd context <add|list|rm>");
+        console.error("Usage: qkb context <add|list|rm>");
         console.error("");
         console.error("Commands:");
-        console.error("  qmd context add [path] \"text\"  - Add context (defaults to current dir)");
-        console.error("  qmd context add / \"text\"       - Add global context to all collections");
-        console.error("  qmd context list                - List all contexts");
-        console.error("  qmd context rm <path>           - Remove context");
+        console.error("  qkb context add [path] \"text\"  - Add context (defaults to current dir)");
+        console.error("  qkb context add / \"text\"       - Add global context to all collections");
+        console.error("  qkb context list                - List all contexts");
+        console.error("  qkb context rm <path>           - Remove context");
         process.exit(1);
       }
 
       switch (subcommand) {
         case "add": {
           if (cli.args.length < 2) {
-            console.error("Usage: qmd context add [path] \"text\"");
+            console.error("Usage: qkb context add [path] \"text\"");
             console.error("");
             console.error("Examples:");
-            console.error("  qmd context add \"Context for current directory\"");
-            console.error("  qmd context add . \"Context for current directory\"");
-            console.error("  qmd context add /subfolder \"Context for subfolder\"");
-            console.error("  qmd context add / \"Global context for all collections\"");
+            console.error("  qkb context add \"Context for current directory\"");
+            console.error("  qkb context add . \"Context for current directory\"");
+            console.error("  qkb context add /subfolder \"Context for subfolder\"");
+            console.error("  qkb context add / \"Global context for all collections\"");
             console.error("");
             console.error("  Using virtual paths:");
-            console.error("  qmd context add qmd://journals/ \"Context for entire journals collection\"");
-            console.error("  qmd context add qmd://journals/2024 \"Context for 2024 journals\"");
+            console.error("  qkb context add qkb://journals/ \"Context for entire journals collection\"");
+            console.error("  qkb context add qkb://journals/2024 \"Context for 2024 journals\"");
             process.exit(1);
           }
 
@@ -2920,10 +2920,10 @@ if (isMain) {
         case "rm":
         case "remove": {
           if (cli.args.length < 2 || !cli.args[1]) {
-            console.error("Usage: qmd context rm <path>");
+            console.error("Usage: qkb context rm <path>");
             console.error("Examples:");
-            console.error("  qmd context rm /");
-            console.error("  qmd context rm qmd://journals/2024");
+            console.error("  qkb context rm /");
+            console.error("  qkb context rm qkb://journals/2024");
             process.exit(1);
           }
           contextRemove(cli.args[1]);
@@ -2940,7 +2940,7 @@ if (isMain) {
 
     case "get": {
       if (!cli.args[0]) {
-        console.error("Usage: qmd get <filepath>[:line] [--from <line>] [-l <lines>] [--line-numbers]");
+        console.error("Usage: qkb get <filepath>[:line] [--from <line>] [-l <lines>] [--line-numbers]");
         process.exit(1);
       }
       const fromLine = cli.values.from ? parseInt(cli.values.from as string, 10) : undefined;
@@ -2951,7 +2951,7 @@ if (isMain) {
 
     case "multi-get": {
       if (!cli.args[0]) {
-        console.error("Usage: qmd multi-get <pattern> [-l <lines>] [--max-bytes <bytes>] [--json|--csv|--md|--xml|--files]");
+        console.error("Usage: qkb multi-get <pattern> [-l <lines>] [--max-bytes <bytes>] [--json|--csv|--md|--xml|--files]");
         console.error("  pattern: glob (e.g., 'journals/2025-05*.md') or comma-separated list");
         process.exit(1);
       }
@@ -2987,8 +2987,8 @@ if (isMain) {
         case "remove":
         case "rm": {
           if (!cli.args[1]) {
-            console.error("Usage: qmd collection remove <name>");
-            console.error("  Use 'qmd collection list' to see available collections");
+            console.error("Usage: qkb collection remove <name>");
+            console.error("  Use 'qkb collection list' to see available collections");
             process.exit(1);
           }
           collectionRemove(cli.args[1]);
@@ -2998,8 +2998,8 @@ if (isMain) {
         case "rename":
         case "mv": {
           if (!cli.args[1] || !cli.args[2]) {
-            console.error("Usage: qmd collection rename <old-name> <new-name>");
-            console.error("  Use 'qmd collection list' to see available collections");
+            console.error("Usage: qkb collection rename <old-name> <new-name>");
+            console.error("  Use 'qkb collection list' to see available collections");
             process.exit(1);
           }
           collectionRename(cli.args[1], cli.args[2]);
@@ -3011,7 +3011,7 @@ if (isMain) {
           const name = cli.args[1];
           const cmd = cli.args.slice(2).join(' ') || null;
           if (!name) {
-            console.error("Usage: qmd collection update-cmd <name> [command]");
+            console.error("Usage: qkb collection update-cmd <name> [command]");
             console.error("  Set the command to run before indexing (e.g., 'git pull')");
             console.error("  Omit command to clear it");
             process.exit(1);
@@ -3035,7 +3035,7 @@ if (isMain) {
         case "exclude": {
           const name = cli.args[1];
           if (!name) {
-            console.error(`Usage: qmd collection ${subcommand} <name>`);
+            console.error(`Usage: qkb collection ${subcommand} <name>`);
             console.error(`  ${subcommand === 'include' ? 'Include' : 'Exclude'} collection in default queries`);
             process.exit(1);
           }
@@ -3055,7 +3055,7 @@ if (isMain) {
         case "info": {
           const name = cli.args[1];
           if (!name) {
-            console.error("Usage: qmd collection show <name>");
+            console.error("Usage: qkb collection show <name>");
             process.exit(1);
           }
           const { getCollection } = await import("../collections.js");
@@ -3080,7 +3080,7 @@ if (isMain) {
 
         case "help":
         case undefined: {
-          console.log("Usage: qmd collection <command> [options]");
+          console.log("Usage: qkb collection <command> [options]");
           console.log("");
           console.log("Commands:");
           console.log("  list                      List all collections");
@@ -3093,15 +3093,15 @@ if (isMain) {
           console.log("  exclude <name>            Exclude from default queries");
           console.log("");
           console.log("Examples:");
-          console.log("  qmd collection add ~/notes --name notes");
-          console.log("  qmd collection update-cmd brain 'git pull'");
-          console.log("  qmd collection exclude archive");
+          console.log("  qkb collection add ~/notes --name notes");
+          console.log("  qkb collection update-cmd brain 'git pull'");
+          console.log("  qkb collection exclude archive");
           process.exit(0);
         }
 
         default:
           console.error(`Unknown subcommand: ${subcommand}`);
-          console.error("Run 'qmd collection help' for usage");
+          console.error("Run 'qkb collection help' for usage");
           process.exit(1);
       }
       break;
@@ -3153,7 +3153,7 @@ if (isMain) {
 
     case "search":
       if (!cli.query) {
-        console.error("Usage: qmd search [options] <query>");
+        console.error("Usage: qkb search [options] <query>");
         process.exit(1);
       }
       search(cli.query, cli.opts);
@@ -3162,7 +3162,7 @@ if (isMain) {
     case "vsearch":
     case "vector-search": // undocumented alias
       if (!cli.query) {
-        console.error("Usage: qmd vsearch [options] <query>");
+        console.error("Usage: qkb vsearch [options] <query>");
         process.exit(1);
       }
       // Default min-score for vector search is 0.3
@@ -3175,7 +3175,7 @@ if (isMain) {
     case "query":
     case "deep-search": // undocumented alias
       if (!cli.query) {
-        console.error("Usage: qmd query [options] <query>");
+        console.error("Usage: qkb query [options] <query>");
         process.exit(1);
       }
       await querySearch(cli.query, cli.opts);
@@ -3184,7 +3184,7 @@ if (isMain) {
     case "bench": {
       const fixturePath = cli.args[0];
       if (!fixturePath) {
-        console.error("Usage: qmd bench <fixture.json> [--json] [-c collection]");
+        console.error("Usage: qkb bench <fixture.json> [--json] [-c collection]");
         console.error("");
         console.error("Run search quality benchmarks against a fixture file.");
         console.error("See src/bench/fixtures/example.json for the fixture format.");
@@ -3204,8 +3204,8 @@ if (isMain) {
 
       // Cache dir for PID/log files — same dir as the index
       const cacheDir = process.env.XDG_CACHE_HOME
-        ? resolve(process.env.XDG_CACHE_HOME, "qmd")
-        : resolve(homedir(), ".cache", "qmd");
+        ? resolve(process.env.XDG_CACHE_HOME, "qkb")
+        : resolve(homedir(), ".cache", "qkb");
       const pidPath = resolve(cacheDir, "mcp.pid");
 
       // Subcommands take priority over flags
@@ -3219,7 +3219,7 @@ if (isMain) {
           process.kill(pid, 0); // alive?
           process.kill(pid, "SIGTERM");
           unlinkSync(pidPath);
-          console.log(`Stopped QMD MCP server (PID ${pid}).`);
+          console.log(`Stopped QKB MCP server (PID ${pid}).`);
         } catch {
           unlinkSync(pidPath);
           console.log("Cleaned up stale PID file (server was not running).");
@@ -3236,7 +3236,7 @@ if (isMain) {
             const existingPid = parseInt(readFileSync(pidPath, "utf-8").trim());
             try {
               process.kill(existingPid, 0); // alive?
-              console.error(`Already running (PID ${existingPid}). Run 'qmd mcp stop' first.`);
+              console.error(`Already running (PID ${existingPid}). Run 'qkb mcp stop' first.`);
               process.exit(1);
             } catch {
               // Stale PID file — continue
@@ -3305,22 +3305,22 @@ if (isMain) {
 
         case "help":
         case undefined: {
-          console.log("Usage: qmd skill <show|install> [options]");
+          console.log("Usage: qkb skill <show|install> [options]");
           console.log("");
           console.log("Commands:");
-          console.log("  show                 Print the packaged QMD skill");
-          console.log("  install              Install into ./.agents/skills/qmd");
+          console.log("  show                 Print the packaged QKB skill");
+          console.log("  install              Install into ./.agents/skills/qkb");
           console.log("");
           console.log("Options:");
-          console.log("  --global             Install into ~/.agents/skills/qmd");
-          console.log("  --yes                Also create the .claude/skills/qmd symlink");
+          console.log("  --global             Install into ~/.agents/skills/qkb");
+          console.log("  --yes                Also create the .claude/skills/qkb symlink");
           console.log("  -f, --force          Replace existing install or symlink");
           process.exit(0);
         }
 
         default:
           console.error(`Unknown subcommand: ${subcommand}`);
-          console.error("Run 'qmd skill help' for usage");
+          console.error("Run 'qkb skill help' for usage");
           process.exit(1);
       }
       break;
@@ -3357,7 +3357,7 @@ if (isMain) {
 
     default:
       console.error(`Unknown command: ${cli.command}`);
-      console.error("Run 'qmd --help' for usage.");
+      console.error("Run 'qkb --help' for usage.");
       process.exit(1);
   }
 

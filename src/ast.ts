@@ -11,7 +11,7 @@
  *
  * Grammar packages (tree-sitter-typescript, etc.) are listed as
  * optionalDependencies with pinned versions. They ship native prebuilds
- * and source files (~72 MB total) but QMD only uses the .wasm files
+ * and source files (~72 MB total) but QKB only uses the .wasm files
  * (~5 MB). If install size becomes a concern, the .wasm files can be
  * bundled directly in the repo (e.g. assets/grammars/) and resolved
  * via import.meta.url instead of require.resolve(), eliminating the
@@ -228,7 +228,7 @@ async function loadGrammar(language: SupportedLanguage): Promise<LanguageType | 
   } catch (err) {
     failedLanguages.add(language);
     grammarCache.delete(wasmKey);
-    console.warn(`[qmd] Failed to load tree-sitter grammar for ${language}: ${err}`);
+    console.warn(`[qkb] Failed to load tree-sitter grammar for ${language}: ${err}`);
     return null;
   }
 }
@@ -305,7 +305,7 @@ export async function getASTBreakPoints(
 
     return Array.from(seen.values()).sort((a, b) => a.pos - b.pos);
   } catch (err) {
-    console.warn(`[qmd] AST parse failed for ${filepath}, falling back to regex: ${err instanceof Error ? err.message : err}`);
+    console.warn(`[qkb] AST parse failed for ${filepath}, falling back to regex: ${err instanceof Error ? err.message : err}`);
     return [];
   }
 }

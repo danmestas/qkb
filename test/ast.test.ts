@@ -61,9 +61,9 @@ describe("detectLanguage", () => {
     expect(detectLanguage("src/Auth.PY")).toBe("python");
   });
 
-  test("works with virtual qmd:// paths", () => {
-    expect(detectLanguage("qmd://myproject/src/auth.ts")).toBe("typescript");
-    expect(detectLanguage("qmd://docs/README.md")).toBeNull();
+  test("works with virtual qkb:// paths", () => {
+    expect(detectLanguage("qkb://myproject/src/auth.ts")).toBe("typescript");
+    expect(detectLanguage("qkb://docs/README.md")).toBeNull();
   });
 });
 

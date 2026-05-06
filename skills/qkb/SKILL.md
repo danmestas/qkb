@@ -1,21 +1,21 @@
 ---
-name: qmd
-description: Search markdown knowledge bases, notes, and documentation using QMD. Use when users ask to search notes, find documents, or look up information.
+name: qkb
+description: Search markdown knowledge bases, notes, and documentation using QKB. Use when users ask to search notes, find documents, or look up information.
 license: MIT
-compatibility: Requires qmd CLI or MCP server. Install via `npm install -g @tobilu/qmd`.
+compatibility: Requires qkb CLI or MCP server. Install via `npm install -g @tobilu/qkb`.
 metadata:
   author: tobi
   version: "2.0.0"
-allowed-tools: Bash(qmd:*), mcp__qmd__*
+allowed-tools: Bash(qkb:*), mcp__qkb__*
 ---
 
-# QMD - Quick Markdown Search
+# QKB - Query Knowledge Base
 
 Local search engine for markdown content.
 
 ## Status
 
-!`qmd status 2>/dev/null || echo "Not installed: npm install -g @tobilu/qmd"`
+!`qkb status 2>/dev/null || echo "Not installed: npm install -g @tobilu/qkb"`
 
 ## MCP: `query`
 
@@ -117,14 +117,14 @@ Omit to search all collections.
 ## CLI
 
 ```bash
-qmd query "question"              # Auto-expand + rerank
-qmd query $'lex: X\nvec: Y'       # Structured
-qmd query $'expand: question'     # Explicit expand
-qmd query --json --explain "q"    # Show score traces (RRF + rerank blend)
-qmd search "keywords"             # BM25 only (no LLM)
-qmd get "#abc123"                 # By docid
-qmd multi-get "journals/2026-*.md" -l 40  # Batch pull snippets by glob
-qmd multi-get notes/foo.md,notes/bar.md   # Comma-separated list, preserves order
+qkb query "question"              # Auto-expand + rerank
+qkb query $'lex: X\nvec: Y'       # Structured
+qkb query $'expand: question'     # Explicit expand
+qkb query --json --explain "q"    # Show score traces (RRF + rerank blend)
+qkb search "keywords"             # BM25 only (no LLM)
+qkb get "#abc123"                 # By docid
+qkb multi-get "journals/2026-*.md" -l 40  # Batch pull snippets by glob
+qkb multi-get notes/foo.md,notes/bar.md   # Comma-separated list, preserves order
 ```
 
 ## HTTP API
@@ -138,7 +138,7 @@ curl -X POST http://localhost:8181/query \
 ## Setup
 
 ```bash
-npm install -g @tobilu/qmd
-qmd collection add ~/notes --name notes
-qmd embed
+npm install -g @tobilu/qkb
+qkb collection add ~/notes --name notes
+qkb embed
 ```

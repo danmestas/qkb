@@ -1,81 +1,81 @@
-# QMD - Query Markup Documents
+# QKB - Query Knowledge Base
 
 Use Bun instead of Node.js (`bun` not `node`, `bun install` not `npm install`).
 
 ## Commands
 
 ```sh
-qmd collection add . --name <n>   # Create/index collection
-qmd collection list               # List all collections with details
-qmd collection remove <name>      # Remove a collection by name
-qmd collection rename <old> <new> # Rename a collection
-qmd ls [collection[/path]]        # List collections or files in a collection
-qmd context add [path] "text"     # Add context for path (defaults to current dir)
-qmd context list                  # List all contexts
-qmd context check                 # Check for collections/paths missing context
-qmd context rm <path>             # Remove context
-qmd get <file>                    # Get document by path or docid (#abc123)
-qmd multi-get <pattern>           # Get multiple docs by glob or comma-separated list
-qmd status                        # Show index status and collections
-qmd update [--pull]               # Re-index all collections (--pull: git pull first)
-qmd embed                         # Generate vector embeddings (uses node-llama-cpp)
-qmd query <query>                 # Search with query expansion + reranking (recommended)
-qmd search <query>                # Full-text keyword search (BM25, no LLM)
-qmd vsearch <query>               # Vector similarity search (no reranking)
-qmd mcp                           # Start MCP server (stdio transport)
-qmd mcp --http [--port N]         # Start MCP server (HTTP, default port 8181)
-qmd mcp --http --daemon           # Start as background daemon
-qmd mcp stop                      # Stop background MCP daemon
+qkb collection add . --name <n>   # Create/index collection
+qkb collection list               # List all collections with details
+qkb collection remove <name>      # Remove a collection by name
+qkb collection rename <old> <new> # Rename a collection
+qkb ls [collection[/path]]        # List collections or files in a collection
+qkb context add [path] "text"     # Add context for path (defaults to current dir)
+qkb context list                  # List all contexts
+qkb context check                 # Check for collections/paths missing context
+qkb context rm <path>             # Remove context
+qkb get <file>                    # Get document by path or docid (#abc123)
+qkb multi-get <pattern>           # Get multiple docs by glob or comma-separated list
+qkb status                        # Show index status and collections
+qkb update [--pull]               # Re-index all collections (--pull: git pull first)
+qkb embed                         # Generate vector embeddings (uses node-llama-cpp)
+qkb query <query>                 # Search with query expansion + reranking (recommended)
+qkb search <query>                # Full-text keyword search (BM25, no LLM)
+qkb vsearch <query>               # Vector similarity search (no reranking)
+qkb mcp                           # Start MCP server (stdio transport)
+qkb mcp --http [--port N]         # Start MCP server (HTTP, default port 8181)
+qkb mcp --http --daemon           # Start as background daemon
+qkb mcp stop                      # Stop background MCP daemon
 ```
 
 ## Collection Management
 
 ```sh
 # List all collections
-qmd collection list
+qkb collection list
 
 # Create a collection with explicit name
-qmd collection add ~/Documents/notes --name mynotes --mask '**/*.md'
+qkb collection add ~/Documents/notes --name mynotes --mask '**/*.md'
 
 # Remove a collection
-qmd collection remove mynotes
+qkb collection remove mynotes
 
 # Rename a collection
-qmd collection rename mynotes my-notes
+qkb collection rename mynotes my-notes
 
 # List all files in a collection
-qmd ls mynotes
+qkb ls mynotes
 
 # List files with a path prefix
-qmd ls journals/2025
-qmd ls qmd://journals/2025
+qkb ls journals/2025
+qkb ls qkb://journals/2025
 ```
 
 ## Context Management
 
 ```sh
 # Add context to current directory (auto-detects collection)
-qmd context add "Description of these files"
+qkb context add "Description of these files"
 
 # Add context to a specific path
-qmd context add /subfolder "Description for subfolder"
+qkb context add /subfolder "Description for subfolder"
 
 # Add global context to all collections (system message)
-qmd context add / "Always include this context"
+qkb context add / "Always include this context"
 
 # Add context using virtual paths
-qmd context add qmd://journals/ "Context for entire journals collection"
-qmd context add qmd://journals/2024 "Journal entries from 2024"
+qkb context add qkb://journals/ "Context for entire journals collection"
+qkb context add qkb://journals/2024 "Journal entries from 2024"
 
 # List all contexts
-qmd context list
+qkb context list
 
 # Check for collections or paths without context
-qmd context check
+qkb context check
 
 # Remove context
-qmd context rm qmd://journals/2024
-qmd context rm /  # Remove global context
+qkb context rm qkb://journals/2024
+qkb context rm /  # Remove global context
 ```
 
 ## Document IDs (docid)
@@ -85,15 +85,15 @@ Docids are shown in search results as `#abc123` and can be used with `get` and `
 
 ```sh
 # Search returns docid in results
-qmd search "query" --json
+qkb search "query" --json
 # Output: [{"docid": "#abc123", "score": 0.85, "file": "docs/readme.md", ...}]
 
 # Get document by docid
-qmd get "#abc123"
-qmd get abc123              # Leading # is optional
+qkb get "#abc123"
+qkb get abc123              # Leading # is optional
 
 # Docids also work in multi-get comma-separated lists
-qmd multi-get "#abc123, #def456"
+qkb multi-get "#abc123, #def456"
 ```
 
 ## Options
@@ -118,8 +118,8 @@ qmd multi-get "#abc123, #def456"
 ## Development
 
 ```sh
-bun src/cli/qmd.ts <command>   # Run from source
-bun link               # Install globally as 'qmd'
+bun src/cli/qkb.ts <command>   # Run from source
+bun link               # Install globally as 'qkb'
 ```
 
 ## Tests
@@ -142,15 +142,15 @@ bun test --preload ./src/test-preload.ts test/
 
 ## Important: Do NOT run automatically
 
-- Never run `qmd collection add`, `qmd embed`, or `qmd update` automatically
+- Never run `qkb collection add`, `qkb embed`, or `qkb update` automatically
 - Never modify the SQLite database directly
 - Write out example commands for the user to run manually
-- Index is stored at `~/.cache/qmd/index.sqlite`
+- Index is stored at `~/.cache/qkb/index.sqlite`
 
 ## Do NOT compile
 
 - Never run `bun build --compile` - it overwrites the shell wrapper and breaks sqlite-vec
-- The `qmd` file is a shell script that runs compiled JS from `dist/` - do not replace it
+- The `qkb` file is a shell script that runs compiled JS from `dist/` - do not replace it
 - `npm run build` compiles TypeScript to `dist/` via `tsc -p tsconfig.build.json`
 
 ## Releasing

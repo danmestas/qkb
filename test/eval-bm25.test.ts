@@ -20,7 +20,7 @@ import {
 } from "../src/store";
 
 // Set INDEX_PATH before importing store to prevent using global index
-const tempDir = mkdtempSync(join(tmpdir(), "qmd-eval-unit-"));
+const tempDir = mkdtempSync(join(tmpdir(), "qkb-eval-unit-"));
 process.env.INDEX_PATH = join(tempDir, "eval-unit.sqlite");
 
 afterAll(() => {

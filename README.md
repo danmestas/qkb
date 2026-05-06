@@ -1,72 +1,72 @@
-# QMD - Query Markup Documents
+# QKB - Query Knowledge Base
 
 An on-device search engine for everything you need to remember. Index your markdown notes, meeting transcripts, documentation, and knowledge bases. Search with keywords or natural language. Ideal for your agentic flows.
 
-QMD combines BM25 full-text search, vector semantic search, and LLM re-ranking—all running locally via node-llama-cpp with GGUF models.
+QKB combines BM25 full-text search, vector semantic search, and LLM re-ranking—all running locally via node-llama-cpp with GGUF models.
 
-![QMD Architecture](assets/qmd-architecture.png)
+![QKB Architecture](assets/qkb-architecture.png)
 
-You can read more about QMD's progress in the [CHANGELOG](CHANGELOG.md).
+You can read more about QKB's progress in the [CHANGELOG](CHANGELOG.md).
 
 ## Quick Start
 
 ```sh
 # Install globally (Node or Bun)
-npm install -g @tobilu/qmd
+npm install -g @tobilu/qkb
 # or
-bun install -g @tobilu/qmd
+bun install -g @tobilu/qkb
 
 # Or run directly
-npx @tobilu/qmd ...
-bunx @tobilu/qmd ...
+npx @tobilu/qkb ...
+bunx @tobilu/qkb ...
 
 # Create collections for your notes, docs, and meeting transcripts
-qmd collection add ~/notes --name notes
-qmd collection add ~/Documents/meetings --name meetings
-qmd collection add ~/work/docs --name docs
+qkb collection add ~/notes --name notes
+qkb collection add ~/Documents/meetings --name meetings
+qkb collection add ~/work/docs --name docs
 
-# Add context to help with search results, each piece of context will be returned when matching sub documents are returned. This works as a tree. This is the key feature of QMD as it allows LLMs to make much better contextual choices when selecting documents. Don't sleep on it!
-qmd context add qmd://notes "Personal notes and ideas"
-qmd context add qmd://meetings "Meeting transcripts and notes"
-qmd context add qmd://docs "Work documentation"
+# Add context to help with search results, each piece of context will be returned when matching sub documents are returned. This works as a tree. This is the key feature of QKB as it allows LLMs to make much better contextual choices when selecting documents. Don't sleep on it!
+qkb context add qkb://notes "Personal notes and ideas"
+qkb context add qkb://meetings "Meeting transcripts and notes"
+qkb context add qkb://docs "Work documentation"
 
 # Generate embeddings for semantic search
-qmd embed
+qkb embed
 
 # Search across everything
-qmd search "project timeline"           # Fast keyword search
-qmd vsearch "how to deploy"             # Semantic search
-qmd query "quarterly planning process"  # Hybrid + reranking (best quality)
+qkb search "project timeline"           # Fast keyword search
+qkb vsearch "how to deploy"             # Semantic search
+qkb query "quarterly planning process"  # Hybrid + reranking (best quality)
 
 # Get a specific document
-qmd get "meetings/2024-01-15.md"
+qkb get "meetings/2024-01-15.md"
 
 # Get a document by docid (shown in search results)
-qmd get "#abc123"
+qkb get "#abc123"
 
 # Get multiple documents by glob pattern
-qmd multi-get "journals/2025-05*.md"
+qkb multi-get "journals/2025-05*.md"
 
 # Search within a specific collection
-qmd search "API" -c notes
+qkb search "API" -c notes
 
 # Export all matches for an agent
-qmd search "API" --all --files --min-score 0.3
+qkb search "API" --all --files --min-score 0.3
 ```
 
 ### Using with AI Agents
 
-QMD's `--json` and `--files` output formats are designed for agentic workflows:
+QKB's `--json` and `--files` output formats are designed for agentic workflows:
 
 ```sh
 # Get structured results for an LLM
-qmd search "authentication" --json -n 10
+qkb search "authentication" --json -n 10
 
 # List all relevant files above a threshold
-qmd query "error handling" --all --files --min-score 0.4
+qkb query "error handling" --all --files --min-score 0.4
 
 # Retrieve full document content
-qmd get "docs/api-reference.md" --full
+qkb get "docs/api-reference.md" --full
 ```
 
 ### MCP Server
@@ -84,8 +84,8 @@ Although the tool works perfectly fine when you just tell your agent to use it o
 ```json
 {
   "mcpServers": {
-    "qmd": {
-      "command": "qmd",
+    "qkb": {
+      "command": "qkb",
       "args": ["mcp"]
     }
   }
@@ -96,7 +96,7 @@ Although the tool works perfectly fine when you just tell your agent to use it o
 
 ```bash
 claude plugin marketplace add tobi/qmd
-claude plugin install qmd@qmd
+claude plugin install qkb@qkb
 ```
 
 Or configure MCP manually in `~/.claude/settings.json`:
@@ -104,8 +104,8 @@ Or configure MCP manually in `~/.claude/settings.json`:
 ```json
 {
   "mcpServers": {
-    "qmd": {
-      "command": "qmd",
+    "qkb": {
+      "command": "qkb",
       "args": ["mcp"]
     }
   }
@@ -114,17 +114,17 @@ Or configure MCP manually in `~/.claude/settings.json`:
 
 #### HTTP Transport
 
-By default, QMD's MCP server uses stdio (launched as a subprocess by each client). For a shared, long-lived server that avoids repeated model loading, use the HTTP transport:
+By default, QKB's MCP server uses stdio (launched as a subprocess by each client). For a shared, long-lived server that avoids repeated model loading, use the HTTP transport:
 
 ```sh
 # Foreground (Ctrl-C to stop)
-qmd mcp --http                    # localhost:8181
-qmd mcp --http --port 8080        # custom port
+qkb mcp --http                    # localhost:8181
+qkb mcp --http --port 8080        # custom port
 
 # Background daemon
-qmd mcp --http --daemon           # start, writes PID to ~/.cache/qmd/mcp.pid
-qmd mcp stop                      # stop via PID file
-qmd status                        # shows "MCP: running (PID ...)" when active
+qkb mcp --http --daemon           # start, writes PID to ~/.cache/qkb/mcp.pid
+qkb mcp stop                      # stop via PID file
+qkb status                        # shows "MCP: running (PID ...)" when active
 ```
 
 The HTTP server exposes two endpoints:
@@ -137,18 +137,18 @@ Point any MCP client at `http://localhost:8181/mcp` to connect.
 
 ### SDK / Library Usage
 
-Use QMD as a library in your own Node.js or Bun applications.
+Use QKB as a library in your own Node.js or Bun applications.
 
 #### Installation
 
 ```sh
-npm install @tobilu/qmd
+npm install @tobilu/qkb
 ```
 
 #### Quick Start
 
 ```typescript
-import { createStore } from '@tobilu/qmd'
+import { createStore } from '@tobilu/qkb'
 
 const store = await createStore({
   dbPath: './my-index.sqlite',
@@ -170,7 +170,7 @@ await store.close()
 `createStore()` accepts three modes:
 
 ```typescript
-import { createStore } from '@tobilu/qmd'
+import { createStore } from '@tobilu/qkb'
 
 // 1. Inline config — no files needed besides the DB
 const store = await createStore({
@@ -186,7 +186,7 @@ const store = await createStore({
 // 2. YAML config file — collections defined in a file
 const store2 = await createStore({
   dbPath: './index.sqlite',
-  configPath: './qmd.yml',
+  configPath: './qkb.yml',
 })
 
 // 3. DB-only — reopen a previously configured store
@@ -331,7 +331,7 @@ Key types exported for SDK consumers:
 
 ```typescript
 import type {
-  QMDStore,            // The store interface
+  QKBStore,            // The store interface
   SearchOptions,       // Options for search()
   LexSearchOptions,    // Options for searchLex()
   VectorSearchOptions, // Options for searchVector()
@@ -349,7 +349,7 @@ import type {
   CollectionConfig,    // Inline config shape
   IndexStatus,         // From getStatus()
   IndexHealthInfo,     // From getIndexHealth()
-} from '@tobilu/qmd'
+} from '@tobilu/qkb'
 ```
 
 Utility exports:
@@ -360,7 +360,7 @@ import {
   addLineNumbers,              // Add line numbers to text
   DEFAULT_MULTI_GET_MAX_BYTES, // Default max file size for multiGet (10KB)
   Maintenance,                 // Database maintenance operations
-} from '@tobilu/qmd'
+} from '@tobilu/qkb'
 ```
 
 #### Lifecycle
@@ -376,7 +376,7 @@ The SDK requires explicit `dbPath` — no defaults are assumed. This makes it sa
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                         QMD Hybrid Search Pipeline                          │
+│                         QKB Hybrid Search Pipeline                          │
 └─────────────────────────────────────────────────────────────────────────────┘
 
                               ┌─────────────────┐
@@ -483,7 +483,7 @@ The `query` command uses **Reciprocal Rank Fusion (RRF)** with position-aware bl
 
 ### GGUF Models (via node-llama-cpp)
 
-QMD uses three local GGUF models (auto-downloaded on first use):
+QKB uses three local GGUF models (auto-downloaded on first use):
 
 | Model | Purpose | Size |
 |-------|---------|------|
@@ -491,36 +491,36 @@ QMD uses three local GGUF models (auto-downloaded on first use):
 | `qwen3-reranker-0.6b-q8_0` | Re-ranking | ~640MB |
 | `qmd-query-expansion-1.7B-q4_k_m` | Query expansion (fine-tuned) | ~1.1GB |
 
-Models are downloaded from HuggingFace and cached in `~/.cache/qmd/models/`.
+Models are downloaded from HuggingFace and cached in `~/.cache/qkb/models/`.
 
 ### Custom Embedding Model
 
-Override the default embedding model via the `QMD_EMBED_MODEL` environment variable.
+Override the default embedding model via the `QKB_EMBED_MODEL` environment variable.
 This is useful for multilingual corpora (e.g. Chinese, Japanese, Korean) where
 `embeddinggemma-300M` has limited coverage.
 
 ```sh
 # Use Qwen3-Embedding-0.6B for better multilingual (CJK) support
-export QMD_EMBED_MODEL="hf:Qwen/Qwen3-Embedding-0.6B-GGUF/Qwen3-Embedding-0.6B-Q8_0.gguf"
+export QKB_EMBED_MODEL="hf:Qwen/Qwen3-Embedding-0.6B-GGUF/Qwen3-Embedding-0.6B-Q8_0.gguf"
 
 # After changing the model, re-embed all collections:
-qmd embed -f
+qkb embed -f
 ```
 
 Supported model families:
 - **embeddinggemma** (default) — English-optimized, small footprint
 - **Qwen3-Embedding** — Multilingual (119 languages including CJK), MTEB top-ranked
 
-> **Note:** When switching embedding models, you must re-index with `qmd embed -f`
+> **Note:** When switching embedding models, you must re-index with `qkb embed -f`
 > since vectors are not cross-compatible between models. The prompt format is
 > automatically adjusted for each model family.
 
 ## Installation
 
 ```sh
-npm install -g @tobilu/qmd
+npm install -g @tobilu/qkb
 # or
-bun install -g @tobilu/qmd
+bun install -g @tobilu/qkb
 ```
 
 ### Development
@@ -538,39 +538,39 @@ npm link
 
 ```sh
 # Create a collection from current directory
-qmd collection add . --name myproject
+qkb collection add . --name myproject
 
 # Create a collection with explicit path and custom glob mask
-qmd collection add ~/Documents/notes --name notes --mask "**/*.md"
+qkb collection add ~/Documents/notes --name notes --mask "**/*.md"
 
 # List all collections
-qmd collection list
+qkb collection list
 
 # Remove a collection
-qmd collection remove myproject
+qkb collection remove myproject
 
 # Rename a collection
-qmd collection rename myproject my-project
+qkb collection rename myproject my-project
 
 # List files in a collection
-qmd ls notes
-qmd ls notes/subfolder
+qkb ls notes
+qkb ls notes/subfolder
 ```
 
 ### Generate Vector Embeddings
 
 ```sh
 # Embed all indexed documents (900 tokens/chunk, 15% overlap)
-qmd embed
+qkb embed
 
 # Force re-embed everything
-qmd embed -f
+qkb embed -f
 
 # Enable AST-aware chunking for code files (TS, JS, Python, Go, Rust)
-qmd embed --chunk-strategy auto
+qkb embed --chunk-strategy auto
 
 # Also works with query for consistent chunk selection
-qmd query "auth flow" --chunk-strategy auto
+qkb query "auth flow" --chunk-strategy auto
 ```
 
 **AST-aware chunking** (`--chunk-strategy auto`) uses tree-sitter to chunk code
@@ -580,7 +580,7 @@ codebases. Markdown and other file types always use regex-based chunking
 regardless of strategy.
 
 The default is `regex` (existing behavior). Use `--chunk-strategy auto` to
-opt in. Run `qmd status` to verify which grammars are available.
+opt in. Run `qkb status` to verify which grammars are available.
 
 > **Note:** Tree-sitter grammars are optional dependencies. If they are not
 > installed, `--chunk-strategy auto` falls back to regex-only chunking
@@ -591,22 +591,22 @@ opt in. Run `qmd status` to verify which grammars are available.
 Context adds descriptive metadata to collections and paths, helping search understand your content.
 
 ```sh
-# Add context to a collection (using qmd:// virtual paths)
-qmd context add qmd://notes "Personal notes and ideas"
-qmd context add qmd://docs/api "API documentation"
+# Add context to a collection (using qkb:// virtual paths)
+qkb context add qkb://notes "Personal notes and ideas"
+qkb context add qkb://docs/api "API documentation"
 
 # Add context from within a collection directory
-cd ~/notes && qmd context add "Personal notes and ideas"
-cd ~/notes/work && qmd context add "Work-related notes"
+cd ~/notes && qkb context add "Personal notes and ideas"
+cd ~/notes/work && qkb context add "Work-related notes"
 
 # Add global context (applies to all collections)
-qmd context add / "Knowledge base for my projects"
+qkb context add / "Knowledge base for my projects"
 
 # List all contexts
-qmd context list
+qkb context list
 
 # Remove context
-qmd context rm qmd://notes/old
+qkb context rm qkb://notes/old
 ```
 
 ### Search Commands
@@ -623,13 +623,13 @@ qmd context rm qmd://notes/old
 
 ```sh
 # Full-text search (fast, keyword-based)
-qmd search "authentication flow"
+qkb search "authentication flow"
 
 # Vector search (semantic similarity)
-qmd vsearch "how to login"
+qkb vsearch "how to login"
 
 # Hybrid search with re-ranking (best quality)
-qmd query "user authentication"
+qkb query "user authentication"
 ```
 
 ### Options
@@ -653,7 +653,7 @@ qmd query "user authentication"
 --xml              # XML output
 
 # Get options
-qmd get <file>[:line]  # Get document, optionally starting at line
+qkb get <file>[:line]  # Get document, optionally starting at line
 -l <num>               # Maximum lines to return
 --from <num>           # Start from line number
 
@@ -668,7 +668,7 @@ Default output is colorized CLI format (respects `NO_COLOR` env).
 
 When stdout is a TTY, result paths are emitted as clickable terminal hyperlinks (OSC 8). Clicking a path opens the file in your editor using an editor URI template.
 
-When stdout is not a TTY (for example piped to another command or redirected to a file), QMD emits plain text paths with no escape sequences.
+When stdout is not a TTY (for example piped to another command or redirected to a file), QKB emits plain text paths with no escape sequences.
 
 TTY example:
 
@@ -692,20 +692,20 @@ Discussion about code quality and craftsmanship
 in the development process.
 ```
 
-Configure the editor link target with `QMD_EDITOR_URI` (or `editor_uri` in config):
+Configure the editor link target with `QKB_EDITOR_URI` (or `editor_uri` in config):
 
 ```sh
 # VS Code (default)
-export QMD_EDITOR_URI="vscode://file/{path}:{line}:{col}"
+export QKB_EDITOR_URI="vscode://file/{path}:{line}:{col}"
 
 # Cursor
-export QMD_EDITOR_URI="cursor://file/{path}:{line}:{col}"
+export QKB_EDITOR_URI="cursor://file/{path}:{line}:{col}"
 
 # Zed
-export QMD_EDITOR_URI="zed://file/{path}:{line}:{col}"
+export QKB_EDITOR_URI="zed://file/{path}:{line}:{col}"
 
 # Sublime Text
-export QMD_EDITOR_URI="subl://open?url=file://{path}&line={line}"
+export QKB_EDITOR_URI="subl://open?url=file://{path}&line={line}"
 ```
 
 Template placeholders:
@@ -714,9 +714,10 @@ Template placeholders:
 - `{col}` or `{column}` 1-based column number
 
 - **Path**: Collection-relative path (e.g., `docs/guide.md`)
-- **Docid**: Short hash identifier (e.g., `#a1b2c3`) - use with `qmd get #a1b2c3`
+- **Docid**: Short hash identifier (e.g., `#a1b2c3`) - use with `qkb get #a1b2c3`
 - **Title**: Extracted from document (first heading or filename)
-- **Context**: Path context if configured via `qmd context add`
+- **Context**: Path context if configured via `qkb context add`
+
 - **Score**: Color-coded (green >70%, yellow >40%, dim otherwise)
 - **Snippet**: Context around match with query terms highlighted
 
@@ -724,67 +725,67 @@ Template placeholders:
 
 ```sh
 # Get 10 results with minimum score 0.3
-qmd query -n 10 --min-score 0.3 "API design patterns"
+qkb query -n 10 --min-score 0.3 "API design patterns"
 
 # Output as markdown for LLM context
-qmd search --md --full "error handling"
+qkb search --md --full "error handling"
 
 # JSON output for scripting
-qmd query --json "quarterly reports"
+qkb query --json "quarterly reports"
 
 # Inspect how each result was scored (RRF + rerank blend)
-qmd query --json --explain "quarterly reports"
+qkb query --json --explain "quarterly reports"
 
 # Use separate index for different knowledge base
-qmd --index work search "quarterly reports"
+qkb --index work search "quarterly reports"
 ```
 
 ### Index Maintenance
 
 ```sh
 # Show index status and collections with contexts
-qmd status
+qkb status
 
 # Re-index all collections
-qmd update
+qkb update
 
 # Re-index with git pull first (for remote repos)
-qmd update --pull
+qkb update --pull
 
 # Get document by filepath (with fuzzy matching suggestions)
-qmd get notes/meeting.md
+qkb get notes/meeting.md
 
 # Get document by docid (from search results)
-qmd get "#abc123"
+qkb get "#abc123"
 
 # Get document starting at line 50, max 100 lines
-qmd get notes/meeting.md:50 -l 100
+qkb get notes/meeting.md:50 -l 100
 
 # Get multiple documents by glob pattern
-qmd multi-get "journals/2025-05*.md"
+qkb multi-get "journals/2025-05*.md"
 
 # Get multiple documents by comma-separated list (supports docids)
-qmd multi-get "doc1.md, doc2.md, #abc123"
+qkb multi-get "doc1.md, doc2.md, #abc123"
 
 # Limit multi-get to files under 20KB
-qmd multi-get "docs/*.md" --max-bytes 20480
+qkb multi-get "docs/*.md" --max-bytes 20480
 
 # Output multi-get as JSON for agent processing
-qmd multi-get "docs/*.md" --json
+qkb multi-get "docs/*.md" --json
 
 # Clean up cache and orphaned data
-qmd cleanup
+qkb cleanup
 ```
 
 ## Data Storage
 
-Index stored in: `~/.cache/qmd/index.sqlite`
+Index stored in: `~/.cache/qkb/index.sqlite`
 
 ### Schema
 
 ```sql
 collections     -- Indexed directories with name and glob patterns
-path_contexts   -- Context descriptions by virtual path (qmd://...)
+path_contexts   -- Context descriptions by virtual path (qkb://...)
 documents       -- Markdown content with metadata and docid (6-char hash)
 documents_fts   -- FTS5 full-text index
 content_vectors -- Embedding chunks (hash, seq, pos, 900 tokens each)
@@ -831,7 +832,7 @@ Document ──► Smart Chunk (~900 tokens) ──► Format each chunk ──�
 
 ### Smart Chunking
 
-Instead of cutting at hard token boundaries, QMD uses a scoring algorithm to find natural markdown break points. This keeps semantic units (sections, paragraphs, code blocks) together.
+Instead of cutting at hard token boundaries, QKB uses a scoring algorithm to find natural markdown break points. This keeps semantic units (sections, paragraphs, code blocks) together.
 
 **Break Point Scores:**
 
@@ -862,7 +863,7 @@ The squared distance decay means a heading 200 tokens back (score ~30) still bea
 
 **AST-Aware Chunking (Code Files):**
 
-For supported code files, QMD also parses the source with [tree-sitter](https://tree-sitter.github.io/) and adds AST-derived break points that are merged with the regex scores above:
+For supported code files, QKB also parses the source with [tree-sitter](https://tree-sitter.github.io/) and adds AST-derived break points that are merged with the regex scores above:
 
 | AST Node | Score | Languages |
 |----------|-------|-----------|

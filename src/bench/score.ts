@@ -1,5 +1,5 @@
 /**
- * Scoring functions for the QMD benchmark harness.
+ * Scoring functions for the QKB benchmark harness.
  *
  * Computes precision@k, recall, MRR, and F1 for search results
  * against ground-truth expected files.
@@ -7,12 +7,12 @@
 
 /**
  * Normalize a file path for comparison.
- * Strips qmd:// prefix, lowercases, removes leading/trailing slashes.
+ * Strips qkb:// prefix, lowercases, removes leading/trailing slashes.
  */
 export function normalizePath(p: string): string {
-  if (p.startsWith("qmd://")) {
-    // qmd://collection/path/to/file → path/to/file
-    const withoutScheme = p.slice("qmd://".length);
+  if (p.startsWith("qkb://")) {
+    // qkb://collection/path/to/file → path/to/file
+    const withoutScheme = p.slice("qkb://".length);
     const slashIdx = withoutScheme.indexOf("/");
     p = slashIdx >= 0 ? withoutScheme.slice(slashIdx + 1) : withoutScheme;
   }

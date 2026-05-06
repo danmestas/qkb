@@ -128,8 +128,8 @@ describe("Path utilities - Cross-platform support", () => {
     test("Windows paths with backslashes", () => {
       expect(normalizePathSeparators("C:\\Users\\name\\file.txt"))
         .toBe("C:/Users/name/file.txt");
-      expect(normalizePathSeparators("D:\\Projects\\qmd\\src"))
-        .toBe("D:/Projects/qmd/src");
+      expect(normalizePathSeparators("D:\\Projects\\qkb\\src"))
+        .toBe("D:/Projects/qkb/src");
       expect(normalizePathSeparators("\\path\\to\\file"))
         .toBe("/path/to/file");
     });
@@ -283,7 +283,7 @@ describe("Path utilities - Cross-platform support", () => {
     test("Windows relative paths", () => {
       expect(resolve("C:/base", "relative")).toBe("C:/base/relative");
       expect(resolve("C:/base", "a/b/c")).toBe("C:/base/a/b/c");
-      expect(resolve("D:/Projects", "qmd/src")).toBe("D:/Projects/qmd/src");
+      expect(resolve("D:/Projects", "qkb/src")).toBe("D:/Projects/qkb/src");
     });
 
     test("Windows absolute paths", () => {
@@ -337,7 +337,7 @@ describe("Path utilities - Cross-platform support", () => {
 
     test("Git Bash with relative paths", () => {
       expect(resolve("/c/base", "relative")).toBe("C:/base/relative");
-      expect(resolve("/d/Projects", "qmd/src")).toBe("D:/Projects/qmd/src");
+      expect(resolve("/d/Projects", "qkb/src")).toBe("D:/Projects/qkb/src");
     });
 
     test("Git Bash with .. and .", () => {

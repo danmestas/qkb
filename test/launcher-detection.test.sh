@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Tests for bin/qmd runtime detection logic.
+# Tests for bin/qkb runtime detection logic.
 # Simulates lockfile combinations in a temp directory and verifies which
 # runtime the launcher would choose.
 #
@@ -16,7 +16,7 @@ trap cleanup EXIT
 ok()   { printf "  %-60s OK\n" "$1"; PASS=$((PASS + 1)); }
 fail() { printf "  %-60s FAIL\n" "$1 (got: $2, expected: $3)"; FAIL=$((FAIL + 1)); }
 
-# Extract the detection logic from bin/qmd into a testable function.
+# Extract the detection logic from bin/qkb into a testable function.
 # Instead of exec-ing a runtime, we echo which one would be chosen.
 detect_runtime() {
   local DIR="$1"
@@ -29,7 +29,7 @@ detect_runtime() {
   fi
 }
 
-# Verify detect_runtime matches the actual bin/qmd logic
+# Verify detect_runtime matches the actual bin/qkb logic
 assert_runtime() {
   local label="$1" dir="$2" expected="$3"
   local got
@@ -41,7 +41,7 @@ assert_runtime() {
   fi
 }
 
-echo "=== bin/qmd runtime detection tests ==="
+echo "=== bin/qkb runtime detection tests ==="
 
 # --- Test cases ---
 

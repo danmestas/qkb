@@ -24,9 +24,9 @@ DIR="$(cd -P "$(dirname "$SOURCE")/.." && pwd)"
 # builds that use npm would be incorrectly routed to bun, causing ABI
 # mismatches with better-sqlite3 / sqlite-vec (see #381).
 if [ -f "$DIR/package-lock.json" ]; then
-  exec node "$DIR/dist/cli/qmd.js" "$@"
+  exec node "$DIR/dist/cli/qkb.js" "$@"
 elif [ -f "$DIR/bun.lock" ] || [ -f "$DIR/bun.lockb" ]; then
-  exec bun "$DIR/dist/cli/qmd.js" "$@"
+  exec bun "$DIR/dist/cli/qkb.js" "$@"
 else
-  exec node "$DIR/dist/cli/qmd.js" "$@"
+  exec node "$DIR/dist/cli/qkb.js" "$@"
 fi

@@ -285,10 +285,10 @@ describe("structuredSearch", () => {
   let store: Store;
 
   beforeAll(async () => {
-    testDir = await mkdtemp(join(tmpdir(), "qmd-structured-test-"));
+    testDir = await mkdtemp(join(tmpdir(), "qkb-structured-test-"));
     const testDbPath = join(testDir, "test.sqlite");
     const testConfigDir = await mkdtemp(join(testDir, "config-"));
-    process.env.QMD_CONFIG_DIR = testConfigDir;
+    process.env.QKB_CONFIG_DIR = testConfigDir;
     store = createStore(testDbPath);
   });
 

@@ -1,5 +1,5 @@
 /**
- * store.test.ts - Comprehensive unit tests for the QMD store module
+ * store.test.ts - Comprehensive unit tests for the QKB store module
  *
  * Run with: bun test store.test.ts
  *
@@ -80,7 +80,7 @@ async function createTestStore(): Promise<Store> {
   testConfigDir = await mkdtemp(configPrefix);
 
   // Set environment variable to use test config
-  process.env.QMD_CONFIG_DIR = testConfigDir;
+  process.env.QKB_CONFIG_DIR = testConfigDir;
 
   // Create empty YAML config
   const emptyConfig: CollectionConfig = { collections: {} };
@@ -116,7 +116,7 @@ async function cleanupTestDb(store: Store): Promise<void> {
   }
 
   // Clear environment variable
-  delete process.env.QMD_CONFIG_DIR;
+  delete process.env.QKB_CONFIG_DIR;
 }
 
 // Helper to insert a test document directly into the database
@@ -250,7 +250,7 @@ async function addGlobalContext(contextText: string): Promise<void> {
 // =============================================================================
 
 beforeAll(async () => {
-  testDir = await mkdtemp(join(tmpdir(), "qmd-test-"));
+  testDir = await mkdtemp(join(tmpdir(), "qkb-test-"));
 });
 
 afterAll(async () => {
@@ -1140,7 +1140,7 @@ describe("FTS Search", () => {
     const results = store.searchFTS("fox", 10);
     expect(results.length).toBeGreaterThan(0);
     expect(results[0]!.displayPath).toBe(`${collectionName}/test/doc1.md`);
-    expect(results[0]!.filepath).toBe(`qmd://${collectionName}/test/doc1.md`);
+    expect(results[0]!.filepath).toBe(`qkb://${collectionName}/test/doc1.md`);
     expect(results[0]!.source).toBe("fts");
 
     await cleanupTestDb(store);
@@ -1378,7 +1378,7 @@ describe("FTS Search", () => {
     const results = store.searchFTS("findme", 10);
     expect(results).toHaveLength(1);
     expect(results[0]!.displayPath).toBe(`${collectionName}/test/active.md`);
-    expect(results[0]!.filepath).toBe(`qmd://${collectionName}/test/active.md`);
+    expect(results[0]!.filepath).toBe(`qkb://${collectionName}/test/active.md`);
 
     await cleanupTestDb(store);
   });
@@ -1452,7 +1452,7 @@ describe("Document Retrieval", () => {
       if (!("error" in result)) {
         expect(result.title).toBe("My Document");
         expect(result.displayPath).toBe(`${collectionName}/mydoc.md`);
-        expect(result.filepath).toBe(`qmd://${collectionName}/mydoc.md`);
+        expect(result.filepath).toBe(`qkb://${collectionName}/mydoc.md`);
         expect(result.body).toBeUndefined(); // body not included by default
       }
 
@@ -2338,11 +2338,11 @@ describe("Integration", () => {
 
     expect(results1).toHaveLength(1);
     expect(results1[0]!.displayPath).toBe("store1/doc.md");
-    expect(results1[0]!.filepath).toBe("qmd://store1/doc.md");
+    expect(results1[0]!.filepath).toBe("qkb://store1/doc.md");
 
     expect(results2).toHaveLength(1);
     expect(results2[0]!.displayPath).toBe("store2/doc.md");
-    expect(results2[0]!.filepath).toBe("qmd://store2/doc.md");
+    expect(results2[0]!.filepath).toBe("qkb://store2/doc.md");
 
     // Cross-check: store1 shouldn't find store2's content
     const cross1 = store1.searchFTS("different", 10);
@@ -2398,7 +2398,7 @@ describe.skipIf(!!process.env.CI)("LlamaCpp Integration", () => {
     const results = await store.searchVec("test query", "embeddinggemma", 10);
     expect(results).toHaveLength(1);
     expect(results[0]!.displayPath).toBe(`${collectionName}/doc1.md`);
-    expect(results[0]!.filepath).toBe(`qmd://${collectionName}/doc1.md`);
+    expect(results[0]!.filepath).toBe(`qkb://${collectionName}/doc1.md`);
     expect(results[0]!.source).toBe("vec");
 
     await cleanupTestDb(store);
@@ -3129,30 +3129,30 @@ describe("Content-Addressable Storage", () => {
 // =============================================================================
 
 describe("normalizeVirtualPath", () => {
-  test("already normalized qmd:// path passes through", () => {
-    expect(normalizeVirtualPath("qmd://collection/path.md")).toBe("qmd://collection/path.md");
-    expect(normalizeVirtualPath("qmd://journals/2025-01-01.md")).toBe("qmd://journals/2025-01-01.md");
+  test("already normalized qkb:// path passes through", () => {
+    expect(normalizeVirtualPath("qkb://collection/path.md")).toBe("qkb://collection/path.md");
+    expect(normalizeVirtualPath("qkb://journals/2025-01-01.md")).toBe("qkb://journals/2025-01-01.md");
   });
 
-  test("handles //collection/path format (missing qmd: prefix)", () => {
-    expect(normalizeVirtualPath("//collection/path.md")).toBe("qmd://collection/path.md");
-    expect(normalizeVirtualPath("//journals/2025-01-01.md")).toBe("qmd://journals/2025-01-01.md");
+  test("handles //collection/path format (missing qkb: prefix)", () => {
+    expect(normalizeVirtualPath("//collection/path.md")).toBe("qkb://collection/path.md");
+    expect(normalizeVirtualPath("//journals/2025-01-01.md")).toBe("qkb://journals/2025-01-01.md");
   });
 
-  test("handles qmd:// with extra slashes", () => {
-    expect(normalizeVirtualPath("qmd:////collection/path.md")).toBe("qmd://collection/path.md");
-    expect(normalizeVirtualPath("qmd:///journals/2025-01-01.md")).toBe("qmd://journals/2025-01-01.md");
-    expect(normalizeVirtualPath("qmd:///////archive/file.md")).toBe("qmd://archive/file.md");
+  test("handles qkb:// with extra slashes", () => {
+    expect(normalizeVirtualPath("qkb:////collection/path.md")).toBe("qkb://collection/path.md");
+    expect(normalizeVirtualPath("qkb:///journals/2025-01-01.md")).toBe("qkb://journals/2025-01-01.md");
+    expect(normalizeVirtualPath("qkb:///////archive/file.md")).toBe("qkb://archive/file.md");
   });
 
   test("handles collection root paths", () => {
-    expect(normalizeVirtualPath("qmd://collection/")).toBe("qmd://collection/");
-    expect(normalizeVirtualPath("qmd://collection")).toBe("qmd://collection");
-    expect(normalizeVirtualPath("//collection/")).toBe("qmd://collection/");
+    expect(normalizeVirtualPath("qkb://collection/")).toBe("qkb://collection/");
+    expect(normalizeVirtualPath("qkb://collection")).toBe("qkb://collection");
+    expect(normalizeVirtualPath("//collection/")).toBe("qkb://collection/");
   });
 
   test("preserves bare collection/path format (not auto-converted)", () => {
-    // Bare paths without qmd:// or // prefix are NOT converted
+    // Bare paths without qkb:// or // prefix are NOT converted
     // (could be relative filesystem paths)
     expect(normalizeVirtualPath("collection/path.md")).toBe("collection/path.md");
     expect(normalizeVirtualPath("journals/2025-01-01.md")).toBe("journals/2025-01-01.md");
@@ -3173,16 +3173,16 @@ describe("normalizeVirtualPath", () => {
   });
 
   test("handles whitespace trimming", () => {
-    expect(normalizeVirtualPath("  qmd://collection/path.md  ")).toBe("qmd://collection/path.md");
-    expect(normalizeVirtualPath("  //collection/path.md  ")).toBe("qmd://collection/path.md");
+    expect(normalizeVirtualPath("  qkb://collection/path.md  ")).toBe("qkb://collection/path.md");
+    expect(normalizeVirtualPath("  //collection/path.md  ")).toBe("qkb://collection/path.md");
   });
 });
 
 describe("isVirtualPath", () => {
-  test("recognizes qmd:// paths", () => {
-    expect(isVirtualPath("qmd://collection/path.md")).toBe(true);
-    expect(isVirtualPath("qmd://journals/2025-01-01.md")).toBe(true);
-    expect(isVirtualPath("qmd://collection")).toBe(true);
+  test("recognizes qkb:// paths", () => {
+    expect(isVirtualPath("qkb://collection/path.md")).toBe(true);
+    expect(isVirtualPath("qkb://journals/2025-01-01.md")).toBe(true);
+    expect(isVirtualPath("qkb://collection")).toBe(true);
   });
 
   test("recognizes //collection/path format", () => {
@@ -3219,30 +3219,30 @@ describe("isVirtualPath", () => {
 });
 
 describe("parseVirtualPath", () => {
-  test("parses standard qmd:// paths", () => {
-    expect(parseVirtualPath("qmd://collection/path.md")).toEqual({
+  test("parses standard qkb:// paths", () => {
+    expect(parseVirtualPath("qkb://collection/path.md")).toEqual({
       collectionName: "collection",
       path: "path.md",
     });
-    expect(parseVirtualPath("qmd://journals/2025-01-01.md")).toEqual({
+    expect(parseVirtualPath("qkb://journals/2025-01-01.md")).toEqual({
       collectionName: "journals",
       path: "2025-01-01.md",
     });
   });
 
   test("parses paths with nested directories", () => {
-    expect(parseVirtualPath("qmd://archive/subfolder/file.md")).toEqual({
+    expect(parseVirtualPath("qkb://archive/subfolder/file.md")).toEqual({
       collectionName: "archive",
       path: "subfolder/file.md",
     });
   });
 
   test("parses collection root paths", () => {
-    expect(parseVirtualPath("qmd://collection/")).toEqual({
+    expect(parseVirtualPath("qkb://collection/")).toEqual({
       collectionName: "collection",
       path: "",
     });
-    expect(parseVirtualPath("qmd://collection")).toEqual({
+    expect(parseVirtualPath("qkb://collection")).toEqual({
       collectionName: "collection",
       path: "",
     });
@@ -3255,15 +3255,15 @@ describe("parseVirtualPath", () => {
     });
   });
 
-  test("parses qmd:// with extra slashes (normalizes first)", () => {
-    expect(parseVirtualPath("qmd:////collection/path.md")).toEqual({
+  test("parses qkb:// with extra slashes (normalizes first)", () => {
+    expect(parseVirtualPath("qkb:////collection/path.md")).toEqual({
       collectionName: "collection",
       path: "path.md",
     });
   });
 
-  test("parses qmd:// paths with index query parameters", () => {
-    expect(parseVirtualPath("qmd://collection/path.md?index=docs-v2")).toEqual({
+  test("parses qkb:// paths with index query parameters", () => {
+    expect(parseVirtualPath("qkb://collection/path.md?index=docs-v2")).toEqual({
       collectionName: "collection",
       path: "path.md",
       indexName: "docs-v2",
@@ -3375,7 +3375,7 @@ describe("isDocid", () => {
   test("rejects file paths", () => {
     expect(isDocid("/path/to/file.md")).toBe(false);
     expect(isDocid("path/to/file.md")).toBe(false);
-    expect(isDocid("qmd://collection/file.md")).toBe(false);
+    expect(isDocid("qkb://collection/file.md")).toBe(false);
   });
 
   test("rejects paths that look like hex with extensions", () => {

@@ -1,5 +1,5 @@
 /**
- * llm.ts - LLM abstraction layer for QMD using node-llama-cpp
+ * llm.ts - LLM abstraction layer for QKB using node-llama-cpp
  *
  * Provides embeddings, text generation, and reranking using local GGUF models.
  */
@@ -36,7 +36,7 @@ export function isQwen3EmbeddingModel(modelUri: string): boolean {
  * Uses Qwen3-Embedding instruct format when a Qwen embedding model is active.
  */
 export function formatQueryForEmbedding(query: string, modelUri?: string): string {
-  const uri = modelUri ?? process.env.QMD_EMBED_MODEL ?? DEFAULT_EMBED_MODEL;
+  const uri = modelUri ?? process.env.QKB_EMBED_MODEL ?? DEFAULT_EMBED_MODEL;
   if (isQwen3EmbeddingModel(uri)) {
     return `Instruct: Retrieve relevant documents for the given query\nQuery: ${query}`;
   }
@@ -49,7 +49,7 @@ export function formatQueryForEmbedding(query: string, modelUri?: string): strin
  * Qwen3-Embedding encodes documents as raw text without special prefixes.
  */
 export function formatDocForEmbedding(text: string, title?: string, modelUri?: string): string {
-  const uri = modelUri ?? process.env.QMD_EMBED_MODEL ?? DEFAULT_EMBED_MODEL;
+  const uri = modelUri ?? process.env.QKB_EMBED_MODEL ?? DEFAULT_EMBED_MODEL;
   if (isQwen3EmbeddingModel(uri)) {
     // Qwen3-Embedding: documents are raw text, no task prefix
     return title ? `${title}\n${text}` : text;
@@ -192,7 +192,7 @@ export type RerankDocument = {
 
 // HuggingFace model URIs for node-llama-cpp
 // Format: hf:<user>/<repo>/<file>
-// Override via QMD_EMBED_MODEL env var (e.g. hf:Qwen/Qwen3-Embedding-0.6B-GGUF/Qwen3-Embedding-0.6B-Q8_0.gguf)
+// Override via QKB_EMBED_MODEL env var (e.g. hf:Qwen/Qwen3-Embedding-0.6B-GGUF/Qwen3-Embedding-0.6B-Q8_0.gguf)
 const DEFAULT_EMBED_MODEL = "hf:ggml-org/embeddinggemma-300M-GGUF/embeddinggemma-300M-Q8_0.gguf";
 const DEFAULT_RERANK_MODEL = "hf:ggml-org/Qwen3-Reranker-0.6B-Q8_0-GGUF/qwen3-reranker-0.6b-q8_0.gguf";
 // const DEFAULT_GENERATE_MODEL = "hf:ggml-org/Qwen3-0.6B-GGUF/Qwen3-0.6B-Q8_0.gguf";
@@ -210,8 +210,8 @@ export const DEFAULT_GENERATE_MODEL_URI = DEFAULT_GENERATE_MODEL;
 
 // Local model cache directory
 const MODEL_CACHE_DIR = process.env.XDG_CACHE_HOME
-  ? join(process.env.XDG_CACHE_HOME, "qmd", "models")
-  : join(homedir(), ".cache", "qmd", "models");
+  ? join(process.env.XDG_CACHE_HOME, "qkb", "models")
+  : join(homedir(), ".cache", "qkb", "models");
 export const DEFAULT_MODEL_CACHE_DIR = MODEL_CACHE_DIR;
 
 export type PullResult = {
@@ -285,10 +285,10 @@ function validateGgufFile(filePath: string, modelUri: string): void {
       `Model: ${modelUri}\n` +
       `Path:  ${filePath}\n\n` +
       `To fix this, either:\n` +
-      `  1. Try a HuggingFace mirror:  HF_ENDPOINT=https://hf-mirror.com qmd embed\n` +
+      `  1. Try a HuggingFace mirror:  HF_ENDPOINT=https://hf-mirror.com qkb embed\n` +
       `  2. Download the model manually and set the env var, e.g.:\n` +
-      `       QMD_EMBED_MODEL=/path/to/model.gguf qmd embed\n\n` +
-      `Note: 'qmd search' works without any model downloads.`
+      `       QKB_EMBED_MODEL=/path/to/model.gguf qkb embed\n\n` +
+      `Note: 'qkb search' works without any model downloads.`
     );
   }
 
@@ -411,7 +411,7 @@ export type LlamaCppConfig = {
   modelCacheDir?: string;
   /**
    * Context size used for query expansion generation contexts.
-   * Default: 2048. Can also be set via QMD_EXPAND_CONTEXT_SIZE.
+   * Default: 2048. Can also be set via QKB_EXPAND_CONTEXT_SIZE.
    */
   expandContextSize?: number;
   /**
@@ -440,13 +440,13 @@ const DEFAULT_EXPAND_CONTEXT_SIZE = 2048;
 
 type LlamaGpuMode = "auto" | "metal" | "vulkan" | "cuda" | false;
 
-export function resolveLlamaGpuMode(envValue = process.env.QMD_LLAMA_GPU): LlamaGpuMode {
+export function resolveLlamaGpuMode(envValue = process.env.QKB_LLAMA_GPU): LlamaGpuMode {
   const normalized = envValue?.trim().toLowerCase() ?? "";
   if (!normalized) return "auto";
   if (["false", "off", "none", "disable", "disabled", "0"].includes(normalized)) return false;
   if (normalized === "metal" || normalized === "vulkan" || normalized === "cuda") return normalized;
 
-  process.stderr.write(`QMD Warning: invalid QMD_LLAMA_GPU="${envValue}", using auto GPU selection.\n`);
+  process.stderr.write(`QKB Warning: invalid QKB_LLAMA_GPU="${envValue}", using auto GPU selection.\n`);
   return "auto";
 }
 
@@ -458,13 +458,13 @@ function resolveExpandContextSize(configValue?: number): number {
     return configValue;
   }
 
-  const envValue = process.env.QMD_EXPAND_CONTEXT_SIZE?.trim();
+  const envValue = process.env.QKB_EXPAND_CONTEXT_SIZE?.trim();
   if (!envValue) return DEFAULT_EXPAND_CONTEXT_SIZE;
 
   const parsed = Number.parseInt(envValue, 10);
   if (!Number.isInteger(parsed) || parsed <= 0) {
     process.stderr.write(
-      `QMD Warning: invalid QMD_EXPAND_CONTEXT_SIZE="${envValue}", using default ${DEFAULT_EXPAND_CONTEXT_SIZE}.\n`
+      `QKB Warning: invalid QKB_EXPAND_CONTEXT_SIZE="${envValue}", using default ${DEFAULT_EXPAND_CONTEXT_SIZE}.\n`
     );
     return DEFAULT_EXPAND_CONTEXT_SIZE;
   }
@@ -501,9 +501,9 @@ export class LlamaCpp implements LLM {
 
 
   constructor(config: LlamaCppConfig = {}) {
-    this.embedModelUri = config.embedModel || process.env.QMD_EMBED_MODEL || DEFAULT_EMBED_MODEL;
-    this.generateModelUri = config.generateModel || process.env.QMD_GENERATE_MODEL || DEFAULT_GENERATE_MODEL;
-    this.rerankModelUri = config.rerankModel || process.env.QMD_RERANK_MODEL || DEFAULT_RERANK_MODEL;
+    this.embedModelUri = config.embedModel || process.env.QKB_EMBED_MODEL || DEFAULT_EMBED_MODEL;
+    this.generateModelUri = config.generateModel || process.env.QKB_GENERATE_MODEL || DEFAULT_GENERATE_MODEL;
+    this.rerankModelUri = config.rerankModel || process.env.QKB_RERANK_MODEL || DEFAULT_RERANK_MODEL;
     this.modelCacheDir = config.modelCacheDir || MODEL_CACHE_DIR;
     this.expandContextSize = resolveExpandContextSize(config.expandContextSize);
     this.inactivityTimeoutMs = config.inactivityTimeoutMs ?? DEFAULT_INACTIVITY_TIMEOUT_MS;
@@ -635,9 +635,9 @@ export class LlamaCpp implements LLM {
           llama = await loadLlama(gpuMode);
         } catch (err) {
           // GPU backend (e.g. Vulkan on headless/driverless machines) can throw at init.
-          // Fall back to CPU so qmd still works.
+          // Fall back to CPU so qkb still works.
           process.stderr.write(
-            `QMD Warning: GPU init failed${gpuMode === "auto" ? "" : ` for QMD_LLAMA_GPU=${gpuMode}`} (${err instanceof Error ? err.message : String(err)}), falling back to CPU.\n`
+            `QKB Warning: GPU init failed${gpuMode === "auto" ? "" : ` for QKB_LLAMA_GPU=${gpuMode}`} (${err instanceof Error ? err.message : String(err)}), falling back to CPU.\n`
           );
           llama = await loadLlama(false);
         }
@@ -645,7 +645,7 @@ export class LlamaCpp implements LLM {
 
       if (llama.gpu === false) {
         process.stderr.write(
-          "QMD Warning: no GPU acceleration, running on CPU (slow). Run 'qmd status' for details.\n"
+          "QKB Warning: no GPU acceleration, running on CPU (slow). Run 'qkb status' for details.\n"
         );
       }
       this.llama = llama;
@@ -858,14 +858,14 @@ export class LlamaCpp implements LLM {
   // context size" errors even after truncation because the overhead estimate
   // was insufficient.  4096 comfortably fits the largest real-world chunks
   // while staying well below the 40 960-token auto size.
-  // Override with QMD_RERANK_CONTEXT_SIZE env var if you need more headroom.
+  // Override with QKB_RERANK_CONTEXT_SIZE env var if you need more headroom.
   private static readonly RERANK_CONTEXT_SIZE: number = (() => {
-    const v = parseInt(process.env.QMD_RERANK_CONTEXT_SIZE ?? "", 10);
+    const v = parseInt(process.env.QKB_RERANK_CONTEXT_SIZE ?? "", 10);
     return Number.isFinite(v) && v > 0 ? v : 4096;
   })();
 
   private static readonly EMBED_CONTEXT_SIZE: number = (() => {
-    const v = parseInt(process.env.QMD_EMBED_CONTEXT_SIZE ?? "", 10);
+    const v = parseInt(process.env.QKB_EMBED_CONTEXT_SIZE ?? "", 10);
     return Number.isFinite(v) && v > 0 ? v : 2048;
   })();
   private async ensureRerankContexts(): Promise<Awaited<ReturnType<LlamaModel["createRankingContext"]>>[]> {

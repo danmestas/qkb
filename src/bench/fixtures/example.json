@@ -1,5 +1,5 @@
 {
-  "description": "Example benchmark fixture for QMD eval-docs. Tests exact keyword, semantic, and cross-domain retrieval across 6 documents.",
+  "description": "Example benchmark fixture for QKB eval-docs. Tests exact keyword, semantic, and cross-domain retrieval across 6 documents.",
   "version": 1,
   "collection": "eval-docs",
   "queries": [

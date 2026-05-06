@@ -1,5 +1,5 @@
 /**
- * Deep Research Evaluation for QMD
+ * Deep Research Evaluation for QKB
  *
  * Tests end-to-end retrieval quality: query → expansion → reranking → results
  * 
@@ -42,7 +42,7 @@ function loadQueries(): EvalQuery[] {
 function runBM25Search(query: string): SearchResult[] {
   try {
     const output = execSync(
-      `bun src/qmd.ts search "${query.replace(/"/g, '\\"')}" -c eval-docs --json -n 5 2>/dev/null`,
+      `bun src/cli/qkb.ts search "${query.replace(/"/g, '\\"')}" -c eval-docs --json -n 5 2>/dev/null`,
       { encoding: "utf-8", timeout: 30000 }
     );
     return JSON.parse(output);
@@ -54,7 +54,7 @@ function runBM25Search(query: string): SearchResult[] {
 function runDeepResearch(query: string): SearchResult[] {
   try {
     const output = execSync(
-      `bun src/qmd.ts query "${query.replace(/"/g, '\\"')}" -c eval-docs --json -n 5 2>/dev/null`,
+      `bun src/cli/qkb.ts query "${query.replace(/"/g, '\\"')}" -c eval-docs --json -n 5 2>/dev/null`,
       { encoding: "utf-8", timeout: 120000 }
     );
     return JSON.parse(output);
@@ -133,24 +133,24 @@ function evaluate(
 }
 
 async function main() {
-  console.log("QMD Deep Research Evaluation");
+  console.log("QKB Deep Research Evaluation");
   console.log("=".repeat(60));
   console.log("Testing hard queries that require semantic understanding.");
   console.log("These have NO exact keyword matches in documents.");
 
   // Check if eval-docs collection exists
   try {
-    const status = execSync("bun src/qmd.ts status --json 2>/dev/null", {
+    const status = execSync("bun src/cli/qkb.ts status --json 2>/dev/null", {
       encoding: "utf-8",
     });
     if (!status.includes("eval-docs")) {
       console.log("\n⚠️  eval-docs collection not found. Run:");
-      console.log("   qmd collection add test/eval-docs --name eval-docs");
-      console.log("   qmd embed");
+      console.log("   qkb collection add test/eval-docs --name eval-docs");
+      console.log("   qkb embed");
       process.exit(1);
     }
   } catch {
-    console.log("\n⚠️  Could not check status. Make sure qmd is working.");
+    console.log("\n⚠️  Could not check status. Make sure qkb is working.");
   }
 
   const queries = loadQueries();

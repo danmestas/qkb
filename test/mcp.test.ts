@@ -233,9 +233,9 @@ describe("MCP Server", () => {
     setConfigIndexName("index");
 
     // Set up test config directory
-    const configPrefix = join(tmpdir(), `qmd-mcp-config-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+    const configPrefix = join(tmpdir(), `qkb-mcp-config-${Date.now()}-${Math.random().toString(36).slice(2)}`);
     testConfigDir = await mkdtemp(configPrefix);
-    process.env.QMD_CONFIG_DIR = testConfigDir;
+    process.env.QKB_CONFIG_DIR = testConfigDir;
 
     // Create YAML config with test collection
     const testConfig: CollectionConfig = {
@@ -251,7 +251,7 @@ describe("MCP Server", () => {
     };
     await writeFile(join(testConfigDir, "index.yml"), YAML.stringify(testConfig));
 
-    testDbPath = `/tmp/qmd-mcp-test-${Date.now()}.sqlite`;
+    testDbPath = `/tmp/qkb-mcp-test-${Date.now()}.sqlite`;
     testDb = openDatabase(testDbPath);
     initTestDatabase(testDb);
     seedTestData(testDb);
@@ -275,11 +275,11 @@ describe("MCP Server", () => {
       await rmdir(testConfigDir);
     } catch {}
 
-    delete process.env.QMD_CONFIG_DIR;
+    delete process.env.QKB_CONFIG_DIR;
   });
 
   // ===========================================================================
-  // Tool: qmd_search (BM25)
+  // Tool: qkb_search (BM25)
   // ===========================================================================
 
   describe("searchFTS (BM25 keyword search)", () => {
@@ -388,7 +388,7 @@ describe("MCP Server", () => {
     });
 
     test("full hybrid search pipeline", async () => {
-      // Simulate full qmd_deep_search flow with type-routed queries
+      // Simulate full qkb_deep_search flow with type-routed queries
       const query = "meeting notes";
       const expanded = await expandQuery(query, DEFAULT_QUERY_MODEL, testDb);
 
@@ -435,10 +435,10 @@ describe("MCP Server", () => {
   });
 
   // ===========================================================================
-  // Tool: qmd_get (Get Document)
+  // Tool: qkb_get (Get Document)
   // ===========================================================================
 
-  describe("qmd_get tool", () => {
+  describe("qkb_get tool", () => {
     test("retrieves document by display_path", () => {
       const meta = findDocument(testDb, "readme.md", { includeBody: false });
       expect("error" in meta).toBe(false);
@@ -512,10 +512,10 @@ describe("MCP Server", () => {
   });
 
   // ===========================================================================
-  // Tool: qmd_multi_get (Multi Get)
+  // Tool: qkb_multi_get (Multi Get)
   // ===========================================================================
 
-  describe("qmd_multi_get tool", () => {
+  describe("qkb_multi_get tool", () => {
     test("retrieves multiple documents by glob pattern", () => {
       const { docs, errors } = findDocuments(testDb, "meetings/*.md", { includeBody: true });
       expect(errors.length).toBe(0);
@@ -580,10 +580,10 @@ describe("MCP Server", () => {
   });
 
   // ===========================================================================
-  // Tool: qmd_status
+  // Tool: qkb_status
   // ===========================================================================
 
-  describe("qmd_status tool", () => {
+  describe("qkb_status tool", () => {
     test("returns index status", () => {
       const status = getStatus(testDb);
       expect(status.totalDocuments).toBe(5);
@@ -600,10 +600,10 @@ describe("MCP Server", () => {
   });
 
   // ===========================================================================
-  // Resource: qmd://{path}
+  // Resource: qkb://{path}
   // ===========================================================================
 
-  describe("qmd:// resource", () => {
+  describe("qkb:// resource", () => {
     test("lists all documents", () => {
       const docs = testDb.prepare(`
         SELECT path as display_path, title
@@ -620,7 +620,7 @@ describe("MCP Server", () => {
     test("reads document by display_path", () => {
       const path = "readme.md";
       const doc = testDb.prepare(`
-        SELECT 'qmd://' || d.collection || '/' || d.path as filepath, d.path as display_path, content.doc as body
+        SELECT 'qkb://' || d.collection || '/' || d.path as filepath, d.path as display_path, content.doc as body
         FROM documents d
         JOIN content ON content.hash = d.hash
         WHERE d.path = ? AND d.active = 1
@@ -636,7 +636,7 @@ describe("MCP Server", () => {
       const decodedPath = decodeURIComponent(encodedPath);
 
       const doc = testDb.prepare(`
-        SELECT 'qmd://' || d.collection || '/' || d.path as filepath, d.path as display_path, content.doc as body
+        SELECT 'qkb://' || d.collection || '/' || d.path as filepath, d.path as display_path, content.doc as body
         FROM documents d
         JOIN content ON content.hash = d.hash
         WHERE d.path = ? AND d.active = 1
@@ -649,7 +649,7 @@ describe("MCP Server", () => {
     test("reads document by suffix match", () => {
       const path = "meeting-2024-01.md"; // without meetings/ prefix
       let doc = testDb.prepare(`
-        SELECT 'qmd://' || d.collection || '/' || d.path as filepath, d.path as display_path, content.doc as body
+        SELECT 'qkb://' || d.collection || '/' || d.path as filepath, d.path as display_path, content.doc as body
         FROM documents d
         JOIN content ON content.hash = d.hash
         WHERE d.path = ? AND d.active = 1
@@ -657,7 +657,7 @@ describe("MCP Server", () => {
 
       if (!doc) {
         doc = testDb.prepare(`
-          SELECT 'qmd://' || d.collection || '/' || d.path as filepath, d.path as display_path, content.doc as body
+          SELECT 'qkb://' || d.collection || '/' || d.path as filepath, d.path as display_path, content.doc as body
           FROM documents d
           JOIN content ON content.hash = d.hash
           WHERE d.path LIKE ? AND d.active = 1
@@ -672,7 +672,7 @@ describe("MCP Server", () => {
     test("returns not found for missing document", () => {
       const path = "nonexistent.md";
       const doc = testDb.prepare(`
-        SELECT 'qmd://' || d.collection || '/' || d.path as filepath, d.path as display_path, content.doc as body
+        SELECT 'qkb://' || d.collection || '/' || d.path as filepath, d.path as display_path, content.doc as body
         FROM documents d
         JOIN content ON content.hash = d.hash
         WHERE d.path = ? AND d.active = 1
@@ -684,7 +684,7 @@ describe("MCP Server", () => {
     test("includes context in document body", () => {
       const path = "meetings/meeting-2024-01.md";
       const doc = testDb.prepare(`
-        SELECT 'qmd://' || d.collection || '/' || d.path as filepath, d.path as display_path, content.doc as body
+        SELECT 'qkb://' || d.collection || '/' || d.path as filepath, d.path as display_path, content.doc as body
         FROM documents d
         JOIN content ON content.hash = d.hash
         WHERE d.path = ? AND d.active = 1
@@ -751,7 +751,7 @@ describe("MCP Server", () => {
       expect(decodedPath).toBe("External Podcast/2023 April - Interview.md");
 
       const doc = testDb.prepare(`
-        SELECT 'qmd://' || d.collection || '/' || d.path as filepath, d.path as display_path, content.doc as body
+        SELECT 'qkb://' || d.collection || '/' || d.path as filepath, d.path as display_path, content.doc as body
         FROM documents d
         JOIN content ON content.hash = d.hash
         WHERE d.path = ? AND d.active = 1
@@ -815,7 +815,7 @@ describe("MCP Server", () => {
   // ===========================================================================
 
   describe("MCP spec compliance", () => {
-    test("encodeQmdPath preserves slashes but encodes special chars", () => {
+    test("encodeQkbPath preserves slashes but encodes special chars", () => {
       // Helper function behavior (tested indirectly through resource URIs)
       const path = "External Podcast/2023 April - Interview.md";
       const segments = path.split('/').map(s => encodeURIComponent(s)).join('/');
@@ -855,13 +855,13 @@ describe("MCP Server", () => {
     });
 
     test("embedded resources include name and title", () => {
-      // Simulate what qmd_get returns
+      // Simulate what qkb_get returns
       const meta = findDocument(testDb, "readme.md", { includeBody: false });
       expect("error" in meta).toBe(false);
       if ("error" in meta) return;
       const body = getDocumentBody(testDb, meta) ?? "";
       const resource = {
-        uri: `qmd://${meta.displayPath}`,
+        uri: `qkb://${meta.displayPath}`,
         name: meta.displayPath,
         title: meta.title,
         mimeType: "text/markdown",
@@ -904,11 +904,11 @@ describe.skipIf(!!process.env.CI)("MCP HTTP Transport", () => {
   let httpTestConfigDir: string;
   // Stash original env to restore after tests
   const origIndexPath = process.env.INDEX_PATH;
-  const origConfigDir = process.env.QMD_CONFIG_DIR;
+  const origConfigDir = process.env.QKB_CONFIG_DIR;
 
   beforeAll(async () => {
     // Create isolated test database with seeded data
-    httpTestDbPath = `/tmp/qmd-mcp-http-test-${Date.now()}.sqlite`;
+    httpTestDbPath = `/tmp/qkb-mcp-http-test-${Date.now()}.sqlite`;
     const db = openDatabase(httpTestDbPath);
     initTestDatabase(db);
     seedTestData(db);
@@ -926,13 +926,13 @@ describe.skipIf(!!process.env.CI)("MCP HTTP Transport", () => {
     db.close();
 
     // Create isolated YAML config
-    const configPrefix = join(tmpdir(), `qmd-mcp-http-config-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+    const configPrefix = join(tmpdir(), `qkb-mcp-http-config-${Date.now()}-${Math.random().toString(36).slice(2)}`);
     httpTestConfigDir = await mkdtemp(configPrefix);
     await writeFile(join(httpTestConfigDir, "index.yml"), YAML.stringify(httpTestConfig));
 
     // Point createStore() at our test DB
     process.env.INDEX_PATH = httpTestDbPath;
-    process.env.QMD_CONFIG_DIR = httpTestConfigDir;
+    process.env.QKB_CONFIG_DIR = httpTestConfigDir;
 
     handle = await startMcpHttpServer(0, { quiet: true }); // OS-assigned ephemeral port
     baseUrl = `http://localhost:${handle.port}`;
@@ -944,8 +944,8 @@ describe.skipIf(!!process.env.CI)("MCP HTTP Transport", () => {
     // Restore env
     if (origIndexPath !== undefined) process.env.INDEX_PATH = origIndexPath;
     else delete process.env.INDEX_PATH;
-    if (origConfigDir !== undefined) process.env.QMD_CONFIG_DIR = origConfigDir;
-    else delete process.env.QMD_CONFIG_DIR;
+    if (origConfigDir !== undefined) process.env.QKB_CONFIG_DIR = origConfigDir;
+    else delete process.env.QKB_CONFIG_DIR;
 
     // Clean up test files
     try { unlinkSync(httpTestDbPath); } catch {}
@@ -1019,7 +1019,7 @@ describe.skipIf(!!process.env.CI)("MCP HTTP Transport", () => {
     expect(contentType).toContain("application/json");
     expect(json.jsonrpc).toBe("2.0");
     expect(json.id).toBe(1);
-    expect(json.result.serverInfo.name).toBe("qmd");
+    expect(json.result.serverInfo.name).toBe("qkb");
   });
 
   test("POST /mcp tools/list returns registered tools", async () => {

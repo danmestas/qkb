@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# QMD Release Script
+# QKB Release Script
 #
 # Renames the [Unreleased] section in CHANGELOG.md to the new version,
 # bumps package.json, commits, and creates a tag. The actual publish

@@ -19,7 +19,7 @@ analyze:
     done
 
 prepare:
-    QMD_BASE_MODEL=Qwen/Qwen3-1.7B uv run dataset/prepare_data.py --seed 42
+    QKB_BASE_MODEL=Qwen/Qwen3-1.7B uv run dataset/prepare_data.py --seed 42
 
 convert-onnx size="1.7B":
     uv run convert_onnx.py --size {{size}}
