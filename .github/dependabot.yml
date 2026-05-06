@@ -1,0 +1,49 @@
+version: 2
+
+# Dependabot configuration for danmestas/qkb.
+#
+# Scope: github-actions (CI workflows) and uv (the /finetune Python pipeline).
+# We deliberately do NOT enable the npm ecosystem here — runtime deps install
+# from bun.lock, which Dependabot can't update natively. Track those manually
+# via `bun outdated` until we either switch to npm/yarn or add Renovate.
+
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: America/Los_Angeles
+    open-pull-requests-limit: 5
+    groups:
+      gh-actions:
+        patterns:
+          - "*"
+    commit-message:
+      prefix: "chore(ci)"
+      include: scope
+
+  - package-ecosystem: uv
+    directory: /finetune
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: America/Los_Angeles
+    open-pull-requests-limit: 5
+    groups:
+      finetune-deps:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
+      finetune-major:
+        patterns:
+          - "*"
+        update-types:
+          - major
+    commit-message:
+      prefix: "chore(finetune)"
+      include: scope
