@@ -581,7 +581,7 @@ ${token}
     );
     expect(add.exitCode).toBe(0);
 
-    const before = await runQmd(["get", "qmd://empty-check/only.md"], { dbPath, configDir });
+    const before = await runQmd(["get", "qkb://empty-check/only.md"], { dbPath, configDir });
     expect(before.exitCode).toBe(0);
     expect(before.stdout).toContain(token);
 
@@ -591,7 +591,7 @@ ${token}
     expect(update.exitCode).toBe(0);
     expect(update.stdout).toContain("0 new, 0 updated, 0 unchanged, 1 removed");
 
-    const after = await runQmd(["get", "qmd://empty-check/only.md"], { dbPath, configDir });
+    const after = await runQmd(["get", "qkb://empty-check/only.md"], { dbPath, configDir });
     expect(after.exitCode).toBe(1);
   });
 });
@@ -620,7 +620,7 @@ describe("CLI Add-Context Command", () => {
     const { stdout, exitCode } = await runQmd([
       "context",
       "add",
-      `qmd://${collName}/`,
+      `qkb://${collName}/`,
       "Personal notes and meeting logs",
     ], { dbPath: localDbPath, configDir: localConfigDir });
     expect(exitCode).toBe(0);
@@ -769,11 +769,11 @@ describe("CLI Context Management", () => {
     const { stdout, exitCode } = await runQmd([
       "context",
       "add",
-      "qmd://fixtures/notes",
+      "qkb://fixtures/notes",
       "Context for notes subdirectory",
     ], { dbPath: localDbPath });
     expect(exitCode).toBe(0);
-    expect(stdout).toContain("✓ Added context for: qmd://fixtures/notes");
+    expect(stdout).toContain("✓ Added context for: qkb://fixtures/notes");
   });
 
   test("remove global context", async () => {
@@ -799,24 +799,24 @@ describe("CLI Context Management", () => {
     await runQmd([
       "context",
       "add",
-      "qmd://fixtures/notes",
+      "qkb://fixtures/notes",
       "Context to remove",
     ], { dbPath: localDbPath });
 
     const { stdout, exitCode } = await runQmd([
       "context",
       "rm",
-      "qmd://fixtures/notes",
+      "qkb://fixtures/notes",
     ], { dbPath: localDbPath });
     expect(exitCode).toBe(0);
-    expect(stdout).toContain("✓ Removed context for: qmd://fixtures/notes");
+    expect(stdout).toContain("✓ Removed context for: qkb://fixtures/notes");
   });
 
   test("fails to remove non-existent context", async () => {
     const { stdout, stderr, exitCode } = await runQmd([
       "context",
       "rm",
-      "qmd://nonexistent/path",
+      "qkb://nonexistent/path",
     ], { dbPath: localDbPath });
     expect(exitCode).toBe(1);
     expect(stderr || stdout).toContain("not found");
@@ -837,30 +837,30 @@ describe("CLI ls Command", () => {
     const { stdout, exitCode } = await runQmd(["ls"], { dbPath: localDbPath });
     expect(exitCode).toBe(0);
     expect(stdout).toContain("Collections:");
-    expect(stdout).toContain("qmd://fixtures/");
+    expect(stdout).toContain("qkb://fixtures/");
   });
 
   test("lists files in a collection", async () => {
     const { stdout, exitCode } = await runQmd(["ls", "fixtures"], { dbPath: localDbPath });
     expect(exitCode).toBe(0);
     // handelize preserves original case
-    expect(stdout).toContain("qmd://fixtures/README.md");
-    expect(stdout).toContain("qmd://fixtures/notes/meeting.md");
+    expect(stdout).toContain("qkb://fixtures/README.md");
+    expect(stdout).toContain("qkb://fixtures/notes/meeting.md");
   });
 
   test("lists files with path prefix", async () => {
     const { stdout, exitCode } = await runQmd(["ls", "fixtures/notes"], { dbPath: localDbPath });
     expect(exitCode).toBe(0);
-    expect(stdout).toContain("qmd://fixtures/notes/meeting.md");
-    expect(stdout).toContain("qmd://fixtures/notes/ideas.md");
+    expect(stdout).toContain("qkb://fixtures/notes/meeting.md");
+    expect(stdout).toContain("qkb://fixtures/notes/ideas.md");
     // Should not include files outside the prefix (case preserved)
-    expect(stdout).not.toContain("qmd://fixtures/README.md");
+    expect(stdout).not.toContain("qkb://fixtures/README.md");
   });
 
   test("lists files with virtual path", async () => {
-    const { stdout, exitCode } = await runQmd(["ls", "qmd://fixtures/docs"], { dbPath: localDbPath });
+    const { stdout, exitCode } = await runQmd(["ls", "qkb://fixtures/docs"], { dbPath: localDbPath });
     expect(exitCode).toBe(0);
-    expect(stdout).toContain("qmd://fixtures/docs/api.md");
+    expect(stdout).toContain("qkb://fixtures/docs/api.md");
   });
 
   test("handles non-existent collection", async () => {
@@ -885,7 +885,7 @@ describe("CLI Collection Commands", () => {
     expect(exitCode).toBe(0);
     expect(stdout).toContain("Collections");
     expect(stdout).toContain("fixtures");
-    expect(stdout).toContain("qmd://fixtures/");
+    expect(stdout).toContain("qkb://fixtures/");
     expect(stdout).toContain("Pattern:");
     expect(stdout).toContain("Files:");
   });
@@ -927,19 +927,19 @@ describe("CLI Collection Commands", () => {
   test("renames a collection", async () => {
     // First verify the collection exists
     const { stdout: listBefore } = await runQmd(["collection", "list"], { dbPath: localDbPath });
-    expect(listBefore).toContain("qmd://fixtures/");
+    expect(listBefore).toContain("qkb://fixtures/");
 
     // Rename it
     const { stdout, exitCode } = await runQmd(["collection", "rename", "fixtures", "my-fixtures"], { dbPath: localDbPath });
     expect(exitCode).toBe(0);
     expect(stdout).toContain("✓ Renamed collection 'fixtures' to 'my-fixtures'");
-    expect(stdout).toContain("qmd://fixtures/");
-    expect(stdout).toContain("qmd://my-fixtures/");
+    expect(stdout).toContain("qkb://fixtures/");
+    expect(stdout).toContain("qkb://my-fixtures/");
 
     // Verify the new name exists and old name is gone
     const { stdout: listAfter } = await runQmd(["collection", "list"], { dbPath: localDbPath });
-    expect(listAfter).toContain("qmd://my-fixtures/");
-    expect(listAfter).not.toContain("qmd://fixtures/"); // Old collection should not appear
+    expect(listAfter).toContain("qkb://my-fixtures/");
+    expect(listAfter).not.toContain("qkb://fixtures/"); // Old collection should not appear
   });
 
   test("handles renaming non-existent collection", async () => {
@@ -961,8 +961,8 @@ describe("CLI Collection Commands", () => {
 
     // Verify both collections exist
     const { stdout: listBoth } = await runQmd(["collection", "list"], { dbPath: localDbPath });
-    expect(listBoth).toContain("qmd://fixtures/");
-    expect(listBoth).toContain("qmd://second/");
+    expect(listBoth).toContain("qkb://fixtures/");
+    expect(listBoth).toContain("qkb://second/");
 
     // Try to rename fixtures to second (which already exists)
     const { stderr, exitCode } = await runQmd(["collection", "rename", "fixtures", "second"], { dbPath: localDbPath });
@@ -1095,7 +1095,7 @@ describe("collection ignore patterns", () => {
 });
 
 // =============================================================================
-// Output Format Tests - qmd:// URIs, context, and docid
+// Output Format Tests - qkb:// URIs, context, and docid
 // =============================================================================
 
 describe("search output formats", () => {
@@ -1117,10 +1117,10 @@ describe("search output formats", () => {
     expect(exitCode).toBe(0);
 
     // Add context
-    await runQmd(["context", "add", `qmd://${collName}/`, "Test fixtures for QMD"], { dbPath: localDbPath, configDir: localConfigDir });
+    await runQmd(["context", "add", `qkb://${collName}/`, "Test fixtures for QMD"], { dbPath: localDbPath, configDir: localConfigDir });
   });
 
-  test("search --json includes qmd:// path, docid, and context", async () => {
+  test("search --json includes qkb:// path, docid, and context", async () => {
     const { stdout, exitCode } = await runQmd(["search", "test", "--json", "-n", "1"], { dbPath: localDbPath, configDir: localConfigDir });
     expect(exitCode).toBe(0);
 
@@ -1128,7 +1128,7 @@ describe("search output formats", () => {
     expect(results.length).toBeGreaterThan(0);
 
     const result = results[0];
-    expect(result.file).toMatch(new RegExp(`^qmd://${collName}/`));
+    expect(result.file).toMatch(new RegExp(`^qkb://${collName}/`));
     expect(result.docid).toMatch(/^#[a-f0-9]{6}$/);
     expect(result.context).toBe("Test fixtures for QMD");
     // Ensure no full filesystem paths
@@ -1162,7 +1162,7 @@ describe("search output formats", () => {
 
     const results = JSON.parse(searchResult.stdout);
     const file = results[0]?.file;
-    expect(file).toMatch(new RegExp(`^qmd://${customColl}/.+\\?index=${customIndex}$`));
+    expect(file).toMatch(new RegExp(`^qkb://${customColl}/.+\\?index=${customIndex}$`));
 
     const getResult = await runQmd(
       ["get", file, "-l", "2"],
@@ -1172,26 +1172,26 @@ describe("search output formats", () => {
     expect(getResult.stdout.trim().length).toBeGreaterThan(0);
   });
 
-  test("search --files includes qmd:// path, docid, and context", async () => {
+  test("search --files includes qkb:// path, docid, and context", async () => {
     const { stdout, exitCode } = await runQmd(["search", "test", "--files", "-n", "1"], { dbPath: localDbPath, configDir: localConfigDir });
     expect(exitCode).toBe(0);
 
-    // Format: #docid,score,qmd://collection/path,"context"
-    expect(stdout).toMatch(new RegExp(`^#[a-f0-9]{6},[\\d.]+,qmd://${collName}/`, "m"));
+    // Format: #docid,score,qkb://collection/path,"context"
+    expect(stdout).toMatch(new RegExp(`^#[a-f0-9]{6},[\\d.]+,qkb://${collName}/`, "m"));
     expect(stdout).toContain("Test fixtures for QMD");
     // Ensure no full filesystem paths
     expect(stdout).not.toMatch(/\/Users\//);
     expect(stdout).not.toMatch(/\/home\//);
   });
 
-  test("search --csv includes qmd:// path, docid, and context", async () => {
+  test("search --csv includes qkb:// path, docid, and context", async () => {
     const { stdout, exitCode } = await runQmd(["search", "test", "--csv", "-n", "1"], { dbPath: localDbPath, configDir: localConfigDir });
     expect(exitCode).toBe(0);
 
     // Header should include context
     expect(stdout).toMatch(/^docid,score,file,title,context,line,snippet$/m);
-    // Data rows should have qmd:// paths and context
-    expect(stdout).toMatch(new RegExp(`#[a-f0-9]{6},[\\d.]+,qmd://${collName}/`));
+    // Data rows should have qkb:// paths and context
+    expect(stdout).toMatch(new RegExp(`#[a-f0-9]{6},[\\d.]+,qkb://${collName}/`));
     expect(stdout).toContain("Test fixtures for QMD");
     // Ensure no full filesystem paths
     expect(stdout).not.toMatch(/\/Users\//);
@@ -1206,23 +1206,23 @@ describe("search output formats", () => {
     expect(stdout).toContain("**context:** Test fixtures for QMD");
   });
 
-  test("search --xml includes qmd:// path, docid, and context", async () => {
+  test("search --xml includes qkb:// path, docid, and context", async () => {
     const { stdout, exitCode } = await runQmd(["search", "test", "--xml", "-n", "1"], { dbPath: localDbPath, configDir: localConfigDir });
     expect(exitCode).toBe(0);
 
-    expect(stdout).toMatch(new RegExp(`<file docid="#[a-f0-9]{6}" name="qmd://${collName}/`));
+    expect(stdout).toMatch(new RegExp(`<file docid="#[a-f0-9]{6}" name="qkb://${collName}/`));
     expect(stdout).toContain('context="Test fixtures for QMD"');
     // Ensure no full filesystem paths
     expect(stdout).not.toMatch(/\/Users\//);
     expect(stdout).not.toMatch(/\/home\//);
   });
 
-  test("search default CLI format includes plain qmd:// path, docid, and context in non-TTY mode", async () => {
+  test("search default CLI format includes plain qkb:// path, docid, and context in non-TTY mode", async () => {
     const { stdout, exitCode } = await runQmd(["search", "test", "-n", "1"], { dbPath: localDbPath, configDir: localConfigDir });
     expect(exitCode).toBe(0);
 
     // runQmd uses piped stdio, so stdout is non-TTY and should not contain OSC 8 links.
-    expect(stdout).toMatch(new RegExp(`^qmd://${collName}/.*#[a-f0-9]{6}`, "m"));
+    expect(stdout).toMatch(new RegExp(`^qkb://${collName}/.*#[a-f0-9]{6}`, "m"));
     expect(stdout).toContain("Context: Test fixtures for QMD");
     expect(stdout).not.toContain("\x1b]8;;");
     // Ensure no full filesystem paths
@@ -1289,8 +1289,8 @@ describe("get command path normalization", () => {
     expect(exitCode).toBe(0);
   });
 
-  test("get with qmd://collection/path format", async () => {
-    const { stdout, exitCode } = await runQmd(["get", `qmd://${collName}/test1.md`, "-l", "3"], { dbPath: localDbPath, configDir: localConfigDir });
+  test("get with qkb://collection/path format", async () => {
+    const { stdout, exitCode } = await runQmd(["get", `qkb://${collName}/test1.md`, "-l", "3"], { dbPath: localDbPath, configDir: localConfigDir });
     expect(exitCode).toBe(0);
     expect(stdout).toContain("Test Document 1");
   });
@@ -1307,8 +1307,8 @@ describe("get command path normalization", () => {
     expect(stdout).toContain("Test Document 1");
   });
 
-  test("get with qmd:////collection/path format (extra slashes)", async () => {
-    const { stdout, exitCode } = await runQmd(["get", `qmd:////${collName}/test1.md`, "-l", "3"], { dbPath: localDbPath, configDir: localConfigDir });
+  test("get with qkb:////collection/path format (extra slashes)", async () => {
+    const { stdout, exitCode } = await runQmd(["get", `qkb:////${collName}/test1.md`, "-l", "3"], { dbPath: localDbPath, configDir: localConfigDir });
     expect(exitCode).toBe(0);
     expect(stdout).toContain("Test Document 1");
   });
@@ -1320,8 +1320,8 @@ describe("get command path normalization", () => {
     expect(stdout).not.toMatch(/^# Test Document 1$/m);
   });
 
-  test("get with qmd://path:line format", async () => {
-    const { stdout, exitCode } = await runQmd(["get", `qmd://${collName}/test1.md:3`, "-l", "2"], { dbPath: localDbPath, configDir: localConfigDir });
+  test("get with qkb://path:line format", async () => {
+    const { stdout, exitCode } = await runQmd(["get", `qkb://${collName}/test1.md:3`, "-l", "2"], { dbPath: localDbPath, configDir: localConfigDir });
     expect(exitCode).toBe(0);
     // Should start from line 3, not line 1
     expect(stdout).not.toMatch(/^# Test Document 1$/m);
@@ -1354,8 +1354,8 @@ describe("status and collection list hide filesystem paths", () => {
     const { stdout, exitCode } = await runQmd(["status"], { dbPath: localDbPath, configDir: localConfigDir });
     expect(exitCode).toBe(0);
 
-    // Should show qmd:// URIs
-    expect(stdout).toContain(`qmd://${collName}/`);
+    // Should show qkb:// URIs
+    expect(stdout).toContain(`qkb://${collName}/`);
     // Should NOT show full filesystem paths (except for the index location which is ok)
     const lines = stdout.split('\n').filter(l => !l.includes('Index:'));
     const pathLines = lines.filter(l => l.includes('/Users/') || l.includes('/home/') || l.includes('/tmp/'));
@@ -1366,8 +1366,8 @@ describe("status and collection list hide filesystem paths", () => {
     const { stdout, exitCode } = await runQmd(["collection", "list"], { dbPath: localDbPath, configDir: localConfigDir });
     expect(exitCode).toBe(0);
 
-    // Should show qmd:// URIs
-    expect(stdout).toContain(`qmd://${collName}/`);
+    // Should show qkb:// URIs
+    expect(stdout).toContain(`qkb://${collName}/`);
     // Should NOT show Path: lines with filesystem paths
     expect(stdout).not.toMatch(/Path:\s+\//);
   });

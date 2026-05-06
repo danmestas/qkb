@@ -15,7 +15,7 @@ function filterByCollections<T extends { filepath?: string; file?: string }>(
   collectionNames: string[],
 ): T[] {
   if (collectionNames.length <= 1) return results;
-  const prefixes = collectionNames.map((n) => `qmd://${n}/`);
+  const prefixes = collectionNames.map((n) => `qkb://${n}/`);
   return results.filter((r) => {
     const path = r.filepath || r.file || "";
     return prefixes.some((p) => path.startsWith(p));
@@ -24,10 +24,10 @@ function filterByCollections<T extends { filepath?: string; file?: string }>(
 
 describe("filterByCollections", () => {
   const results = [
-    { filepath: "qmd://docs/readme.md", file: "qmd://docs/readme.md" },
-    { filepath: "qmd://notes/todo.md", file: "qmd://notes/todo.md" },
-    { filepath: "qmd://journals/2024/jan.md", file: "qmd://journals/2024/jan.md" },
-    { filepath: "qmd://docs/api.md", file: "qmd://docs/api.md" },
+    { filepath: "qkb://docs/readme.md", file: "qkb://docs/readme.md" },
+    { filepath: "qkb://notes/todo.md", file: "qkb://notes/todo.md" },
+    { filepath: "qkb://journals/2024/jan.md", file: "qkb://journals/2024/jan.md" },
+    { filepath: "qkb://docs/api.md", file: "qkb://docs/api.md" },
   ];
 
   test("returns all results when no collections specified", () => {
@@ -42,9 +42,9 @@ describe("filterByCollections", () => {
     const filtered = filterByCollections(results, ["docs", "journals"]);
     expect(filtered).toHaveLength(3);
     expect(filtered.map((r) => r.filepath)).toEqual([
-      "qmd://docs/readme.md",
-      "qmd://journals/2024/jan.md",
-      "qmd://docs/api.md",
+      "qkb://docs/readme.md",
+      "qkb://journals/2024/jan.md",
+      "qkb://docs/api.md",
     ]);
   });
 
@@ -52,8 +52,8 @@ describe("filterByCollections", () => {
     const filtered = filterByCollections(results, ["notes", "journals"]);
     expect(filtered).toHaveLength(2);
     expect(filtered.map((r) => r.filepath)).toEqual([
-      "qmd://notes/todo.md",
-      "qmd://journals/2024/jan.md",
+      "qkb://notes/todo.md",
+      "qkb://journals/2024/jan.md",
     ]);
   });
 
@@ -64,8 +64,8 @@ describe("filterByCollections", () => {
 
   test("uses file field when filepath is missing", () => {
     const fileOnlyResults = [
-      { file: "qmd://docs/readme.md" },
-      { file: "qmd://notes/todo.md" },
+      { file: "qkb://docs/readme.md" },
+      { file: "qkb://notes/todo.md" },
     ];
     const filtered = filterByCollections(fileOnlyResults, ["docs", "notes"]);
     expect(filtered).toHaveLength(2);
@@ -73,12 +73,12 @@ describe("filterByCollections", () => {
 
   test("uses filepath over file when both present", () => {
     const mixedResults = [
-      { filepath: "qmd://docs/readme.md", file: "qmd://notes/todo.md" },
+      { filepath: "qkb://docs/readme.md", file: "qkb://notes/todo.md" },
     ];
     const filtered = filterByCollections(mixedResults, ["docs", "notes"]);
     expect(filtered).toHaveLength(1);
     // Should match via filepath (docs), not file (notes)
-    expect(filtered[0].filepath).toBe("qmd://docs/readme.md");
+    expect(filtered[0].filepath).toBe("qkb://docs/readme.md");
   });
 });
 

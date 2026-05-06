@@ -25,6 +25,32 @@ console.log(`Database: ${dbPath}\n`);
 
 const db = new Database(dbPath);
 
+// Idempotent: rewrite legacy qmd:// literals → qkb:// in any free-text column
+// where they may have been persisted (collection contexts, global context,
+// update_command). Safe to run on already-migrated DBs because the LIKE
+// filter matches no rows on the second pass. Runs OUTSIDE the schema
+// transaction below so it applies even when the schema migration is a no-op
+// on already-migrated databases.
+function rewriteLegacyScheme(): void {
+  console.log(`${c.yellow}0. Rewriting legacy 'qmd://' → 'qkb://' literals...${c.reset}`);
+  let changed = 0;
+  const tryUpdate = (sql: string): void => {
+    try {
+      const r = db.run(sql);
+      changed += r.changes ?? 0;
+    } catch (err) {
+      // Table or column may not exist on very old DBs — non-fatal.
+      console.log(`  ${c.dim}skip: ${(err as Error).message}${c.reset}`);
+    }
+  };
+  tryUpdate(`UPDATE store_collections SET context = REPLACE(context, 'qmd://', 'qkb://') WHERE context LIKE '%qmd://%'`);
+  tryUpdate(`UPDATE store_collections SET update_command = REPLACE(update_command, 'qmd://', 'qkb://') WHERE update_command LIKE '%qmd://%'`);
+  tryUpdate(`UPDATE store_config SET value = REPLACE(value, 'qmd://', 'qkb://') WHERE value LIKE '%qmd://%'`);
+  console.log(`  ${c.green}✓${c.reset} ${changed} row(s) rewritten`);
+}
+
+rewriteLegacyScheme();
+
 try {
   db.exec("BEGIN TRANSACTION");
 

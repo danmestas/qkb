@@ -422,7 +422,7 @@ async function showStatus(): Promise<void> {
       const lastMod = col.last_modified ? formatTimeAgo(new Date(col.last_modified)) : "never";
       const contexts = contextsByCollection.get(col.name) || [];
 
-      console.log(`  ${c.cyan}${col.name}${c.reset} ${c.dim}(qmd://${col.name}/)${c.reset}`);
+      console.log(`  ${c.cyan}${col.name}${c.reset} ${c.dim}(qkb://${col.name}/)${c.reset}`);
       console.log(`    ${c.dim}Pattern:${c.reset}  ${col.glob_pattern}`);
       console.log(`    ${c.dim}Files:${c.reset}    ${col.active_count} (updated ${lastMod})`);
 
@@ -447,7 +447,7 @@ async function showStatus(): Promise<void> {
     }
     console.log(`  ${c.dim}# Get a document${c.reset}`);
     if (collections.length > 0 && collections[0]) {
-      console.log(`  qkb get qmd://${collections[0].name}/path/to/file.md`);
+      console.log(`  qkb get qkb://${collections[0].name}/path/to/file.md`);
     }
     console.log(`  ${c.dim}# Search within a collection${c.reset}`);
     if (collections.length > 0 && collections[0]) {
@@ -520,8 +520,8 @@ async function showStatus(): Promise<void> {
     const names = collectionsWithoutContext.map(c => c.name).slice(0, 3).join(', ');
     const more = collectionsWithoutContext.length > 3 ? ` +${collectionsWithoutContext.length - 3} more` : '';
     tips.push(`Add context to collections for better search results: ${names}${more}`);
-    tips.push(`  ${c.dim}qkb context add qmd://<name>/ "What this collection contains"${c.reset}`);
-    tips.push(`  ${c.dim}qkb context add qmd://<name>/meeting-notes "Weekly team meeting notes"${c.reset}`);
+    tips.push(`  ${c.dim}qkb context add qkb://<name>/ "What this collection contains"${c.reset}`);
+    tips.push(`  ${c.dim}qkb context add qkb://<name>/meeting-notes "Weekly team meeting notes"${c.reset}`);
   }
 
   // Check for collections without update commands
@@ -694,11 +694,11 @@ async function contextAdd(pathArg: string | undefined, contextText: string): Pro
     fsPath = getPwd();
   } else if (fsPath.startsWith('~/')) {
     fsPath = homedir() + fsPath.slice(1);
-  } else if (!fsPath.startsWith('/') && !fsPath.startsWith('qmd://')) {
+  } else if (!fsPath.startsWith('/') && !fsPath.startsWith('qkb://')) {
     fsPath = resolve(getPwd(), fsPath);
   }
 
-  // Handle virtual paths (qmd://collection/path)
+  // Handle virtual paths (qkb://collection/path)
   if (isVirtualPath(fsPath)) {
     const parsed = parseVirtualPath(fsPath);
     if (!parsed) {
@@ -716,8 +716,8 @@ async function contextAdd(pathArg: string | undefined, contextText: string): Pro
     resyncConfig();
 
     const displayPath = parsed.path
-      ? `qmd://${parsed.collectionName}/${parsed.path}`
-      : `qmd://${parsed.collectionName}/ (collection root)`;
+      ? `qkb://${parsed.collectionName}/${parsed.path}`
+      : `qkb://${parsed.collectionName}/ (collection root)`;
     console.log(`${c.green}✓${c.reset} Added context for: ${displayPath}`);
     console.log(`${c.dim}Context: ${contextText}${c.reset}`);
     closeDb();
@@ -735,7 +735,7 @@ async function contextAdd(pathArg: string | undefined, contextText: string): Pro
   yamlAddContext(detected.collectionName, detected.relativePath, contextText);
   resyncConfig();
 
-  const displayPath = detected.relativePath ? `qmd://${detected.collectionName}/${detected.relativePath}` : `qmd://${detected.collectionName}/`;
+  const displayPath = detected.relativePath ? `qkb://${detected.collectionName}/${detected.relativePath}` : `qkb://${detected.collectionName}/`;
   console.log(`${c.green}✓${c.reset} Added context for: ${displayPath}`);
   console.log(`${c.dim}Context: ${contextText}${c.reset}`);
   closeDb();
@@ -828,11 +828,11 @@ function contextRemove(pathArg: string): void {
   const success = yamlRemoveContext(detected.collectionName, detected.relativePath);
 
   if (!success) {
-    console.error(`${c.yellow}No context found for: qmd://${detected.collectionName}/${detected.relativePath}${c.reset}`);
+    console.error(`${c.yellow}No context found for: qkb://${detected.collectionName}/${detected.relativePath}${c.reset}`);
     process.exit(1);
   }
 
-  console.log(`${c.green}✓${c.reset} Removed context for: qmd://${detected.collectionName}/${detected.relativePath}`);
+  console.log(`${c.green}✓${c.reset} Removed context for: qkb://${detected.collectionName}/${detected.relativePath}`);
 }
 
 function getDocument(filename: string, fromLine?: number, maxLines?: number, lineNumbers?: boolean): void {
@@ -869,7 +869,7 @@ function getDocument(filename: string, fromLine?: number, maxLines?: number, lin
   let doc: { collectionName: string; path: string; body: string } | null = null;
   let virtualPath: string;
 
-  // Handle virtual paths (qmd://collection/path)
+  // Handle virtual paths (qkb://collection/path)
   if (isVirtualPath(inputPath)) {
     const parsed = parseVirtualPath(inputPath);
     if (!parsed) {
@@ -1043,7 +1043,7 @@ function multiGet(pattern: string, maxLines?: number, maxBytes: number = DEFAULT
           // Try exact match on collection + path
           doc = db.prepare(`
             SELECT
-              'qmd://' || d.collection || '/' || d.path as virtual_path,
+              'qkb://' || d.collection || '/' || d.path as virtual_path,
               LENGTH(content.doc) as body_length,
               d.collection,
               d.path
@@ -1056,7 +1056,7 @@ function multiGet(pattern: string, maxLines?: number, maxBytes: number = DEFAULT
         // Try exact match on path
         doc = db.prepare(`
           SELECT
-            'qmd://' || d.collection || '/' || d.path as virtual_path,
+            'qkb://' || d.collection || '/' || d.path as virtual_path,
             LENGTH(content.doc) as body_length,
             d.collection,
             d.path
@@ -1070,7 +1070,7 @@ function multiGet(pattern: string, maxLines?: number, maxBytes: number = DEFAULT
         if (!doc) {
           doc = db.prepare(`
             SELECT
-              'qmd://' || d.collection || '/' || d.path as virtual_path,
+              'qkb://' || d.collection || '/' || d.path as virtual_path,
               LENGTH(content.doc) as body_length,
               d.collection,
               d.path
@@ -1284,7 +1284,7 @@ function listFiles(pathArg?: string): void {
 
     console.log(`${c.bold}Collections:${c.reset}\n`);
     for (const coll of collections) {
-      console.log(`  ${c.dim}qmd://${c.reset}${c.cyan}${coll.name}/${c.reset}  ${c.dim}(${coll.file_count} files)${c.reset}`);
+      console.log(`  ${c.dim}qkb://${c.reset}${c.cyan}${coll.name}/${c.reset}  ${c.dim}(${coll.file_count} files)${c.reset}`);
     }
     closeDb();
     return;
@@ -1294,8 +1294,8 @@ function listFiles(pathArg?: string): void {
   let collectionName: string;
   let pathPrefix: string | null = null;
 
-  if (pathArg.startsWith('qmd://')) {
-    // Virtual path format: qmd://collection/path
+  if (pathArg.startsWith('qkb://')) {
+    // Virtual path format: qkb://collection/path
     const parsed = parseVirtualPath(pathArg);
     if (!parsed) {
       console.error(`Invalid virtual path: ${pathArg}`);
@@ -1352,7 +1352,7 @@ function listFiles(pathArg?: string): void {
 
   if (files.length === 0) {
     if (pathPrefix) {
-      console.log(`No files found under qmd://${collectionName}/${pathPrefix}`);
+      console.log(`No files found under qkb://${collectionName}/${pathPrefix}`);
     } else {
       console.log(`No files found in collection: ${collectionName}`);
     }
@@ -1369,8 +1369,8 @@ function listFiles(pathArg?: string): void {
     const date = new Date(file.modified_at);
     const timeStr = formatLsTime(date);
 
-    // Dim the qmd:// prefix, highlight the filename
-    console.log(`${sizeStr}  ${timeStr}  ${c.dim}qmd://${collectionName}/${c.reset}${c.cyan}${file.path}${c.reset}`);
+    // Dim the qkb:// prefix, highlight the filename
+    console.log(`${sizeStr}  ${timeStr}  ${c.dim}qkb://${collectionName}/${c.reset}${c.cyan}${file.path}${c.reset}`);
   }
 
   closeDb();
@@ -1418,7 +1418,7 @@ function collectionList(): void {
     const excluded = yamlColl?.includeByDefault === false;
     const excludeTag = excluded ? ` ${c.yellow}[excluded]${c.reset}` : '';
 
-    console.log(`${c.cyan}${coll.name}${c.reset} ${c.dim}(qmd://${coll.name}/)${c.reset}${excludeTag}`);
+    console.log(`${c.cyan}${coll.name}${c.reset} ${c.dim}(qkb://${coll.name}/)${c.reset}${excludeTag}`);
     console.log(`  ${c.dim}Pattern:${c.reset}  ${coll.glob_pattern}`);
     if (yamlColl?.ignore?.length) {
       console.log(`  ${c.dim}Ignore:${c.reset}   ${yamlColl.ignore.join(', ')}`);
@@ -1453,7 +1453,7 @@ async function collectionAdd(pwd: string, globPattern: string, name?: string): P
 
   if (existingPwdGlob) {
     console.error(`${c.yellow}A collection already exists for this path and pattern:${c.reset}`);
-    console.error(`  Name: ${existingPwdGlob.name} (qmd://${existingPwdGlob.name}/)`);
+    console.error(`  Name: ${existingPwdGlob.name} (qkb://${existingPwdGlob.name}/)`);
     console.error(`  Pattern: ${globPattern}`);
     console.error(`\nUse 'qkb update' to re-index it, or remove it first with 'qkb collection remove ${existingPwdGlob.name}'`);
     process.exit(1);
@@ -1517,7 +1517,7 @@ function collectionRename(oldName: string, newName: string): void {
   closeDb();
 
   console.log(`${c.green}✓${c.reset} Renamed collection '${oldName}' to '${newName}'`);
-  console.log(`  Virtual paths updated: ${c.cyan}qmd://${oldName}/${c.reset} → ${c.cyan}qmd://${newName}/${c.reset}`);
+  console.log(`  Virtual paths updated: ${c.cyan}qkb://${oldName}/${c.reset} → ${c.cyan}qkb://${newName}/${c.reset}`);
 }
 
 async function indexFiles(pwd?: string, globPattern: string = DEFAULT_GLOB, collectionName?: string, suppressEmbedNotice: boolean = false, ignorePatterns?: string[]): Promise<void> {
@@ -1947,11 +1947,11 @@ function outputResults(results: OutputRow[], query: string, opts: OutputOptions)
     return;
   }
 
-  // Helper to create qmd:// URI from displayPath
+  // Helper to create qkb:// URI from displayPath
   const toQmdPath = (displayPath: string) => {
     const [collectionName, ...segments] = displayPath.split("/");
     if (!collectionName || segments.length === 0) {
-      return `qmd://${displayPath}`;
+      return `qkb://${displayPath}`;
     }
     const indexName = getActiveIndexName();
     return buildVirtualPath(
@@ -2003,7 +2003,7 @@ function outputResults(results: OutputRow[], query: string, opts: OutputOptions)
       const docid = row.docid || (row.hash ? row.hash.slice(0, 6) : undefined);
 
       // Line 1: filepath with docid
-      const virtualPath = row.file.startsWith("qmd://") ? row.file : toQmdPath(row.displayPath);
+      const virtualPath = row.file.startsWith("qkb://") ? row.file : toQmdPath(row.displayPath);
       const parsed = parseVirtualPath(virtualPath);
       const absolutePath = resolveVirtualPath(linkDb, virtualPath);
 
@@ -2136,7 +2136,7 @@ function resolveCollectionFilter(raw: string | string[] | undefined, useDefaults
 // Post-filter results to only include files from specified collections.
 function filterByCollections<T extends { filepath?: string; file?: string }>(results: T[], collectionNames: string[]): T[] {
   if (collectionNames.length <= 1) return results;
-  const prefixes = collectionNames.map(n => `qmd://${n}/`);
+  const prefixes = collectionNames.map(n => `qkb://${n}/`);
   return results.filter(r => {
     const path = r.filepath || r.file || '';
     return prefixes.some(p => path.startsWith(p));
@@ -2311,7 +2311,7 @@ async function vectorSearch(query: string, opts: OutputOptions, _model: string =
     // Post-filter for multi-collection
     if (collectionNames.length > 1) {
       results = results.filter(r => {
-        const prefixes = collectionNames.map(n => `qmd://${n}/`);
+        const prefixes = collectionNames.map(n => `qkb://${n}/`);
         return prefixes.some(p => r.file.startsWith(p));
       });
     }
@@ -2440,7 +2440,7 @@ async function querySearch(query: string, opts: OutputOptions, _embedModel: stri
     // Post-filter for multi-collection
     if (collectionNames.length > 1) {
       results = results.filter(r => {
-        const prefixes = collectionNames.map(n => `qmd://${n}/`);
+        const prefixes = collectionNames.map(n => `qkb://${n}/`);
         return prefixes.some(p => r.file.startsWith(p));
       });
     }
@@ -2886,8 +2886,8 @@ if (isMain) {
             console.error("  qkb context add / \"Global context for all collections\"");
             console.error("");
             console.error("  Using virtual paths:");
-            console.error("  qkb context add qmd://journals/ \"Context for entire journals collection\"");
-            console.error("  qkb context add qmd://journals/2024 \"Context for 2024 journals\"");
+            console.error("  qkb context add qkb://journals/ \"Context for entire journals collection\"");
+            console.error("  qkb context add qkb://journals/2024 \"Context for 2024 journals\"");
             process.exit(1);
           }
 
@@ -2923,7 +2923,7 @@ if (isMain) {
             console.error("Usage: qkb context rm <path>");
             console.error("Examples:");
             console.error("  qkb context rm /");
-            console.error("  qkb context rm qmd://journals/2024");
+            console.error("  qkb context rm qkb://journals/2024");
             process.exit(1);
           }
           contextRemove(cli.args[1]);

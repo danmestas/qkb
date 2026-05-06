@@ -600,10 +600,10 @@ describe("MCP Server", () => {
   });
 
   // ===========================================================================
-  // Resource: qmd://{path}
+  // Resource: qkb://{path}
   // ===========================================================================
 
-  describe("qmd:// resource", () => {
+  describe("qkb:// resource", () => {
     test("lists all documents", () => {
       const docs = testDb.prepare(`
         SELECT path as display_path, title
@@ -620,7 +620,7 @@ describe("MCP Server", () => {
     test("reads document by display_path", () => {
       const path = "readme.md";
       const doc = testDb.prepare(`
-        SELECT 'qmd://' || d.collection || '/' || d.path as filepath, d.path as display_path, content.doc as body
+        SELECT 'qkb://' || d.collection || '/' || d.path as filepath, d.path as display_path, content.doc as body
         FROM documents d
         JOIN content ON content.hash = d.hash
         WHERE d.path = ? AND d.active = 1
@@ -636,7 +636,7 @@ describe("MCP Server", () => {
       const decodedPath = decodeURIComponent(encodedPath);
 
       const doc = testDb.prepare(`
-        SELECT 'qmd://' || d.collection || '/' || d.path as filepath, d.path as display_path, content.doc as body
+        SELECT 'qkb://' || d.collection || '/' || d.path as filepath, d.path as display_path, content.doc as body
         FROM documents d
         JOIN content ON content.hash = d.hash
         WHERE d.path = ? AND d.active = 1
@@ -649,7 +649,7 @@ describe("MCP Server", () => {
     test("reads document by suffix match", () => {
       const path = "meeting-2024-01.md"; // without meetings/ prefix
       let doc = testDb.prepare(`
-        SELECT 'qmd://' || d.collection || '/' || d.path as filepath, d.path as display_path, content.doc as body
+        SELECT 'qkb://' || d.collection || '/' || d.path as filepath, d.path as display_path, content.doc as body
         FROM documents d
         JOIN content ON content.hash = d.hash
         WHERE d.path = ? AND d.active = 1
@@ -657,7 +657,7 @@ describe("MCP Server", () => {
 
       if (!doc) {
         doc = testDb.prepare(`
-          SELECT 'qmd://' || d.collection || '/' || d.path as filepath, d.path as display_path, content.doc as body
+          SELECT 'qkb://' || d.collection || '/' || d.path as filepath, d.path as display_path, content.doc as body
           FROM documents d
           JOIN content ON content.hash = d.hash
           WHERE d.path LIKE ? AND d.active = 1
@@ -672,7 +672,7 @@ describe("MCP Server", () => {
     test("returns not found for missing document", () => {
       const path = "nonexistent.md";
       const doc = testDb.prepare(`
-        SELECT 'qmd://' || d.collection || '/' || d.path as filepath, d.path as display_path, content.doc as body
+        SELECT 'qkb://' || d.collection || '/' || d.path as filepath, d.path as display_path, content.doc as body
         FROM documents d
         JOIN content ON content.hash = d.hash
         WHERE d.path = ? AND d.active = 1
@@ -684,7 +684,7 @@ describe("MCP Server", () => {
     test("includes context in document body", () => {
       const path = "meetings/meeting-2024-01.md";
       const doc = testDb.prepare(`
-        SELECT 'qmd://' || d.collection || '/' || d.path as filepath, d.path as display_path, content.doc as body
+        SELECT 'qkb://' || d.collection || '/' || d.path as filepath, d.path as display_path, content.doc as body
         FROM documents d
         JOIN content ON content.hash = d.hash
         WHERE d.path = ? AND d.active = 1
@@ -751,7 +751,7 @@ describe("MCP Server", () => {
       expect(decodedPath).toBe("External Podcast/2023 April - Interview.md");
 
       const doc = testDb.prepare(`
-        SELECT 'qmd://' || d.collection || '/' || d.path as filepath, d.path as display_path, content.doc as body
+        SELECT 'qkb://' || d.collection || '/' || d.path as filepath, d.path as display_path, content.doc as body
         FROM documents d
         JOIN content ON content.hash = d.hash
         WHERE d.path = ? AND d.active = 1
@@ -861,7 +861,7 @@ describe("MCP Server", () => {
       if ("error" in meta) return;
       const body = getDocumentBody(testDb, meta) ?? "";
       const resource = {
-        uri: `qmd://${meta.displayPath}`,
+        uri: `qkb://${meta.displayPath}`,
         name: meta.displayPath,
         title: meta.title,
         mimeType: "text/markdown",

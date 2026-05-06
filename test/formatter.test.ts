@@ -38,8 +38,8 @@ const TEST_CONTEXT = "Internal engineering keynotes from company summit events";
 
 function makeSearchResult(overrides: Partial<SearchResult> = {}): SearchResult {
   return {
-    filepath: "qmd://archive/summit/keynote.md",
-    displayPath: "qmd://archive/summit/keynote.md",
+    filepath: "qkb://archive/summit/keynote.md",
+    displayPath: "qkb://archive/summit/keynote.md",
     title: "Summit Keynote",
     context: TEST_CONTEXT,
     hash: "dc5590abcdef",
@@ -56,8 +56,8 @@ function makeSearchResult(overrides: Partial<SearchResult> = {}): SearchResult {
 
 function makeDocumentResult(overrides: Partial<DocumentResult> = {}): DocumentResult {
   return {
-    filepath: "qmd://archive/summit/keynote.md",
-    displayPath: "qmd://archive/summit/keynote.md",
+    filepath: "qkb://archive/summit/keynote.md",
+    displayPath: "qkb://archive/summit/keynote.md",
     title: "Summit Keynote",
     context: TEST_CONTEXT,
     hash: "dc5590abcdef",
@@ -72,8 +72,8 @@ function makeDocumentResult(overrides: Partial<DocumentResult> = {}): DocumentRe
 
 function makeMultiGetFile(overrides: Partial<MultiGetFile & { skipped: false }> = {}): MultiGetFile {
   return {
-    filepath: "qmd://archive/summit/keynote.md",
-    displayPath: "qmd://archive/summit/keynote.md",
+    filepath: "qkb://archive/summit/keynote.md",
+    displayPath: "qkb://archive/summit/keynote.md",
     title: "Summit Keynote",
     context: TEST_CONTEXT,
     body: "---\ntitle: Summit Keynote\n---\n\nThis is the keynote content.",
@@ -136,7 +136,7 @@ describe("search results include context in all formats", () => {
   test("MCP CSV format includes context", () => {
     const mcpResults = [{
       docid: "dc5590",
-      file: "qmd://archive/summit/keynote.md",
+      file: "qkb://archive/summit/keynote.md",
       title: "Summit Keynote",
       score: 0.84,
       context: TEST_CONTEXT,

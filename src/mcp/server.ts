@@ -2,7 +2,7 @@
  * QMD MCP Server - Model Context Protocol server for QMD
  *
  * Exposes QMD search and document retrieval as MCP tools and resources.
- * Documents are accessible via qmd:// URIs.
+ * Documents are accessible via qkb:// URIs.
  *
  * Follows MCP spec 2025-06-18 for proper response types.
  */
@@ -63,7 +63,7 @@ type StatusResult = {
 // =============================================================================
 
 /**
- * Encode a path for use in qmd:// URIs.
+ * Encode a path for use in qkb:// URIs.
  * Encodes special characters but preserves forward slashes for readability.
  */
 function encodeQmdPath(path: string): string {
@@ -180,13 +180,13 @@ async function createMcpServer(store: QMDStore): Promise<McpServer> {
   const defaultCollectionNames = await store.getDefaultCollectionNames();
 
   // ---------------------------------------------------------------------------
-  // Resource: qmd://{path} - read-only access to documents by path
+  // Resource: qkb://{path} - read-only access to documents by path
   // Note: No list() - documents are discovered via search tools
   // ---------------------------------------------------------------------------
 
   server.registerResource(
     "document",
-    new ResourceTemplate("qmd://{+path}", { list: undefined }),
+    new ResourceTemplate("qkb://{+path}", { list: undefined }),
     {
       title: "QMD Document",
       description: "A markdown document from your QMD knowledge base. Use search tools to discover documents.",
@@ -413,7 +413,7 @@ Intent-aware lex (C++ performance, not sports):
         content: [{
           type: "resource",
           resource: {
-            uri: `qmd://${encodeQmdPath(result.displayPath)}`,
+            uri: `qkb://${encodeQmdPath(result.displayPath)}`,
             name: result.displayPath,
             title: result.title,
             mimeType: "text/markdown",
@@ -484,7 +484,7 @@ Intent-aware lex (C++ performance, not sports):
         content.push({
           type: "resource",
           resource: {
-            uri: `qmd://${encodeQmdPath(result.doc.displayPath)}`,
+            uri: `qkb://${encodeQmdPath(result.doc.displayPath)}`,
             name: result.doc.displayPath,
             title: result.doc.title,
             mimeType: "text/markdown",

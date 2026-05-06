@@ -512,7 +512,7 @@ describe("searchLex (BM25)", () => {
       const title = content.match(/^#\s+(.+)/m)?.[1] || file;
 
       internal.insertContent(hash, content, now);
-      internal.insertDocument("docs", `qmd://docs/${file}`, title, hash, now, now);
+      internal.insertDocument("docs", `qkb://docs/${file}`, title, hash, now, now);
     }
 
     // Index notes collection
@@ -523,7 +523,7 @@ describe("searchLex (BM25)", () => {
       const title = content.match(/^#\s+(.+)/m)?.[1] || file;
 
       internal.insertContent(hash, content, now);
-      internal.insertDocument("notes", `qmd://notes/${file}`, title, hash, now, now);
+      internal.insertDocument("notes", `qkb://notes/${file}`, title, hash, now, now);
     }
   });
 
@@ -698,7 +698,7 @@ describe("get and multiGet", () => {
       const title = content.match(/^#\s+(.+)/m)?.[1] || file;
 
       internal.insertContent(hash, content, now);
-      internal.insertDocument("docs", `qmd://docs/${file}`, title, hash, now, now);
+      internal.insertDocument("docs", `qkb://docs/${file}`, title, hash, now, now);
     }
   });
 
@@ -707,7 +707,7 @@ describe("get and multiGet", () => {
   });
 
   test("get retrieves a document by path", async () => {
-    const result = await store.get("qmd://docs/auth.md");
+    const result = await store.get("qkb://docs/auth.md");
 
     expect("error" in result).toBe(false);
     if (!("error" in result)) {
@@ -717,7 +717,7 @@ describe("get and multiGet", () => {
   });
 
   test("get with includeBody returns body content", async () => {
-    const result = await store.get("qmd://docs/auth.md", { includeBody: true });
+    const result = await store.get("qkb://docs/auth.md", { includeBody: true });
 
     if (!("error" in result)) {
       expect(result.body).toBeDefined();
@@ -726,7 +726,7 @@ describe("get and multiGet", () => {
   });
 
   test("get returns not_found for missing document", async () => {
-    const result = await store.get("qmd://docs/nonexistent.md");
+    const result = await store.get("qkb://docs/nonexistent.md");
 
     expect("error" in result).toBe(true);
     if ("error" in result) {
@@ -736,7 +736,7 @@ describe("get and multiGet", () => {
 
   test("get by docid", async () => {
     // First get a document to find its docid
-    const doc = await store.get("qmd://docs/readme.md");
+    const doc = await store.get("qkb://docs/readme.md");
     if (!("error" in doc)) {
       const byDocid = await store.get(`#${doc.docid}`);
       expect("error" in byDocid).toBe(false);
@@ -747,7 +747,7 @@ describe("get and multiGet", () => {
   });
 
   test("multiGet retrieves multiple documents", async () => {
-    const { docs, errors } = await store.multiGet("qmd://docs/*.md");
+    const { docs, errors } = await store.multiGet("qkb://docs/*.md");
     expect(docs.length).toBeGreaterThan(0);
   });
 });
