@@ -1,0 +1,73 @@
+name: Changelog Gate
+
+# Enforces the "add an [Unreleased] entry as you make changes" policy from
+# skills/release/SKILL.md. Fails the PR if CHANGELOG.md wasn't updated.
+#
+# Skip with the 'skip-changelog' label for cosmetic PRs (typo fixes, CI tweaks,
+# whitespace, etc.) where there is no user-visible change worth recording.
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+jobs:
+  gate:
+    name: CHANGELOG entry required
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Skip if labeled
+        if: contains(github.event.pull_request.labels.*.name, 'skip-changelog')
+        run: |
+          echo "PR has 'skip-changelog' label — skipping check."
+          exit 0
+
+      - uses: actions/checkout@v4
+        if: ${{ !contains(github.event.pull_request.labels.*.name, 'skip-changelog') }}
+        with:
+          fetch-depth: 0
+
+      - name: Verify CHANGELOG.md modified
+        if: ${{ !contains(github.event.pull_request.labels.*.name, 'skip-changelog') }}
+        run: |
+          BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          if ! git diff --name-only "$BASE_SHA"...HEAD | grep -qx "CHANGELOG.md"; then
+            cat <<'EOF' >&2
+          ❌ CHANGELOG.md was not modified in this PR.
+
+          Add an entry under '## [Unreleased]' describing the user-visible
+          change in this PR. Format:
+
+            ## [Unreleased]
+
+            ### Changes
+            - Short description of what changed and why.
+
+          See skills/release/SKILL.md for the full changelog standard.
+
+          If this PR has no user-visible effect (typo, CI tweak, internal
+          refactor), apply the 'skip-changelog' label to the PR.
+          EOF
+            exit 1
+          fi
+          echo "✓ CHANGELOG.md modified."
+
+      - name: Verify [Unreleased] section has new content
+        if: ${{ !contains(github.event.pull_request.labels.*.name, 'skip-changelog') }}
+        run: |
+          BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          # Extract the [Unreleased] block from base and head, compare line counts.
+          extract_unreleased() {
+            awk '/^## \[Unreleased\]/{flag=1;next} /^## \[/{flag=0} flag' "$1"
+          }
+          git show "$BASE_SHA:CHANGELOG.md" > /tmp/base-changelog.md 2>/dev/null || echo "" > /tmp/base-changelog.md
+          BASE_LINES=$(extract_unreleased /tmp/base-changelog.md | grep -cv '^[[:space:]]*$' || true)
+          HEAD_LINES=$(extract_unreleased CHANGELOG.md         | grep -cv '^[[:space:]]*$' || true)
+          if [ "$HEAD_LINES" -le "$BASE_LINES" ]; then
+            echo "❌ [Unreleased] section has no new non-blank lines vs base." >&2
+            echo "   base: $BASE_LINES lines | head: $HEAD_LINES lines" >&2
+            echo "   Add an entry under '## [Unreleased]' describing your change." >&2
+            exit 1
+          fi
+          echo "✓ [Unreleased] gained $((HEAD_LINES - BASE_LINES)) line(s) of content."

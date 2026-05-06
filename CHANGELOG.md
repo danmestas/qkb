@@ -30,6 +30,12 @@
     now writes to `.agents/skills/qkb` and `.claude/skills/qkb`.
   - MCP server identity: `serverInfo.name` is now `"qkb"`.
 
+### Changes
+
+- CD: `Changelog Gate` workflow now blocks PRs to `main` that don't add an
+  entry under `## [Unreleased]`. Apply the `skip-changelog` label for
+  cosmetic-only PRs (typos, CI tweaks, internal refactors).
+
 ### Fixes
 
 - GPU: respect explicit `QKB_LLAMA_GPU=metal|vulkan|cuda` backend overrides instead of always using auto GPU selection. #529
