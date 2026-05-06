@@ -1,5 +1,5 @@
 {
-  "name": "@tobilu/qkb",
+  "name": "@danmestas/qkb",
   "version": "2.1.0",
   "description": "QKB - On-device hybrid search for markdown files with BM25, vector search, and LLM reranking",
   "type": "module",
@@ -38,11 +38,11 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/tobi/qmd.git"
+    "url": "git+https://github.com/danmestas/qkb.git"
   },
-  "homepage": "https://github.com/tobi/qmd#readme",
+  "homepage": "https://github.com/danmestas/qkb#readme",
   "bugs": {
-    "url": "https://github.com/tobi/qmd/issues"
+    "url": "https://github.com/danmestas/qkb/issues"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.29.0",
