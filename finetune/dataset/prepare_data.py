@@ -36,7 +36,7 @@ _tokenizer_model = None
 
 def get_tokenizer():
     global _tokenizer, _tokenizer_model
-    model_name = os.environ.get("QMD_BASE_MODEL", "Qwen/Qwen3-1.7B")
+    model_name = os.environ.get("QKB_BASE_MODEL", "Qwen/Qwen3-1.7B")
     if _tokenizer is None or _tokenizer_model != model_name:
         _tokenizer = AutoTokenizer.from_pretrained(model_name)
         _tokenizer_model = model_name

@@ -235,7 +235,7 @@ describe("MCP Server", () => {
     // Set up test config directory
     const configPrefix = join(tmpdir(), `qmd-mcp-config-${Date.now()}-${Math.random().toString(36).slice(2)}`);
     testConfigDir = await mkdtemp(configPrefix);
-    process.env.QMD_CONFIG_DIR = testConfigDir;
+    process.env.QKB_CONFIG_DIR = testConfigDir;
 
     // Create YAML config with test collection
     const testConfig: CollectionConfig = {
@@ -275,7 +275,7 @@ describe("MCP Server", () => {
       await rmdir(testConfigDir);
     } catch {}
 
-    delete process.env.QMD_CONFIG_DIR;
+    delete process.env.QKB_CONFIG_DIR;
   });
 
   // ===========================================================================
@@ -904,7 +904,7 @@ describe.skipIf(!!process.env.CI)("MCP HTTP Transport", () => {
   let httpTestConfigDir: string;
   // Stash original env to restore after tests
   const origIndexPath = process.env.INDEX_PATH;
-  const origConfigDir = process.env.QMD_CONFIG_DIR;
+  const origConfigDir = process.env.QKB_CONFIG_DIR;
 
   beforeAll(async () => {
     // Create isolated test database with seeded data
@@ -932,7 +932,7 @@ describe.skipIf(!!process.env.CI)("MCP HTTP Transport", () => {
 
     // Point createStore() at our test DB
     process.env.INDEX_PATH = httpTestDbPath;
-    process.env.QMD_CONFIG_DIR = httpTestConfigDir;
+    process.env.QKB_CONFIG_DIR = httpTestConfigDir;
 
     handle = await startMcpHttpServer(0, { quiet: true }); // OS-assigned ephemeral port
     baseUrl = `http://localhost:${handle.port}`;
@@ -944,8 +944,8 @@ describe.skipIf(!!process.env.CI)("MCP HTTP Transport", () => {
     // Restore env
     if (origIndexPath !== undefined) process.env.INDEX_PATH = origIndexPath;
     else delete process.env.INDEX_PATH;
-    if (origConfigDir !== undefined) process.env.QMD_CONFIG_DIR = origConfigDir;
-    else delete process.env.QMD_CONFIG_DIR;
+    if (origConfigDir !== undefined) process.env.QKB_CONFIG_DIR = origConfigDir;
+    else delete process.env.QKB_CONFIG_DIR;
 
     // Clean up test files
     try { unlinkSync(httpTestDbPath); } catch {}

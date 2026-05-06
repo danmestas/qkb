@@ -474,7 +474,7 @@ async function showStatus(): Promise<void> {
   // Important: probing node-llama-cpp can abort the whole process on machines with
   // incompatible GPU drivers (for example Vulkan loader present but no usable driver).
   // Keep `qkb status` safe by default and make the expensive/native probe opt-in.
-  if (process.env.QMD_STATUS_DEVICE_PROBE === "1") {
+  if (process.env.QKB_STATUS_DEVICE_PROBE === "1") {
     console.log(`\n${c.bold}Device${c.reset}`);
     try {
       const llm = getDefaultLlamaCpp();
@@ -1897,7 +1897,7 @@ function encodePathForEditorUri(absolutePath: string): string {
 }
 
 function getEditorUriTemplate(): string {
-  const envTemplate = process.env.QMD_EDITOR_URI?.trim();
+  const envTemplate = process.env.QKB_EDITOR_URI?.trim();
   if (envTemplate) return envTemplate;
 
   try {
@@ -2775,7 +2775,7 @@ function showHelp(): void {
   console.log("");
   console.log("Global options:");
   console.log("  --index <name>             - Use a named index (default: index)");
-  console.log("  QMD_EDITOR_URI             - Editor link template for clickable TTY search output");
+  console.log("  QKB_EDITOR_URI             - Editor link template for clickable TTY search output");
   console.log("");
   console.log("Search options:");
   console.log("  -n <num>                   - Max results (default 5, or 20 for --files/--json)");

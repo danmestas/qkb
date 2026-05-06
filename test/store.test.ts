@@ -80,7 +80,7 @@ async function createTestStore(): Promise<Store> {
   testConfigDir = await mkdtemp(configPrefix);
 
   // Set environment variable to use test config
-  process.env.QMD_CONFIG_DIR = testConfigDir;
+  process.env.QKB_CONFIG_DIR = testConfigDir;
 
   // Create empty YAML config
   const emptyConfig: CollectionConfig = { collections: {} };
@@ -116,7 +116,7 @@ async function cleanupTestDb(store: Store): Promise<void> {
   }
 
   // Clear environment variable
-  delete process.env.QMD_CONFIG_DIR;
+  delete process.env.QKB_CONFIG_DIR;
 }
 
 // Helper to insert a test document directly into the database

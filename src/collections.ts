@@ -112,9 +112,9 @@ export function setConfigIndexName(name: string): void {
 }
 
 function getConfigDir(): string {
-  // Allow override via QMD_CONFIG_DIR for testing
-  if (process.env.QMD_CONFIG_DIR) {
-    return process.env.QMD_CONFIG_DIR;
+  // Allow override via QKB_CONFIG_DIR for testing
+  if (process.env.QKB_CONFIG_DIR) {
+    return process.env.QKB_CONFIG_DIR;
   }
   // Respect XDG Base Directory specification (consistent with store.ts)
   if (process.env.XDG_CONFIG_HOME) {

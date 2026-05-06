@@ -48,7 +48,7 @@ async function runQmd(
     env: {
       ...process.env,
       INDEX_PATH: dbPath,
-      QMD_CONFIG_DIR: configDir, // Use test config directory
+      QKB_CONFIG_DIR: configDir, // Use test config directory
       PWD: workingDir, // Must explicitly set PWD since getPwd() checks this
       ...options.env,
     },
@@ -1409,7 +1409,7 @@ describe("mcp http daemon", () => {
       env: {
         ...process.env,
         INDEX_PATH: daemonDbPath,
-        QMD_CONFIG_DIR: daemonConfigDir,
+        QKB_CONFIG_DIR: daemonConfigDir,
       },
       stdio: ["ignore", "pipe", "pipe"],
     });
