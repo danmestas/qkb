@@ -19,7 +19,8 @@ CONTEXTS='[
   "Node 23 (ubuntu-latest)",
   "Node 23 (macos-latest)",
   "Bun (ubuntu-latest)",
-  "Bun (macos-latest)"
+  "Bun (macos-latest)",
+  "CHANGELOG entry required"
 ]'
 
 PAYLOAD=$(cat <<JSON
