@@ -542,9 +542,9 @@ export function getDefaultDbPath(indexName: string = "index"): string {
   }
 
   const cacheDir = process.env.XDG_CACHE_HOME || resolve(homedir(), ".cache");
-  const qmdCacheDir = resolve(cacheDir, "qmd");
-  try { mkdirSync(qmdCacheDir, { recursive: true }); } catch { }
-  return resolve(qmdCacheDir, `${indexName}.sqlite`);
+  const qkbCacheDir = resolve(cacheDir, "qkb");
+  try { mkdirSync(qkbCacheDir, { recursive: true }); } catch { }
+  return resolve(qkbCacheDir, `${indexName}.sqlite`);
 }
 
 export function getPwd(): string {
@@ -762,7 +762,7 @@ function initializeDatabase(db: Database): void {
   `);
 
   // Documents table - file system layer mapping virtual paths to content hashes
-  // Collections are now managed in ~/.config/qmd/index.yml
+  // Collections are now managed in ~/.config/qkb/index.yml
   db.exec(`
     CREATE TABLE IF NOT EXISTS documents (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1590,7 +1590,7 @@ export async function generateEmbeddings(
 
 /**
  * Create a new store instance with the given database path.
- * If no path is provided, uses the default path (~/.cache/qmd/index.sqlite).
+ * If no path is provided, uses the default path (~/.cache/qkb/index.sqlite).
  *
  * @param dbPath - Path to the SQLite database file
  * @returns Store instance with all methods bound to the database

@@ -1379,7 +1379,7 @@ describe("status and collection list hide filesystem paths", () => {
 
 describe("mcp http daemon", () => {
   let daemonTestDir: string;
-  let daemonCacheDir: string; // XDG_CACHE_HOME value (the qmd/ subdir is created automatically)
+  let daemonCacheDir: string; // XDG_CACHE_HOME value (the qkb/ subdir is created automatically)
   let daemonDbPath: string;
   let daemonConfigDir: string;
 
@@ -1388,7 +1388,7 @@ describe("mcp http daemon", () => {
 
   /** Get path to PID file inside the test cache dir */
   function pidPath(): string {
-    return join(daemonCacheDir, "qmd", "mcp.pid");
+    return join(daemonCacheDir, "qkb", "mcp.pid");
   }
 
   /** Run qmd with test-isolated env (cache, db, config) */
@@ -1441,7 +1441,7 @@ describe("mcp http daemon", () => {
     daemonDbPath = join(daemonTestDir, "test.sqlite");
     daemonConfigDir = join(daemonTestDir, "config");
 
-    await mkdir(join(daemonCacheDir, "qmd"), { recursive: true });
+    await mkdir(join(daemonCacheDir, "qkb"), { recursive: true });
     await mkdir(daemonConfigDir, { recursive: true });
     await writeFile(join(daemonConfigDir, "index.yml"), "collections: {}\n");
   });

@@ -2,7 +2,7 @@
  * Unit tests for collection config path resolution (PR #190).
  *
  * Tests that getConfigDir() respects XDG_CONFIG_HOME, QKB_CONFIG_DIR,
- * and falls back to ~/.config/qmd.
+ * and falls back to ~/.config/qkb.
  */
 
 import { describe, test, expect, beforeEach, afterEach } from "vitest";
@@ -35,10 +35,10 @@ afterEach(() => {
 });
 
 describe("getConfigDir via getConfigPath", () => {
-  test("defaults to ~/.config/qmd when no env vars are set", () => {
+  test("defaults to ~/.config/qkb when no env vars are set", () => {
     delete process.env.QKB_CONFIG_DIR;
     delete process.env.XDG_CONFIG_HOME;
-    expect(getConfigPath()).toBe(join(homedir(), ".config", "qmd", "index.yml"));
+    expect(getConfigPath()).toBe(join(homedir(), ".config", "qkb", "index.yml"));
   });
 
   test("QKB_CONFIG_DIR takes highest priority", () => {
@@ -50,13 +50,13 @@ describe("getConfigDir via getConfigPath", () => {
   test("XDG_CONFIG_HOME is used when QKB_CONFIG_DIR is not set", () => {
     delete process.env.QKB_CONFIG_DIR;
     process.env.XDG_CONFIG_HOME = "/xdg/config";
-    expect(getConfigPath()).toBe(join("/xdg/config", "qmd", "index.yml"));
+    expect(getConfigPath()).toBe(join("/xdg/config", "qkb", "index.yml"));
   });
 
-  test("XDG_CONFIG_HOME appends qmd subdirectory", () => {
+  test("XDG_CONFIG_HOME appends qkb subdirectory", () => {
     delete process.env.QKB_CONFIG_DIR;
     process.env.XDG_CONFIG_HOME = "/home/agent/.config";
-    expect(getConfigPath()).toBe(join("/home/agent/.config", "qmd", "index.yml"));
+    expect(getConfigPath()).toBe(join("/home/agent/.config", "qkb", "index.yml"));
   });
 
   test("QKB_CONFIG_DIR overrides XDG_CONFIG_HOME", () => {
@@ -69,6 +69,6 @@ describe("getConfigDir via getConfigPath", () => {
     delete process.env.QKB_CONFIG_DIR;
     process.env.XDG_CONFIG_HOME = "/xdg/config";
     setConfigIndexName("myindex");
-    expect(getConfigPath()).toBe(join("/xdg/config", "qmd", "myindex.yml"));
+    expect(getConfigPath()).toBe(join("/xdg/config", "qkb", "myindex.yml"));
   });
 });

@@ -349,8 +349,8 @@ async function showStatus(): Promise<void> {
 
   // MCP daemon status (check PID file liveness)
   const mcpCacheDir = process.env.XDG_CACHE_HOME
-    ? resolve(process.env.XDG_CACHE_HOME, "qmd")
-    : resolve(homedir(), ".cache", "qmd");
+    ? resolve(process.env.XDG_CACHE_HOME, "qkb")
+    : resolve(homedir(), ".cache", "qkb");
   const mcpPidPath = resolve(mcpCacheDir, "mcp.pid");
   if (existsSync(mcpPidPath)) {
     const mcpPid = parseInt(readFileSync(mcpPidPath, "utf-8").trim());
@@ -1531,7 +1531,7 @@ async function indexFiles(pwd?: string, globPattern: string = DEFAULT_GLOB, coll
 
   // Collection name must be provided (from YAML)
   if (!collectionName) {
-    throw new Error("Collection name is required. Collections must be defined in ~/.config/qmd/index.yml");
+    throw new Error("Collection name is required. Collections must be defined in ~/.config/qkb/index.yml");
   }
 
   console.log(`Collection: ${resolvedPwd} (${globPattern})`);
@@ -3204,8 +3204,8 @@ if (isMain) {
 
       // Cache dir for PID/log files — same dir as the index
       const cacheDir = process.env.XDG_CACHE_HOME
-        ? resolve(process.env.XDG_CACHE_HOME, "qmd")
-        : resolve(homedir(), ".cache", "qmd");
+        ? resolve(process.env.XDG_CACHE_HOME, "qkb")
+        : resolve(homedir(), ".cache", "qkb");
       const pidPath = resolve(cacheDir, "mcp.pid");
 
       // Subcommands take priority over flags

@@ -19,7 +19,7 @@ const c = {
   dim: "\x1b[2m",
 };
 
-const dbPath = join(homedir(), ".cache", "qmd", "index.sqlite");
+const dbPath = join(homedir(), ".cache", "qkb", "index.sqlite");
 console.log(`${c.cyan}Migrating database schema...${c.reset}\n`);
 console.log(`Database: ${dbPath}\n`);
 
