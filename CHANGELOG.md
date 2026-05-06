@@ -42,6 +42,9 @@
   frequency, change failure rate, MTTR) from the GitHub API. Defaults to
   the last 90 days. Use `--days N` for custom windows or `--json` for
   machine-readable output.
+- CD: added `.github/CODEOWNERS` and `.github/pull_request_template.md`.
+  CODEOWNERS auto-requests review on every PR; PR template prompts for
+  summary, verification, and changelog discipline.
 
 ### Fixes
 
