@@ -35,6 +35,9 @@
 - CD: `Changelog Gate` workflow now blocks PRs to `main` that don't add an
   entry under `## [Unreleased]`. Apply the `skip-changelog` label for
   cosmetic-only PRs (typos, CI tweaks, internal refactors).
+- CD: `publish.yml` now smoke-installs the freshly-published package from
+  the npm registry and runs `qkb --help` before creating the GitHub
+  release. Catches the "publish succeeded but the artifact is broken" class.
 
 ### Fixes
 

@@ -40,6 +40,30 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
+      - name: Smoke-install from registry
+        run: |
+          # Wait for the freshly-published version to be installable.
+          # npm registry can lag a few seconds after publish completes.
+          VERSION="${GITHUB_REF_NAME#v}"
+          PKG="$(jq -r .name package.json)"
+          for i in 1 2 3 4 5 6; do
+            if npm view "${PKG}@${VERSION}" version >/dev/null 2>&1; then
+              echo "✓ ${PKG}@${VERSION} visible on registry"
+              break
+            fi
+            echo "Attempt $i: not yet on registry, sleeping 10s…"
+            sleep 10
+          done
+
+          # Install into a clean temp dir and run the binary.
+          SMOKE_DIR=$(mktemp -d)
+          cd "$SMOKE_DIR"
+          npm init -y >/dev/null
+          npm install --no-fund --no-audit "${PKG}@${VERSION}"
+          BIN="$(node -p "require('path').join(require.resolve('${PKG}/package.json').replace(/package\.json$/, ''), require('${PKG}/package.json').bin.qkb)")"
+          # Sanity-check: --help should print and exit 0.
+          node "$BIN" --help | head -5
+
       - name: Extract release notes
         id: notes
         run: |
