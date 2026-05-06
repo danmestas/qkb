@@ -1,5 +1,7 @@
 # QKB - Query Knowledge Base
 
+[![CI](https://github.com/danmestas/qkb/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/danmestas/qkb/actions/workflows/ci.yml)
+
 An on-device search engine for everything you need to remember. Index your markdown notes, meeting transcripts, documentation, and knowledge bases. Search with keywords or natural language. Ideal for your agentic flows.
 
 QKB combines BM25 full-text search, vector semantic search, and LLM re-ranking—all running locally via node-llama-cpp with GGUF models.
@@ -12,13 +14,13 @@ You can read more about QKB's progress in the [CHANGELOG](CHANGELOG.md).
 
 ```sh
 # Install globally (Node or Bun)
-npm install -g @tobilu/qkb
+npm install -g @danmestas/qkb
 # or
-bun install -g @tobilu/qkb
+bun install -g @danmestas/qkb
 
 # Or run directly
-npx @tobilu/qkb ...
-bunx @tobilu/qkb ...
+npx @danmestas/qkb ...
+bunx @danmestas/qkb ...
 
 # Create collections for your notes, docs, and meeting transcripts
 qkb collection add ~/notes --name notes
@@ -142,13 +144,13 @@ Use QKB as a library in your own Node.js or Bun applications.
 #### Installation
 
 ```sh
-npm install @tobilu/qkb
+npm install @danmestas/qkb
 ```
 
 #### Quick Start
 
 ```typescript
-import { createStore } from '@tobilu/qkb'
+import { createStore } from '@danmestas/qkb'
 
 const store = await createStore({
   dbPath: './my-index.sqlite',
@@ -170,7 +172,7 @@ await store.close()
 `createStore()` accepts three modes:
 
 ```typescript
-import { createStore } from '@tobilu/qkb'
+import { createStore } from '@danmestas/qkb'
 
 // 1. Inline config — no files needed besides the DB
 const store = await createStore({
@@ -349,7 +351,7 @@ import type {
   CollectionConfig,    // Inline config shape
   IndexStatus,         // From getStatus()
   IndexHealthInfo,     // From getIndexHealth()
-} from '@tobilu/qkb'
+} from '@danmestas/qkb'
 ```
 
 Utility exports:
@@ -360,7 +362,7 @@ import {
   addLineNumbers,              // Add line numbers to text
   DEFAULT_MULTI_GET_MAX_BYTES, // Default max file size for multiGet (10KB)
   Maintenance,                 // Database maintenance operations
-} from '@tobilu/qkb'
+} from '@danmestas/qkb'
 ```
 
 #### Lifecycle
@@ -518,9 +520,9 @@ Supported model families:
 ## Installation
 
 ```sh
-npm install -g @tobilu/qkb
+npm install -g @danmestas/qkb
 # or
-bun install -g @tobilu/qkb
+bun install -g @danmestas/qkb
 ```
 
 ### Development
