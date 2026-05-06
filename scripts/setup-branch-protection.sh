@@ -12,9 +12,7 @@ REPO="${REPO:-danmestas/qkb}"
 BRANCH="${BRANCH:-main}"
 
 # Required status checks come from .github/workflows/ci.yml job names.
-# Keep this list in sync with the matrix there. Nix is intentionally NOT
-# required — it's slow and rarely the failure that matters; treat it as
-# advisory until a Nix-using contributor needs it gated.
+# Keep this list in sync with the matrix there.
 CONTEXTS='[
   "Node 22 (ubuntu-latest)",
   "Node 22 (macos-latest)",
