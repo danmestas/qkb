@@ -38,6 +38,10 @@
 - CD: `publish.yml` now smoke-installs the freshly-published package from
   the npm registry and runs `qkb --help` before creating the GitHub
   release. Catches the "publish succeeded but the artifact is broken" class.
+- CD: `scripts/dora.sh` extracts DORA-lite metrics (lead time, deployment
+  frequency, change failure rate, MTTR) from the GitHub API. Defaults to
+  the last 90 days. Use `--days N` for custom windows or `--json` for
+  machine-readable output.
 
 ### Fixes
 
