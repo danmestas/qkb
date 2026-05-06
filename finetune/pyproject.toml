@@ -9,7 +9,7 @@ dependencies = [
   "peft>=0.7.0",
   "transformers>=4.45.0",
   "accelerate>=0.24.0",
-  "huggingface_hub>=0.20.0",
+  "huggingface_hub>=1.14.0",
   "trackio",
   "datasets",
   "pyyaml",
