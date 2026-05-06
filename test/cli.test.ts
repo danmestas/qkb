@@ -13,7 +13,7 @@ import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 import { spawn } from "child_process";
 import { setTimeout as sleep } from "timers/promises";
-import { buildEditorUri, termLink } from "../src/cli/qmd.ts";
+import { buildEditorUri, termLink } from "../src/cli/qkb.ts";
 
 // Test fixtures directory and database path
 let testDir: string;
@@ -25,7 +25,7 @@ let testCounter = 0; // Unique counter for each test run
 // Get the directory where this test file lives
 const thisDir = dirname(fileURLToPath(import.meta.url));
 const projectRoot = join(thisDir, "..");
-const qmdScript = join(projectRoot, "src", "cli", "qmd.ts");
+const qmdScript = join(projectRoot, "src", "cli", "qkb.ts");
 // Resolve tsx binary from project's node_modules (not cwd-dependent)
 const tsxBin = (() => {
   const candidate = join(projectRoot, "node_modules", ".bin", "tsx");
@@ -230,9 +230,9 @@ describe("CLI Help", () => {
     const { stdout, exitCode } = await runQmd(["--help"]);
     expect(exitCode).toBe(0);
     expect(stdout).toContain("Usage:");
-    expect(stdout).toContain("qmd collection add");
-    expect(stdout).toContain("qmd search");
-    expect(stdout).toContain("qmd skill show/install");
+    expect(stdout).toContain("qkb collection add");
+    expect(stdout).toContain("qkb search");
+    expect(stdout).toContain("qkb skill show/install");
   });
 
   test("shows help with no arguments", async () => {
@@ -268,7 +268,7 @@ describe("CLI Skill Commands", () => {
   test("shows skill help with -h", async () => {
     const { stdout, exitCode } = await runQmd(["skill", "-h"]);
     expect(exitCode).toBe(0);
-    expect(stdout).toContain("Usage: qmd skill <show|install> [options]");
+    expect(stdout).toContain("Usage: qkb skill <show|install> [options]");
     expect(stdout).toContain("install");
     expect(stdout).toContain("--global");
   });

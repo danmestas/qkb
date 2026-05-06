@@ -22,8 +22,8 @@ import {
 } from "../src/store.js";
 
 // =============================================================================
-// parseStructuredQuery — duplicated from src/cli/qmd.ts for unit testing
-// (qmd.ts doesn't export it since it's a CLI internal)
+// parseStructuredQuery — duplicated from src/cli/qkb.ts for unit testing
+// (qkb.ts doesn't export it since it's a CLI internal)
 // =============================================================================
 
 interface ParsedStructuredQuery {

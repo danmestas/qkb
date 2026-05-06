@@ -1,7 +1,7 @@
 {
-  "name": "@tobilu/qmd",
+  "name": "@tobilu/qkb",
   "version": "2.1.0",
-  "description": "Query Markup Documents - On-device hybrid search for markdown files with BM25, vector search, and LLM reranking",
+  "description": "QKB - On-device hybrid search for markdown files with BM25, vector search, and LLM reranking",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -12,7 +12,7 @@
     }
   },
   "bin": {
-    "qmd": "bin/qmd"
+    "qkb": "bin/qkb"
   },
   "files": [
     "bin/",
@@ -22,15 +22,15 @@
   ],
   "scripts": {
     "prepare": "[ -d .git ] && ./scripts/install-hooks.sh || true",
-    "build": "tsc -p tsconfig.build.json && printf '#!/usr/bin/env node\n' | cat - dist/cli/qmd.js > dist/cli/qmd.tmp && mv dist/cli/qmd.tmp dist/cli/qmd.js && chmod +x dist/cli/qmd.js",
+    "build": "tsc -p tsconfig.build.json && printf '#!/usr/bin/env node\n' | cat - dist/cli/qkb.js > dist/cli/qkb.tmp && mv dist/cli/qkb.tmp dist/cli/qkb.js && chmod +x dist/cli/qkb.js",
     "test": "vitest run --reporter=verbose test/",
-    "qmd": "tsx src/cli/qmd.ts",
-    "index": "tsx src/cli/qmd.ts index",
-    "vector": "tsx src/cli/qmd.ts vector",
-    "search": "tsx src/cli/qmd.ts search",
-    "vsearch": "tsx src/cli/qmd.ts vsearch",
-    "rerank": "tsx src/cli/qmd.ts rerank",
-    "inspector": "npx @modelcontextprotocol/inspector tsx src/cli/qmd.ts mcp",
+    "qkb": "tsx src/cli/qkb.ts",
+    "index": "tsx src/cli/qkb.ts index",
+    "vector": "tsx src/cli/qkb.ts vector",
+    "search": "tsx src/cli/qkb.ts search",
+    "vsearch": "tsx src/cli/qkb.ts vsearch",
+    "rerank": "tsx src/cli/qkb.ts rerank",
+    "inspector": "npx @modelcontextprotocol/inspector tsx src/cli/qkb.ts mcp",
     "release": "./scripts/release.sh"
   },
   "publishConfig": {
