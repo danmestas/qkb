@@ -1,6 +1,6 @@
 {
   "name": "@danmestas/qkb",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "QKB - On-device hybrid search for markdown files with BM25, vector search, and LLM reranking",
   "type": "module",
   "main": "dist/index.js",
@@ -46,14 +46,14 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.29.0",
-    "better-sqlite3": "12.8.0",
+    "better-sqlite3": "12.9.0",
     "fast-glob": "3.3.3",
     "node-llama-cpp": "3.18.1",
     "picomatch": "4.0.4",
     "sqlite-vec": "0.1.9",
-    "web-tree-sitter": "0.26.7",
-    "yaml": "2.8.3",
-    "zod": "4.2.1"
+    "web-tree-sitter": "0.26.8",
+    "yaml": "2.8.4",
+    "zod": "4.4.3"
   },
   "optionalDependencies": {
     "sqlite-vec-darwin-arm64": "0.1.9",
@@ -61,15 +61,15 @@
     "sqlite-vec-linux-arm64": "0.1.9",
     "sqlite-vec-linux-x64": "0.1.9",
     "sqlite-vec-windows-x64": "0.1.9",
-    "tree-sitter-go": "0.23.4",
-    "tree-sitter-python": "0.23.4",
+    "tree-sitter-go": "0.25.0",
+    "tree-sitter-python": "0.25.0",
     "tree-sitter-rust": "0.24.0",
     "tree-sitter-typescript": "0.23.2"
   },
   "devDependencies": {
     "@types/better-sqlite3": "7.6.13",
     "tsx": "4.21.0",
-    "vitest": "3.2.4"
+    "vitest": "4.1.5"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
