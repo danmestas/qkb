@@ -9,6 +9,15 @@
   GraphQLite SQLite extension on the same connection as `sqlite-vec`, typed
   SDK with parameterized Cypher, MCP tool surface). Roadmap and per-PR plan
   in `docs/rfcs/0007-impl/PLAN.md`. No code changes yet.
+- **RFC-0007 PR-4: GraphQLite extension loader.** Adds
+  `src/graph/loader.ts` with `loadGraphqlite(db)` and
+  `resolveGraphqlitePath()`. Path resolution: `QKB_GRAPHQLITE_PATH` env
+  var (the C-mode escape hatch from D7) → platform-default Homebrew /
+  Linux paths. `GraphExtensionUnavailableError` thrown with attempted
+  path + install hint when binary is missing. **No callers yet** —
+  PR-5 wires it into `openDatabase()` behind `graph.enabled`. Lazy
+  postinstall download is deferred to PR-4b.
+
 - **RFC-0007 PR-3: `graph.enabled` config flag.** YAML `graph:` block now
   recognized in `~/.config/qkb/index.yml` with fields `enabled` (default
   `false`), `bulk_insert_threshold` (default 64), `query_timeout_ms`
