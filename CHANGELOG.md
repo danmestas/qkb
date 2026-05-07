@@ -2,7 +2,18 @@
 
 ## [Unreleased]
 
+## [2.2.0] - 2026-05-07
+
 ### Changes
+
+- **Dependency refresh.** Bumped to latest patch/minor/major where safe:
+  `better-sqlite3 12.8.0 → 12.9.0`, `web-tree-sitter 0.26.7 → 0.26.8`,
+  `yaml 2.8.3 → 2.8.4`, `zod 4.2.1 → 4.4.3`,
+  `tree-sitter-{go,python} 0.23.4 → 0.25.0`, and the major bump
+  `vitest 3.2.4 → 4.1.5` (test runner). All 879 tests pass under
+  vitest 4. TypeScript peer requirement left at `^5.9.3` — bumping to
+  TS 6 unverified-locally would exclude TS 5 consumers without having
+  audited the transition.
 
 - **RFC-0007 D11: hard-pin GraphQLite version.** New
   `scripts/graphqlite-versions.json` is the single source of truth for
