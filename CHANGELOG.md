@@ -4,6 +4,16 @@
 
 ### Docs
 
+- **RFC-0007 PR-6: typed graph SDK.** Adds `store.graph.upsertNode()`,
+  `store.graph.upsertEdge()`, `store.graph.cypher<T>()` and the `cypher`
+  tagged-template helper. The branded `CypherQuery` type rejects raw
+  string interpolation in value positions at compile time; the runtime
+  guard in `cypher` catches `as any` bypasses. All methods throw
+  `GraphDisabledError` when the layer is unavailable. Documents three
+  GraphQLite v0.4.4 quirks (`MERGE` + `$param` in inline pattern,
+  chained MERGE variable propagation, `CREATE` + `SET` combined call —
+  see `test/spikes/probe-merge-syntax.ts`) and works around each one.
+
 - **RFC-0007: Optional Graph Layer for QKB via GraphQLite.** Initial draft of
   the design for an opt-in graph layer (off-by-default `graph.enabled` flag,
   GraphQLite SQLite extension on the same connection as `sqlite-vec`, typed
