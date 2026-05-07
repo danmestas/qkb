@@ -934,6 +934,28 @@ export function getGraphLayerUnavailableReason(): string | null {
   return _graphLayerUnavailableReason;
 }
 
+/**
+ * Read the hard-pinned GraphQLite version from
+ * `scripts/graphqlite-versions.json`. Decision D11 (RFC §7 hard-pin):
+ * GraphQLite v0.4.x has substantial parsing quirks that the SDK works
+ * around in version-specific ways; bumping requires re-running the
+ * spike probes and may need SDK changes. This file is the single source
+ * of truth for the pinned version.
+ */
+function readPinnedGraphqliteVersion(): string {
+  try {
+    const url = new URL("../scripts/graphqlite-versions.json", import.meta.url);
+    const raw = readFileSync(url, "utf-8");
+    const parsed = JSON.parse(raw) as { version?: string };
+    if (typeof parsed.version === "string" && parsed.version.length > 0) {
+      return parsed.version;
+    }
+  } catch {
+    /* fall through */
+  }
+  return "unknown";
+}
+
 function initializeGraphLayer(db: Database): void {
   let resolved;
   try {
@@ -977,9 +999,7 @@ function initializeGraphLayer(db: Database): void {
   `);
 
   // INSERT OR IGNORE on the singleton row — idempotent across re-opens.
-  // Pinned version comes from the vendoring manifest (PR-4b will replace
-  // this with a runtime read of scripts/graphqlite-versions.json).
-  const pinnedVersion = "0.4.4";
+  const pinnedVersion = readPinnedGraphqliteVersion();
   const now = new Date().toISOString();
   db.prepare(
     `INSERT OR IGNORE INTO graph_meta (id, graphqlite_version, initialized_at) VALUES ('qkb', ?, ?)`

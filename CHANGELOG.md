@@ -4,6 +4,15 @@
 
 ### Changes
 
+- **RFC-0007 D11: hard-pin GraphQLite version.** New
+  `scripts/graphqlite-versions.json` is the single source of truth for
+  the pinned GraphQLite version (currently 0.4.4). `graph_meta` now
+  records the pinned version read from this file rather than a
+  hardcoded literal. Bumping requires re-running
+  `test/spikes/probe-merge-syntax.ts` to verify the documented v0.4.4
+  workarounds still apply. PR-4b's lazy postinstall will populate the
+  `checksums` field for verified-binary downloads.
+
 - **RFC-0007 PR-12: graph performance harness.** Adds `bench/graph-bench.ts`
   + `src/graph/bench.ts` — measures the four runtime metrics from RFC §10
   (cold extension load, 2-hop neighbor p95, PageRank latency, empty-graph
