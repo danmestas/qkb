@@ -13,6 +13,7 @@
  * at the type level *and* at runtime.
  */
 import type { Database } from "../db.js";
+import { validateMaxPathLength } from "./safety.js";
 
 declare const __cypherBrand: unique symbol;
 
@@ -70,8 +71,12 @@ export interface UpsertEdgeArgs {
 export function runCypher<T = Record<string, unknown>>(
   db: Database,
   query: CypherQuery,
-  params: Record<string, unknown> = {}
+  params: Record<string, unknown> = {},
+  maxPathLength?: number
 ): T[] {
+  if (maxPathLength !== undefined) {
+    validateMaxPathLength(query, maxPathLength);
+  }
   const paramsJson = JSON.stringify(params);
   const row = db
     .prepare("SELECT cypher(?, ?) AS r")
@@ -85,6 +90,62 @@ export function runCypher<T = Record<string, unknown>>(
   // Non-array means status string from a write query — caller didn't
   // ask for typed rows, return empty.
   return [];
+}
+
+export interface PageRankArgs {
+  /** Damping factor in (0, 1). Default 0.85. */
+  damping?: number;
+  /** Maximum iterations. Default 20. */
+  iterations?: number;
+}
+
+export interface PageRankRow {
+  node_id: string;
+  user_id: string;
+  score: number;
+}
+
+/**
+ * Run GraphQLite's PageRank algorithm and return ranked nodes.
+ *
+ * Uses the `RETURN pageRank(d, i)` form rather than `CALL pageRank() YIELD ...`
+ * because the result comes back as a JSON array we can parse uniformly.
+ * `gql_load_graph()` is a no-op when already loaded.
+ */
+export function runPageRank(
+  db: Database,
+  args: PageRankArgs = {}
+): PageRankRow[] {
+  const damping = args.damping ?? 0.85;
+  const iterations = args.iterations ?? 20;
+
+  // Materialize adjacency cache (idempotent).
+  try {
+    db.prepare("SELECT cypher(?)").get("CALL gql_load_graph()");
+  } catch {
+    // Older versions or environments without gql_load_graph — non-fatal.
+  }
+
+  const row = db
+    .prepare("SELECT cypher(?) AS r")
+    .get(
+      `RETURN pageRank(${damping.toFixed(4)}, ${Math.floor(iterations)})`
+    ) as { r: string } | undefined;
+
+  if (!row) return [];
+  // pageRank returns a JSON array of {node_id, user_id, score} objects.
+  const parsed = JSON.parse(row.r) as unknown;
+  if (!Array.isArray(parsed)) return [];
+
+  // The actual envelope is `[{ "pageRank(...)": [{...}, {...}] }]` in some
+  // versions or just `[{...}, {...}]` in others. Handle both.
+  if (parsed.length === 1 && typeof parsed[0] === "object" && parsed[0] !== null) {
+    const obj = parsed[0] as Record<string, unknown>;
+    const inner = Object.values(obj)[0];
+    if (Array.isArray(inner)) return inner as PageRankRow[];
+  }
+
+  return parsed as PageRankRow[];
 }
 
 /**

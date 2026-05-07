@@ -4,6 +4,16 @@
 
 ### Docs
 
+- **RFC-0007 PR-8: graph algorithms + path-length cap.** Adds
+  `store.graph.pageRank({damping?, iterations?})` returning typed
+  `[{node_id, user_id, score}]`. Adds `validateMaxPathLength(query, max)`
+  in `src/graph/safety.ts` — wired into `store.graph.cypher()` so any
+  variable-length pattern (`*N..M`, `*..M`, `*N`, bare `*`) exceeding
+  the configured cap throws `CypherPathLengthError` at the SDK
+  boundary. Default `max_path_length=6`, ceiling 12. `query_timeout_ms`
+  enforcement is deferred — neither bun:sqlite nor better-sqlite3
+  exposes SQLite's progress-handler in a portable way; tracked in PLAN.md.
+
 - **RFC-0007 PR-7: cross-extension transactions + cascade cleanup.** Adds
   `cleanupOrphanedChunkNodes(db)` to remove `chunk:*` graph nodes whose
   `hash` no longer exists in `content` (RFC §4.3 soft-reference cleanup).

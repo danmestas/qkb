@@ -18,6 +18,7 @@ import {
   runUpsertNode,
   runUpsertEdge,
   runCypher,
+  runPageRank,
 } from "./graph/sdk.js";
 import { loadConfig } from "./collections.js";
 import type { Database } from "./db.js";
@@ -1277,6 +1278,9 @@ export type Store = {
       query: import("./graph/sdk.js").CypherQuery,
       params?: Record<string, unknown>
     ) => T[];
+    pageRank: (
+      args?: import("./graph/sdk.js").PageRankArgs
+    ) => import("./graph/sdk.js").PageRankRow[];
   };
 };
 
@@ -1808,12 +1812,31 @@ export function createStore(dbPath?: string): Store {
         params: Record<string, unknown> = {}
       ): T[] => {
         ensureGraphAvailable();
-        return runCypher<T>(db, query, params);
+        const cap = currentMaxPathLength();
+        return runCypher<T>(db, query, params, cap);
+      },
+      pageRank: (args?: import("./graph/sdk.js").PageRankArgs) => {
+        ensureGraphAvailable();
+        return runPageRank(db, args);
       },
     },
   };
 
   return store;
+}
+
+/**
+ * Read the current max_path_length from config — returns the same
+ * resolved value `initializeGraphLayer` used. Re-resolves each call so
+ * config changes during a process lifetime are picked up.
+ */
+function currentMaxPathLength(): number | undefined {
+  try {
+    const resolved = resolveGraphConfig(loadConfig());
+    return resolved.max_path_length;
+  } catch {
+    return undefined;
+  }
 }
 
 /**
