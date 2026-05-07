@@ -4,6 +4,18 @@
 
 ### Changes
 
+- **RFC-0007 PR-12: graph performance harness.** Adds `bench/graph-bench.ts`
+  + `src/graph/bench.ts` — measures the four runtime metrics from RFC §10
+  (cold extension load, 2-hop neighbor p95, PageRank latency, empty-graph
+  on-disk delta) against a synthetic corpus. Two modes: `--full` enforces
+  the production §10 thresholds against a 10k-node graph; default (CI)
+  mode uses 500 nodes with looser thresholds for deterministic runner
+  performance. Exits non-zero on any threshold violation. Local CI-mode
+  run confirms all thresholds pass with comfortable headroom (cold-load
+  15 ms vs 500 ms; pagerank 1 ms vs 5000 ms; 2-hop p95 4 ms vs 100 ms;
+  file delta 184 KB vs 256 KB). CI workflow integration deferred to PR-4b
+  (which installs graphqlite on runners).
+
 - **RFC-0007 PR-11: `qkb graph dump` / `qkb graph restore` (exit-plan
   tool).** RFC §7 commitment — the exit door from GraphQLite. Dump
   emits the entire graph as QKB-defined NDJSON to stdout (header line
