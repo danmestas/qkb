@@ -8,12 +8,15 @@
 
 - **Dependency refresh.** Bumped to latest patch/minor/major where safe:
   `better-sqlite3 12.8.0 → 12.9.0`, `web-tree-sitter 0.26.7 → 0.26.8`,
-  `yaml 2.8.3 → 2.8.4`, `zod 4.2.1 → 4.4.3`,
-  `tree-sitter-{go,python} 0.23.4 → 0.25.0`, and the major bump
-  `vitest 3.2.4 → 4.1.5` (test runner). All 879 tests pass under
-  vitest 4. TypeScript peer requirement left at `^5.9.3` — bumping to
-  TS 6 unverified-locally would exclude TS 5 consumers without having
-  audited the transition.
+  `yaml 2.8.3 → 2.8.4`, `tree-sitter-{go,python} 0.23.4 → 0.25.0`, and
+  the major bump `vitest 3.2.4 → 4.1.5` (test runner). All 879 tests
+  pass under vitest 4. **zod stays at 4.2.1** — bumping to 4.4.3 broke
+  the type contract with `@modelcontextprotocol/sdk` 1.29.0's
+  `AnySchema` expectations (caught by `npm run build` in `publish.yml`,
+  not by vitest which uses esbuild and skips strict typecheck). Revisit
+  in a future release once MCP SDK ships zod-4.4-compatible typings.
+  TypeScript peer requirement left at `^5.9.3` — bumping to TS 6
+  unverified-locally would exclude TS 5 consumers.
 
 - **RFC-0007 D11: hard-pin GraphQLite version.** New
   `scripts/graphqlite-versions.json` is the single source of truth for
