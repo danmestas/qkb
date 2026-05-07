@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+### Docs
+
+- **RFC-0007: Optional Graph Layer for QKB via GraphQLite.** Initial draft of
+  the design for an opt-in graph layer (off-by-default `graph.enabled` flag,
+  GraphQLite SQLite extension on the same connection as `sqlite-vec`, typed
+  SDK with parameterized Cypher, MCP tool surface). Roadmap and per-PR plan
+  in `docs/rfcs/0007-impl/PLAN.md`. No code changes yet.
+
 ### BREAKING
 
 - **Project rename: `qmd` → `qkb` (Query Knowledge Base).** This is a hard
