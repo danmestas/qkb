@@ -43,6 +43,18 @@ export interface ModelsConfig {
 }
 
 /**
+ * Graph layer configuration. Off by default; the layer is fully opt-in
+ * for the v2.2.x — v2.3.x window. See RFC-0007 §4.7. All fields optional;
+ * `src/graph/config.ts#resolveGraphConfig` applies defaults and validates.
+ */
+export interface GraphConfigBlock {
+  enabled?: boolean;
+  bulk_insert_threshold?: number;
+  query_timeout_ms?: number;
+  max_path_length?: number;
+}
+
+/**
  * The complete configuration file structure
  */
 export interface CollectionConfig {
@@ -51,6 +63,7 @@ export interface CollectionConfig {
   editor_uri_template?: string;               // Alias for editor_uri
   collections: Record<string, Collection>;    // Collection name -> config
   models?: ModelsConfig;
+  graph?: GraphConfigBlock;                   // Optional graph layer (RFC-0007)
 }
 
 /**
