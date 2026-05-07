@@ -2527,6 +2527,10 @@ function parseCLI() {
       http: { type: "boolean" },
       daemon: { type: "boolean" },
       port: { type: "string" },
+      // Graph subcommand options (RFC-0007)
+      params: { type: "string" },        // graph query --params '{"id":"x"}'
+      top: { type: "string" },           // graph pagerank --top 20
+      "dry-run": { type: "boolean" },    // graph gc --dry-run
     },
     allowPositionals: true,
     strict: false, // Allow unknown options to pass through
@@ -3103,6 +3107,69 @@ if (isMain) {
           console.error(`Unknown subcommand: ${subcommand}`);
           console.error("Run 'qkb collection help' for usage");
           process.exit(1);
+      }
+      break;
+    }
+
+    case "graph": {
+      const subcommand = cli.args[0];
+      if (!subcommand) {
+        console.error("Usage: qkb graph <status|query|pagerank|gc>");
+        console.error("");
+        console.error("Commands:");
+        console.error("  qkb graph status                          Show graph layer state, version, counts");
+        console.error("  qkb graph query [--params '{...}'] \"<cypher>\"");
+        console.error("                                            Run a Cypher query");
+        console.error("  qkb graph pagerank [--top N]              PageRank, top N rows");
+        console.error("  qkb graph gc [--dry-run]                  Sweep orphan chunk:* nodes");
+        process.exit(1);
+      }
+
+      const { graphStatus, graphQuery, graphPageRank, graphGc } = await import(
+        "../graph/cli.js"
+      );
+
+      const store = createStore();
+      try {
+        let result;
+        switch (subcommand) {
+          case "status":
+            result = graphStatus(store);
+            break;
+          case "query": {
+            const query = cli.args[1];
+            if (!query) {
+              console.error("Usage: qkb graph query [--params '{...}'] \"<cypher>\"");
+              process.exit(1);
+            }
+            const params =
+              typeof cli.values.params === "string" ? cli.values.params : undefined;
+            result = graphQuery(store, query, params);
+            break;
+          }
+          case "pagerank": {
+            const top = cli.values.top
+              ? Math.max(1, parseInt(String(cli.values.top), 10) || 20)
+              : 20;
+            result = graphPageRank(store, top);
+            break;
+          }
+          case "gc": {
+            const dryRun = !!cli.values["dry-run"];
+            result = graphGc(store, dryRun);
+            break;
+          }
+          default:
+            console.error(`Unknown graph subcommand: ${subcommand}`);
+            console.error("Available: status, query, pagerank, gc");
+            process.exit(1);
+        }
+
+        if (result.stdout) process.stdout.write(result.stdout);
+        if (result.stderr) process.stderr.write(result.stderr);
+        process.exit(result.exitCode);
+      } finally {
+        store.close();
       }
       break;
     }

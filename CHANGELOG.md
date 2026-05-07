@@ -2,6 +2,19 @@
 
 ## [Unreleased]
 
+### Changes
+
+- **RFC-0007 PR-9: `qkb graph` CLI subcommands.** Adds four subcommands
+  surfacing the graph layer at the command line:
+  `qkb graph status` (layer state, version, node+edge counts);
+  `qkb graph query [--params '{...}'] "<cypher>"` (runs a Cypher query;
+  refuses if `$param` references present without `--params`);
+  `qkb graph pagerank [--top N]` (default N=20);
+  `qkb graph gc [--dry-run]` (sweep orphan `chunk:*` nodes per
+  RFC §4.3). Logic in `src/graph/cli.ts` is unit-testable via pure
+  functions; the dispatcher in `src/cli/qkb.ts` parses argv, calls them,
+  exits with the returned code.
+
 ### Docs
 
 - **RFC-0007 PR-8: graph algorithms + path-length cap.** Adds
