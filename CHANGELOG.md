@@ -4,6 +4,16 @@
 
 ### Changes
 
+- **RFC-0007 PR-11: `qkb graph dump` / `qkb graph restore` (exit-plan
+  tool).** RFC §7 commitment — the exit door from GraphQLite. Dump
+  emits the entire graph as QKB-defined NDJSON to stdout (header line
+  + one node-or-edge object per line). Restore reads the same format
+  from stdin and replays it through the SDK upsert calls. Format is
+  versioned (`format_version: 1`) and decoupled from GraphQLite, so a
+  future Kùzu/Cozo backend can consume it directly. Round-trip
+  preserves nodes (idempotent — upsert), edges (idempotent because
+  inline-property MERGE matches), and properties.
+
 - **RFC-0007 PR-10: graph MCP tools (`graph_query`, `graph_neighbors`).**
   Two MCP tools exposing the graph layer to agents. `graph_query(cypher,
   params)` mirrors the SDK rules — refuses queries with `$param`
