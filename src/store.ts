@@ -12,8 +12,13 @@
  */
 
 import { openDatabase, loadSqliteVec } from "./db.js";
-import { resolveGraphConfig } from "./graph/config.js";
+import { resolveGraphConfig, GraphDisabledError } from "./graph/config.js";
 import { loadGraphqlite, GraphExtensionUnavailableError } from "./graph/loader.js";
+import {
+  runUpsertNode,
+  runUpsertEdge,
+  runCypher,
+} from "./graph/sdk.js";
 import { loadConfig } from "./collections.js";
 import type { Database } from "./db.js";
 import picomatch from "picomatch";
@@ -1262,6 +1267,17 @@ export type Store = {
   getHashesForEmbedding: () => { hash: string; body: string; path: string }[];
   clearAllEmbeddings: () => void;
   insertEmbedding: (hash: string, seq: number, pos: number, embedding: Float32Array, model: string, embeddedAt: string) => void;
+
+  // Graph layer (RFC-0007). All methods throw GraphDisabledError when
+  // graph.enabled=false or the GraphQLite extension failed to load.
+  graph: {
+    upsertNode: (args: import("./graph/sdk.js").UpsertNodeArgs) => void;
+    upsertEdge: (args: import("./graph/sdk.js").UpsertEdgeArgs) => void;
+    cypher: <T = Record<string, unknown>>(
+      query: import("./graph/sdk.js").CypherQuery,
+      params?: Record<string, unknown>
+    ) => T[];
+  };
 };
 
 // =============================================================================
@@ -1776,9 +1792,37 @@ export function createStore(dbPath?: string): Store {
     getHashesForEmbedding: () => getHashesForEmbedding(db),
     clearAllEmbeddings: () => clearAllEmbeddings(db),
     insertEmbedding: (hash: string, seq: number, pos: number, embedding: Float32Array, model: string, embeddedAt: string) => insertEmbedding(db, hash, seq, pos, embedding, model, embeddedAt),
+
+    // Graph layer (RFC-0007). Each method gates on isGraphLayerAvailable().
+    graph: {
+      upsertNode: (args: import("./graph/sdk.js").UpsertNodeArgs) => {
+        ensureGraphAvailable();
+        runUpsertNode(db, args);
+      },
+      upsertEdge: (args: import("./graph/sdk.js").UpsertEdgeArgs) => {
+        ensureGraphAvailable();
+        runUpsertEdge(db, args);
+      },
+      cypher: <T = Record<string, unknown>>(
+        query: import("./graph/sdk.js").CypherQuery,
+        params: Record<string, unknown> = {}
+      ): T[] => {
+        ensureGraphAvailable();
+        return runCypher<T>(db, query, params);
+      },
+    },
   };
 
   return store;
+}
+
+function ensureGraphAvailable(): void {
+  if (!isGraphLayerAvailable()) {
+    const reason = getGraphLayerUnavailableReason() ?? "unknown";
+    throw new GraphDisabledError(
+      `graph layer is not available: ${reason}. Set graph.enabled=true in ~/.config/qkb/index.yml and ensure GraphQLite is installed.`
+    );
+  }
 }
 
 // =============================================================================
