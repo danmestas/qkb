@@ -9,6 +9,15 @@
   GraphQLite SQLite extension on the same connection as `sqlite-vec`, typed
   SDK with parameterized Cypher, MCP tool surface). Roadmap and per-PR plan
   in `docs/rfcs/0007-impl/PLAN.md`. No code changes yet.
+- **RFC-0007 PR-5: graph schema bootstrap.** When `graph.enabled=true`,
+  `initializeDatabase()` now attempts to load GraphQLite via the PR-4
+  loader and creates a `graph_meta` singleton-row table tracking which
+  GraphQLite version initialized the DB. Mirrors the `sqlite-vec`
+  graceful-degrade pattern: missing binary or invalid graph config
+  warns and continues; non-graph features unaffected. Idempotent across
+  re-opens. Adds `isGraphLayerAvailable()` / `getGraphLayerUnavailableReason()`
+  for future SDK methods to gate on.
+
 - **RFC-0007 PR-4: GraphQLite extension loader.** Adds
   `src/graph/loader.ts` with `loadGraphqlite(db)` and
   `resolveGraphqlitePath()`. Path resolution: `QKB_GRAPHQLITE_PATH` env
