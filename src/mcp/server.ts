@@ -31,6 +31,7 @@ import {
 } from "../index.js";
 import { getConfigPath } from "../collections.js";
 import { enableProductionMode } from "../store.js";
+import { registerGraphMcpTools } from "../graph/mcp.js";
 
 // =============================================================================
 // Types for structured content
@@ -530,6 +531,11 @@ Intent-aware lex (C++ performance, not sports):
       };
     }
   );
+
+  // ---------------------------------------------------------------------------
+  // Tools: graph_query, graph_neighbors (RFC-0007 §4.6.3)
+  // ---------------------------------------------------------------------------
+  registerGraphMcpTools(server, store.internal);
 
   return server;
 }

@@ -4,6 +4,17 @@
 
 ### Changes
 
+- **RFC-0007 PR-10: graph MCP tools (`graph_query`, `graph_neighbors`).**
+  Two MCP tools exposing the graph layer to agents. `graph_query(cypher,
+  params)` mirrors the SDK rules — refuses queries with `$param`
+  references when params is empty. `graph_neighbors(node_id, hops,
+  edge_types?)` is a constrained traversal that doesn't require
+  Cypher knowledge; hops capped at 3. PageRank and `gc` are
+  **deliberately not exposed** via MCP per RFC §4.6.3 (resource
+  exhaustion + mutation surface). When the layer is unavailable,
+  tools return `isError: true` with the unavailable reason so agents
+  can discover and request enablement.
+
 - **RFC-0007 PR-9: `qkb graph` CLI subcommands.** Adds four subcommands
   surfacing the graph layer at the command line:
   `qkb graph status` (layer state, version, node+edge counts);
