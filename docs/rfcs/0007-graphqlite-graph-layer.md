@@ -67,9 +67,9 @@ The graph layer is one more extension on the same connection, not a sidecar data
 
 ### 4.2 Data model
 
-GraphQLite stores nodes and edges in tables it manages, scoped by a **namespace** string (its native isolation primitive — we use it directly rather than inventing our own).
+GraphQLite manages a **single graph per database** (verified empirically — see `docs/rfcs/0007-impl/SPIKE-RESULTS.md`). Multi-graph attaches via Cypher's `FROM <graphname>` clause are read-only, capped at ~10, and not appropriate for the QKB use case. We commit to one graph per `index.sqlite`; multi-graph is deferred to a future RFC if a real use case appears.
 
-We define a single QKB-owned namespace per database, named `qkb`. Multi-namespace support is deferred to a future RFC; we don't need it for the use cases in §2.
+The actual `cypher()` SQL signature is `cypher(query TEXT [, params_json TEXT]) -> TEXT` — JSON-array of result objects. Two args, not three. The SDK in §4.6.1 hides this behind a typed wrapper.
 
 Reference convention between QKB-managed tables and the graph:
 
@@ -250,8 +250,7 @@ QKB does not have a versioned migration system. Schema is created lazily via `CR
 - Existing QKB databases are unaffected when `graph.enabled=false`. No graph schema is created.
 - When `graph.enabled` is set to true, the next `openDatabase()` call:
   1. Loads the GraphQLite extension (§4.5).
-  2. Registers the `qkb` namespace (idempotent).
-  3. Ensures a QKB-owned `graph_meta` table exists (one row, tracking the GraphQLite library version we initialized against). No existing tables are altered.
+  2. Ensures a QKB-owned `graph_meta` table exists (one row, tracking the GraphQLite library version we initialized against). No existing tables are altered. GraphQLite's own schema is materialized lazily on the first Cypher write.
 - Downgrade: setting `graph.enabled=false` after use leaves the GraphQLite tables in place, untouched. They're inert without the extension loaded. `qkb graph drop` exists for users who want to reclaim space.
 - Backwards compatibility commitment: any QKB database created against this RFC's implementation must remain readable by the immediately preceding QKB version (with `graph.enabled` ignored — the extra tables are inert without the extension).
 
@@ -267,7 +266,7 @@ Hard requirements that must be met before merging Phase 1:
 | Cold extension-load time | < 50 ms | Microbenchmark, measured at process start |
 | 2-hop neighbor query, 10k-node graph | p95 < 25 ms | New benchmark, included in PR |
 | PageRank, 10k-node graph | < 2 s | New benchmark |
-| Database file size growth with empty graph layer | < 64 KB | Compare `index.sqlite` before/after enabling |
+| Database file size growth with empty graph layer | < 256 KB | Compare `index.sqlite` before/after enabling. Measured baseline: 184 KB on macOS arm64 / GraphQLite v0.4.4 (see SPIKE-RESULTS.md Q2). |
 
 If any of these regress, the feature does not merge. CI runs the relevant subset on every PR (small reproducible corpus); the full corpus runs locally before each release tag.
 
