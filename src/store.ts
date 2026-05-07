@@ -12,6 +12,9 @@
  */
 
 import { openDatabase, loadSqliteVec } from "./db.js";
+import { resolveGraphConfig } from "./graph/config.js";
+import { loadGraphqlite, GraphExtensionUnavailableError } from "./graph/loader.js";
+import { loadConfig } from "./collections.js";
 import type { Database } from "./db.js";
 import picomatch from "picomatch";
 import { createHash } from "crypto";
@@ -900,6 +903,84 @@ function initializeDatabase(db: Database): void {
     SET value = REPLACE(value, 'qmd://', 'qkb://')
     WHERE value LIKE '%qmd://%'
   `);
+
+  // RFC-0007 §9: optional graph layer bootstrap.
+  // When graph.enabled=true, attempt to load GraphQLite. On success, ensure
+  // graph_meta exists with a singleton row. On failure (binary missing /
+  // wrong ABI), warn and continue — non-graph features are unaffected.
+  // Mirrors the sqlite-vec graceful-degrade pattern above.
+  initializeGraphLayer(db);
+}
+
+let _graphLayerAvailable: boolean | null = null;
+let _graphLayerUnavailableReason: string | null = null;
+
+/**
+ * Whether GraphQLite was loaded into this process. Read-only, set by
+ * `initializeGraphLayer`. Used by future SDK methods to decide whether
+ * to throw `GraphDisabledError` or operate normally.
+ */
+export function isGraphLayerAvailable(): boolean {
+  return _graphLayerAvailable === true;
+}
+
+export function getGraphLayerUnavailableReason(): string | null {
+  return _graphLayerUnavailableReason;
+}
+
+function initializeGraphLayer(db: Database): void {
+  let resolved;
+  try {
+    resolved = resolveGraphConfig(loadConfig());
+  } catch (err) {
+    // Misconfigured graph block — warn but don't crash other features.
+    _graphLayerAvailable = false;
+    _graphLayerUnavailableReason = `graph config invalid: ${getErrorMessage(err)}`;
+    console.warn(_graphLayerUnavailableReason);
+    return;
+  }
+
+  if (!resolved.enabled) {
+    _graphLayerAvailable = false;
+    _graphLayerUnavailableReason = "graph.enabled=false (default)";
+    return;
+  }
+
+  try {
+    loadGraphqlite(db);
+  } catch (err) {
+    _graphLayerAvailable = false;
+    if (err instanceof GraphExtensionUnavailableError) {
+      _graphLayerUnavailableReason = err.message;
+    } else {
+      _graphLayerUnavailableReason = getErrorMessage(err);
+    }
+    console.warn(`Graph layer disabled: ${_graphLayerUnavailableReason}`);
+    return;
+  }
+
+  // Schema: a singleton-row metadata table tracking which GraphQLite version
+  // initialized this database. The CHECK constraint enforces single-row.
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS graph_meta (
+      id TEXT PRIMARY KEY DEFAULT 'qkb',
+      graphqlite_version TEXT NOT NULL,
+      initialized_at TEXT NOT NULL,
+      CHECK (id = 'qkb')
+    )
+  `);
+
+  // INSERT OR IGNORE on the singleton row — idempotent across re-opens.
+  // Pinned version comes from the vendoring manifest (PR-4b will replace
+  // this with a runtime read of scripts/graphqlite-versions.json).
+  const pinnedVersion = "0.4.4";
+  const now = new Date().toISOString();
+  db.prepare(
+    `INSERT OR IGNORE INTO graph_meta (id, graphqlite_version, initialized_at) VALUES ('qkb', ?, ?)`
+  ).run(pinnedVersion, now);
+
+  _graphLayerAvailable = true;
+  _graphLayerUnavailableReason = null;
 }
 
 // =============================================================================
