@@ -1,0 +1,11 @@
+{
+  "$schema_comment": "Pinned GraphQLite version metadata. RFC-0007 §7 hard-pin (decision D11). Bumping requires re-running test/spikes/probe-merge-syntax.ts to verify the documented v0.4.4 quirks are still worked-around correctly. Do not edit `version` without coordinated changes in src/graph/sdk.ts and a fresh spike run. PR-4b will populate `checksums` for the lazy postinstall download.",
+  "version": "0.4.4",
+  "release_url_template": "https://github.com/colliery-io/graphqlite/releases/download/v{version}/gqlite-{platform}",
+  "platforms": {
+    "darwin-arm64": { "filename": "gqlite-macos-arm64", "checksum_sha256": null },
+    "darwin-x64":   { "filename": "gqlite-macos-x86_64", "checksum_sha256": null },
+    "linux-x64":    { "filename": "gqlite-linux-x86_64", "checksum_sha256": null },
+    "linux-arm64":  { "filename": "gqlite-linux-aarch64", "checksum_sha256": null }
+  }
+}
