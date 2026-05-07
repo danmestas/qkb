@@ -1816,6 +1816,53 @@ export function createStore(dbPath?: string): Store {
   return store;
 }
 
+/**
+ * Remove `chunk:*` graph nodes whose `hash` no longer exists in the
+ * `content` table — RFC-0007 §4.3 cascade-on-delete.
+ *
+ * Soft-reference cleanup: we don't enforce a SQL FK across the extension
+ * boundary, so this function reconciles graph state after content
+ * deletions. Run after `cleanupOrphanedContent()` for a complete sweep.
+ *
+ * Returns the number of chunk nodes deleted (incident edges go too via
+ * `DETACH DELETE`). Non-chunk nodes (e.g. extracted entities) are
+ * never touched.
+ */
+export function cleanupOrphanedChunkNodes(db: Database): number {
+  if (!isGraphLayerAvailable()) return 0;
+
+  const allChunksRow = db
+    .prepare("SELECT cypher(?) AS r")
+    .get("MATCH (c:Chunk) RETURN c.id AS id, c.hash AS hash") as { r: string };
+
+  const chunks = JSON.parse(allChunksRow.r) as Array<{
+    id: string;
+    hash: string;
+  }>;
+  if (chunks.length === 0) return 0;
+
+  const referencedHashes = [...new Set(chunks.map((c) => c.hash))];
+  const placeholders = referencedHashes.map(() => "?").join(",");
+  const aliveRows = db
+    .prepare(
+      `SELECT hash FROM content WHERE hash IN (${placeholders})`
+    )
+    .all(...referencedHashes) as Array<{ hash: string }>;
+  const aliveHashes = new Set(aliveRows.map((r) => r.hash));
+
+  const orphans = chunks.filter((c) => !aliveHashes.has(c.hash));
+  if (orphans.length === 0) return 0;
+
+  for (const orphan of orphans) {
+    db.prepare("SELECT cypher(?, ?)").get(
+      "MATCH (c:Chunk {id: $id}) DETACH DELETE c",
+      JSON.stringify({ id: orphan.id })
+    );
+  }
+
+  return orphans.length;
+}
+
 function ensureGraphAvailable(): void {
   if (!isGraphLayerAvailable()) {
     const reason = getGraphLayerUnavailableReason() ?? "unknown";

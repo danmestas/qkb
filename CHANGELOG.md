@@ -4,6 +4,14 @@
 
 ### Docs
 
+- **RFC-0007 PR-7: cross-extension transactions + cascade cleanup.** Adds
+  `cleanupOrphanedChunkNodes(db)` to remove `chunk:*` graph nodes whose
+  `hash` no longer exists in `content` (RFC §4.3 soft-reference cleanup).
+  Integration tests verify that a transaction spanning `content` +
+  `content_vectors` + a graph `cypher()` write commits and rolls back
+  atomically, and that the cleanup leaves non-chunk nodes (entities) and
+  alive chunks alone.
+
 - **RFC-0007 PR-6: typed graph SDK.** Adds `store.graph.upsertNode()`,
   `store.graph.upsertEdge()`, `store.graph.cypher<T>()` and the `cypher`
   tagged-template helper. The branded `CypherQuery` type rejects raw
