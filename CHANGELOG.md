@@ -9,6 +9,13 @@
   GraphQLite SQLite extension on the same connection as `sqlite-vec`, typed
   SDK with parameterized Cypher, MCP tool surface). Roadmap and per-PR plan
   in `docs/rfcs/0007-impl/PLAN.md`. No code changes yet.
+- **RFC-0007 PR-3: `graph.enabled` config flag.** YAML `graph:` block now
+  recognized in `~/.config/qkb/index.yml` with fields `enabled` (default
+  `false`), `bulk_insert_threshold` (default 64), `query_timeout_ms`
+  (default 5000), `max_path_length` (default 6, ceiling 12). Validated via
+  zod; misconfigured fields throw at config load. Adds `GraphDisabledError`
+  for future SDK methods. No behavior change yet (no extension loaded).
+
 - **RFC-0007 spikes (Q1/Q2/Q4/Q5).** `test/spikes/graphqlite-spikes.test.ts`
   (skip-by-default; opt in via `QKB_RUN_SPIKES=1`) verifies that GraphQLite
   participates in nested SAVEPOINTs, coexists with sqlite-vec on a single
