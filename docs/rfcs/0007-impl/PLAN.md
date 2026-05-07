@@ -30,16 +30,20 @@ with QKB's actual code; none of them are taste calls (those go to §4 below).
 | D4 | Schema bootstrap via existing `CREATE IF NOT EXISTS` in `openDatabase()` | Repo has no versioned migration system; `migrate-schema.ts` is a one-off historical script |
 | D5 | Config path is `~/.config/qkb/index.yml` (not `qkb.yml`) | Actual QKB config location |
 | D6 | Reuse the existing `_sqliteVecLoad` pattern in `src/db.ts` for `_graphqliteLoad` | The dual-runtime + macOS-Bun complexity is already solved; mirror it, don't reinvent |
+| D7 | Vendoring approach: A+C hybrid (postinstall download with SHA-256 + `QKB_GRAPHQLITE_PATH` escape hatch) | GraphQLite has no upstream npm packages (PR-2 confirmed); A is the lowest-maintenance fit for §7's "verified binaries from upstream releases"; C handles airgapped/corp environments where postinstall is disabled |
+| D8 | Single-graph-per-DB; the `qkb` namespace concept is removed | `cypher()` is `(query, params)` not `(namespace, query, params)` — the RFC was wrong. Multi-graph is via Cypher's `FROM` clause (read-only, ~10 max) and not a fit for our use case |
+| D9 | §10 empty-graph file-size budget revised from 64 KB to 256 KB | PR-2 measured 184 KB delta on macOS arm64 / v0.4.4. Original budget was a hand-waved guess; revising matches reality with comfortable headroom. RFC §10 updated. |
+| D10 | Dump format: QKB-defined NDJSON (subject to repo-owner ack — see C1) | Proposed in SPIKE-RESULTS Q3. Decouples from GraphQLite changes; makes the §7 "exit plan" framing meaningful. |
 
 ## 2. Open questions and their owning PR
 
-| Q from §14 | Question | Resolves in | Type |
+| Q from §14 | Question | Status | Outcome |
 |---|---|---|---|
-| Q1 | GraphQLite `cypher()` inside nested SAVEPOINTs | PR-2 (spike) | Empirical |
-| Q2 | Empty `qkb` namespace on-disk size | PR-2 (spike) | Empirical |
-| Q3 | Dump format: GraphQLite-native or QKB-defined? | PR-2 (escalation) | **Taste — owner decides** |
-| Q4 | sqlite-vec × graphqlite ABI compatibility | PR-2 (spike) | Empirical |
-| Q5 | Does GraphQLite publish per-platform npm packages? | PR-2 (research) | Empirical → drives vendoring approach in PR-4 |
+| Q1 | GraphQLite `cypher()` inside nested SAVEPOINTs | **Resolved (PR-2)** | YES — SAVEPOINT semantics are preserved across SQL/Cypher boundary |
+| Q2 | Empty graph on-disk size | **Resolved (PR-2)** | 184 KB observed; §10 budget revised to 256 KB (D9) |
+| Q3 | Dump format: GraphQLite-native or QKB-defined? | **Pending owner ack (C1)** | Proposed: QKB-defined NDJSON (D10) |
+| Q4 | sqlite-vec × graphqlite ABI compatibility | **Resolved (PR-2)** | YES — coexist + atomic rollback both verified |
+| Q5 | GraphQLite per-platform npm packages? | **Resolved (PR-2)** | NO — vendoring is A+C hybrid (D7) |
 
 ## 3. PR sequence
 
@@ -110,5 +114,6 @@ into the `## [2.2.0]` section per the release script. Sample entries:
 
 Updated as PRs land. Format: `PR-N: <state> [link]`.
 
-- PR-1: in flight (this PR)
-- PR-2 onward: queued
+- PR-1: **merged** ([#21](https://github.com/danmestas/qkb/pull/21))
+- PR-2: in flight — research spikes resolve Q1/Q2/Q4/Q5; Q3 escalated as C1
+- PR-3 onward: queued

@@ -9,6 +9,16 @@
   GraphQLite SQLite extension on the same connection as `sqlite-vec`, typed
   SDK with parameterized Cypher, MCP tool surface). Roadmap and per-PR plan
   in `docs/rfcs/0007-impl/PLAN.md`. No code changes yet.
+- **RFC-0007 spikes (Q1/Q2/Q4/Q5).** `test/spikes/graphqlite-spikes.test.ts`
+  (skip-by-default; opt in via `QKB_RUN_SPIKES=1`) verifies that GraphQLite
+  participates in nested SAVEPOINTs, coexists with sqlite-vec on a single
+  connection, and shares atomic-rollback semantics. Empty-graph on-disk
+  delta measured at 184 KB (RFC §10 budget revised from 64 KB to 256 KB).
+  Vendoring resolved as A+C hybrid (lazy postinstall + `QKB_GRAPHQLITE_PATH`
+  env-var override) since GraphQLite publishes no npm packages. Single-graph
+  per DB (the `qkb` namespace concept removed — the actual `cypher()` SQL
+  signature is `(query, params)`, not `(namespace, query, params)`).
+  Findings in `docs/rfcs/0007-impl/SPIKE-RESULTS.md`.
 
 ### BREAKING
 
