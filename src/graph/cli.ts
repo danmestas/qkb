@@ -18,6 +18,7 @@ import {
   type Store,
 } from "../store.js";
 import { runCypher, runPageRank, type CypherQuery } from "./sdk.js";
+import { dumpGraph, restoreGraph } from "./dump-restore.js";
 
 export interface GraphCliResult {
   stdout: string;
@@ -193,4 +194,39 @@ export function graphGc(store: Store, dryRun: boolean): GraphCliResult {
     stderr: "",
     exitCode: 0,
   };
+}
+
+export function graphDump(store: Store): GraphCliResult {
+  if (!isGraphLayerAvailable()) {
+    return {
+      stdout: "",
+      stderr: `graph dump: layer is unavailable (${getGraphLayerUnavailableReason() ?? "unknown"}).\n`,
+      exitCode: 1,
+    };
+  }
+  return { stdout: dumpGraph(store), stderr: "", exitCode: 0 };
+}
+
+export function graphRestore(store: Store, ndjson: string): GraphCliResult {
+  if (!isGraphLayerAvailable()) {
+    return {
+      stdout: "",
+      stderr: `graph restore: layer is unavailable (${getGraphLayerUnavailableReason() ?? "unknown"}). Set graph.enabled=true and ensure GraphQLite is installed.\n`,
+      exitCode: 1,
+    };
+  }
+  try {
+    const counts = restoreGraph(store, ndjson);
+    return {
+      stdout: `graph restore: imported ${counts.nodes} node(s) and ${counts.edges} edge(s).\n`,
+      stderr: "",
+      exitCode: 0,
+    };
+  } catch (err) {
+    return {
+      stdout: "",
+      stderr: `graph restore: ${(err as Error).message}\n`,
+      exitCode: 1,
+    };
+  }
 }

@@ -3122,12 +3122,19 @@ if (isMain) {
         console.error("                                            Run a Cypher query");
         console.error("  qkb graph pagerank [--top N]              PageRank, top N rows");
         console.error("  qkb graph gc [--dry-run]                  Sweep orphan chunk:* nodes");
+        console.error("  qkb graph dump                            Dump graph as NDJSON to stdout");
+        console.error("  qkb graph restore                         Restore graph from NDJSON on stdin");
         process.exit(1);
       }
 
-      const { graphStatus, graphQuery, graphPageRank, graphGc } = await import(
-        "../graph/cli.js"
-      );
+      const {
+        graphStatus,
+        graphQuery,
+        graphPageRank,
+        graphGc,
+        graphDump,
+        graphRestore,
+      } = await import("../graph/cli.js");
 
       const store = createStore();
       try {
@@ -3159,9 +3166,22 @@ if (isMain) {
             result = graphGc(store, dryRun);
             break;
           }
+          case "dump":
+            result = graphDump(store);
+            break;
+          case "restore": {
+            // Read NDJSON from stdin
+            const chunks: Buffer[] = [];
+            for await (const chunk of process.stdin) {
+              chunks.push(chunk as Buffer);
+            }
+            const ndjson = Buffer.concat(chunks).toString("utf8");
+            result = graphRestore(store, ndjson);
+            break;
+          }
           default:
             console.error(`Unknown graph subcommand: ${subcommand}`);
-            console.error("Available: status, query, pagerank, gc");
+            console.error("Available: status, query, pagerank, gc, dump, restore");
             process.exit(1);
         }
 
