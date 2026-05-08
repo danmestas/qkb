@@ -360,3 +360,183 @@ export async function graphExtract(
     exitCode: 0,
   };
 }
+
+export interface GraphLinkOptions {
+  collection?: string;
+  /** Limit to N docs for testing/iteration. */
+  limit?: number;
+}
+
+/**
+ * Vault-aware structural graph extraction. Walks the document table,
+ * parses each doc's frontmatter + body, extracts wikilinks / embeds /
+ * markdown refs, resolves them against the indexed-doc set, and
+ * upserts:
+ *
+ *   (:<Label> {id: 'doc:N', title, path})    — typed nodes per doc
+ *   (:<Label>)-[:LINKS_TO]->(:<Label>)        — resolved wikilink
+ *   (:<Label>)-[:LINKS_TO]->(:WikiTarget)     — unresolved wikilink
+ *   (:<Label>)-[:EMBEDS]->(:<Label>)          — resolved ![[X]]
+ *   (:<Label>)-[:REFERENCES]->(:<Label>)      — resolved ](rel.md)
+ *
+ * Label is the frontmatter `type:` (capitalized) when present, else
+ * derived from the path (entities/Foo.md → Entity), else Note.
+ *
+ * No LLM. Fully deterministic. Designed for Obsidian-style vaults
+ * (see flight-planner-kb's vault-ingest skill).
+ */
+export async function graphLink(
+  store: Store,
+  options: GraphLinkOptions = {}
+): Promise<GraphCliResult> {
+  if (!isGraphLayerAvailable()) {
+    return {
+      stdout: "",
+      stderr: `graph link: layer is unavailable (${getGraphLayerUnavailableReason() ?? "unknown"}).\n`,
+      exitCode: 1,
+    };
+  }
+
+  const {
+    extractLinks,
+    parseFrontmatter,
+    chooseLabel,
+    buildResolver,
+    resolveLinks,
+  } = await import("./wikilink-extraction.js");
+
+  // Pull all active docs (with bodies) from the index.
+  const params: unknown[] = [];
+  let where = "d.active = 1";
+  if (options.collection) {
+    where += " AND d.collection = ?";
+    params.push(options.collection);
+  }
+  let limitClause = "";
+  if (options.limit && options.limit > 0) {
+    limitClause = " LIMIT ?";
+    params.push(options.limit);
+  }
+  const sql = `SELECT d.id AS id, d.collection AS collection, d.path AS path, d.title AS title, c.doc AS doc
+               FROM documents d JOIN content c ON c.hash = d.hash
+               WHERE ${where}
+               ORDER BY d.id ASC${limitClause}`;
+  const rows = store.db.prepare(sql).all(...params) as Array<{
+    id: number;
+    collection: string;
+    path: string;
+    title: string;
+    doc: string;
+  }>;
+
+  if (rows.length === 0) {
+    return {
+      stdout: "graph link: no documents to process.\n",
+      stderr: "",
+      exitCode: 0,
+    };
+  }
+
+  // Build resolver across the whole indexed set so cross-doc wikilinks
+  // resolve correctly. Doing this once rather than per-batch.
+  const resolver = buildResolver(
+    rows.map((r) => ({
+      id: r.id,
+      title: r.title,
+      path: r.path,
+      doc: r.doc,
+    }))
+  );
+
+  // First pass: upsert all doc nodes with proper labels. Doing this
+  // before any edges so resolved targets always have a node to point
+  // at. Group by label so each `upsertNodesBulk` call is single-label.
+  const nodesByLabel = new Map<string, Array<{ id: string; label: string; properties: Record<string, unknown> }>>();
+  const wikiTargets = new Set<string>(); // unresolved targets get aggregated
+
+  type Edge = { from: string; to: string; type: string; properties?: Record<string, unknown> };
+  const edges: Edge[] = [];
+
+  for (const row of rows) {
+    const fm = parseFrontmatter(row.doc);
+    const label = chooseLabel(fm, row.path);
+    const docNodeId = `doc:${row.id}`;
+    const list = nodesByLabel.get(label) ?? [];
+    list.push({
+      id: docNodeId,
+      label,
+      properties: {
+        collection: row.collection,
+        path: row.path,
+        title: row.title,
+      },
+    });
+    nodesByLabel.set(label, list);
+
+    const links = extractLinks(row.doc);
+
+    const resolvedWiki = resolveLinks(links.wikilinks, resolver);
+    for (const r of resolvedWiki) {
+      if (r.docId !== null) {
+        edges.push({ from: docNodeId, to: `doc:${r.docId}`, type: "LINKS_TO" });
+      } else {
+        wikiTargets.add(r.target);
+        edges.push({
+          from: docNodeId,
+          to: `wikitarget:${r.target}`,
+          type: "LINKS_TO",
+        });
+      }
+    }
+
+    const resolvedEmbeds = resolveLinks(links.embeds, resolver);
+    for (const r of resolvedEmbeds) {
+      if (r.docId !== null) {
+        edges.push({ from: docNodeId, to: `doc:${r.docId}`, type: "EMBEDS" });
+      }
+      // Unresolved embeds (typically images, attachments) are skipped —
+      // not all embeds are markdown-resolvable.
+    }
+
+    const resolvedMd = resolveLinks(links.mdLinks, resolver);
+    for (const r of resolvedMd) {
+      if (r.docId !== null) {
+        edges.push({
+          from: docNodeId,
+          to: `doc:${r.docId}`,
+          type: "REFERENCES",
+        });
+      }
+    }
+  }
+
+  // Upsert WikiTarget placeholders first (for unresolved wikilinks).
+  if (wikiTargets.size > 0) {
+    const wtNodes = [...wikiTargets].map((name) => ({
+      id: `wikitarget:${name}`,
+      label: "WikiTarget",
+      properties: { name },
+    }));
+    store.graph.upsertNodesBulk(wtNodes);
+  }
+
+  // Upsert all real doc nodes, label by label.
+  let totalNodes = wikiTargets.size;
+  for (const [, nodes] of nodesByLabel) {
+    store.graph.upsertNodesBulk(nodes);
+    totalNodes += nodes.length;
+  }
+
+  // Upsert all edges. Bulk insertion goes inside a single tx already
+  // (per upsertEdgesBulk semantics).
+  store.graph.upsertEdgesBulk(edges);
+
+  return {
+    stdout:
+      `graph link: processed ${rows.length} docs. ` +
+      `Upserted ${totalNodes} nodes (${nodesByLabel.size} distinct labels) and ${edges.length} edges. ` +
+      `Unresolved wikilinks: ${wikiTargets.size}.\n`,
+    stderr: "",
+    exitCode: 0,
+  };
+}

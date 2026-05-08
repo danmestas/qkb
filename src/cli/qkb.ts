@@ -3125,6 +3125,8 @@ if (isMain) {
         console.error("  qkb graph dump                            Dump graph as NDJSON to stdout");
         console.error("  qkb graph restore                         Restore graph from NDJSON on stdin");
         console.error("  qkb graph extract [collection] [-n N]     LLM-extract entities, link doc -> entity (Phase 2D)");
+        console.error("  qkb graph link [collection] [-n N]        Vault-aware: parse [[wikilinks]], frontmatter type, build typed graph");
+        console.error("                                            Available: status, query, pagerank, gc, dump, restore, extract, link");
         process.exit(1);
       }
 
@@ -3136,6 +3138,7 @@ if (isMain) {
         graphDump,
         graphRestore,
         graphExtract,
+        graphLink,
       } = await import("../graph/cli.js");
 
       // getStore() respects --index / setIndexName; createStore() ignores them
@@ -3197,6 +3200,15 @@ if (isMain) {
             } finally {
               await disposeDefaultLlamaCpp();
             }
+            break;
+          }
+          case "link": {
+            const collection = cli.args[1];
+            const limitArg = cli.values.n;
+            result = await graphLink(store, {
+              ...(collection ? { collection } : {}),
+              ...(limitArg ? { limit: parseInt(String(limitArg), 10) } : {}),
+            });
             break;
           }
           default:
