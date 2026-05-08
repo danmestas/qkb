@@ -299,39 +299,220 @@ function escapeRelType(type: string): string {
 }
 
 /**
- * Bulk upsert nodes inside a single SQLite transaction. Amortizes
- * per-statement fsync overhead across the batch — meaningful win for
- * indexing pipelines that emit hundreds-to-thousands of nodes per
- * document.
+ * Per-batch caps for the multi-pattern Cypher path. Different shapes
+ * have different planner costs:
  *
- * Atomicity: the entire batch commits together, or rolls back together
- * if any element fails validation or the underlying write fails.
+ * - **CREATE** (`CREATE (m0:L {...}), (m1:L {...}), ...`): no MATCH,
+ *   no join planning, scales freely. 100 is plenty.
+ * - **MATCH + SET** (`MATCH (n0:L {...}), ... SET n0 += $p0, ...`): each
+ *   labeled MATCH consumes ~2 tables in SQLite's join planner, which
+ *   caps at 64 tables (`SQLITE_MAX_FROM_TABLES`). 25 leaves headroom.
+ * - **MATCH + MERGE for edges** (`MATCH (a0 {...}), (b0 {...}), ...
+ *   MERGE (a0)-[:T]->(b0), ...`): two endpoint MATCHes per edge plus
+ *   the relationship table. 25 stays well under 64.
  *
- * Note: GraphQLite v0.4.4 has a documented "bulk insert API" exposed
- * through the C-API but not through the SQL extension surface that
- * better-sqlite3 / bun:sqlite see. Wrapping the existing per-node
- * upsert in a transaction captures the dominant fsync win without
- * binding to a private API. Revisit if perf data shows per-node
- * Cypher parse to be the bottleneck.
+ * Bounds were probed empirically against v0.4.4 — see
+ * `test/spikes/probe-limit.ts`.
+ */
+const BULK_CREATE_BATCH = 100;
+const BULK_MERGE_BATCH = 25;
+
+/**
+ * Bulk upsert nodes. Same semantics as calling `runUpsertNode` for each
+ * element (idempotent; existing nodes get `SET n += $props`), but
+ * orders of magnitude faster: one Cypher call per chunk of
+ * {@link BULK_BATCH_SIZE} instead of two per node.
+ *
+ * Why this is deep:
+ *   - Caller passes a flat array. Internals group by label, probe
+ *     existence in one batched MATCH-IN-$ids per label, split into
+ *     new vs. existing, then issue:
+ *       * one comma-separated `CREATE (m0:L {...}), (m1:L {...}), ...`
+ *         for the new bucket, and
+ *       * one comma-separated `MATCH (n0 {id:$id0}), ... SET n0 += $p0, ...`
+ *         for the existing bucket.
+ *
+ * **GraphQLite v0.4.4 quirks honored** (see
+ * `test/spikes/probe-multi-merge.ts`):
+ *   - Comma-separated CREATE works; space-chained CREATE silently runs
+ *     only the first statement.
+ *   - Single MATCH with comma-separated patterns + single SET with
+ *     comma-separated assignments works.
+ *   - All chunked inside a SQLite transaction so a mid-batch failure
+ *     rolls back the whole bulk.
  */
 export function runUpsertNodesBulk(
   db: Database,
   nodes: ReadonlyArray<UpsertNodeArgs>
 ): void {
   if (nodes.length === 0) return;
-  const tx = db.transaction((batch: ReadonlyArray<UpsertNodeArgs>) => {
-    for (const n of batch) runUpsertNode(db, n);
+
+  const byLabel = new Map<string, UpsertNodeArgs[]>();
+  for (const n of nodes) {
+    const list = byLabel.get(n.label) ?? [];
+    list.push(n);
+    byLabel.set(n.label, list);
+  }
+
+  const tx = db.transaction(() => {
+    for (const [label, group] of byLabel) {
+      // Validate label once per group (cheaper + clearer error if wrong).
+      const labelStr = escapeLabel(label);
+
+      // Existence probe in one Cypher call: which of these ids already exist?
+      const ids = group.map((n) => n.id);
+      const probed = runCypher<{ id: string }>(
+        db,
+        `MATCH (n:${labelStr}) WHERE n.id IN $ids RETURN n.id AS id` as CypherQuery,
+        { ids }
+      );
+      const existingIds = new Set(probed.map((r) => r.id));
+
+      const newNodes = group.filter((n) => !existingIds.has(n.id));
+      const existingNodes = group.filter((n) => existingIds.has(n.id));
+
+      for (let i = 0; i < newNodes.length; i += BULK_CREATE_BATCH) {
+        runCreateBatch(db, labelStr, newNodes.slice(i, i + BULK_CREATE_BATCH));
+      }
+      for (let i = 0; i < existingNodes.length; i += BULK_MERGE_BATCH) {
+        runMergeSetBatch(
+          db,
+          labelStr,
+          existingNodes.slice(i, i + BULK_MERGE_BATCH)
+        );
+      }
+    }
   });
-  tx(nodes);
+  tx();
 }
 
+/**
+ * Bulk upsert edges. One Cypher call per chunk of {@link BULK_BATCH_SIZE}
+ * (instead of one per edge), using a single MATCH clause with
+ * comma-separated endpoint patterns and a single MERGE clause with
+ * comma-separated edge patterns.
+ *
+ * On a 5000-edge batch this is roughly 10× faster in-memory and
+ * substantially more on disk (each Cypher call fsyncs the WAL; 50
+ * fsyncs vs. 5000).
+ *
+ * **Limitation** (inherited from `runUpsertEdge`): edge properties are
+ * inlined into the MERGE pattern, so identity is `(from, to, type,
+ * properties)`. Re-upserting the same logical edge with different
+ * properties creates a new edge rather than updating. Document this in
+ * the public docs.
+ */
 export function runUpsertEdgesBulk(
   db: Database,
   edges: ReadonlyArray<UpsertEdgeArgs>
 ): void {
   if (edges.length === 0) return;
-  const tx = db.transaction((batch: ReadonlyArray<UpsertEdgeArgs>) => {
-    for (const e of batch) runUpsertEdge(db, e);
+
+  const tx = db.transaction(() => {
+    for (let i = 0; i < edges.length; i += BULK_MERGE_BATCH) {
+      runEdgeBatch(db, edges.slice(i, i + BULK_MERGE_BATCH));
+    }
   });
-  tx(edges);
+  tx();
+}
+
+function runCreateBatch(
+  db: Database,
+  labelStr: string,
+  nodes: ReadonlyArray<UpsertNodeArgs>
+): void {
+  const params: Record<string, unknown> = {};
+  const parts: string[] = [];
+  for (let i = 0; i < nodes.length; i++) {
+    const n = nodes[i]!;
+    const allProps = { ...(n.properties ?? {}), id: n.id };
+    const propParts: string[] = [];
+    for (const [key, value] of Object.entries(allProps)) {
+      if (!IDENT_RE.test(key)) {
+        throw new TypeError(
+          `Invalid property key: ${JSON.stringify(key)}. Must match ${IDENT_RE}.`
+        );
+      }
+      const paramName = `p_${key}_${i}`;
+      propParts.push(`${key}: $${paramName}`);
+      params[paramName] = value;
+    }
+    parts.push(`(m${i}:${labelStr} {${propParts.join(", ")}})`);
+  }
+  db.prepare("SELECT cypher(?, ?)").get(
+    `CREATE ${parts.join(", ")}`,
+    JSON.stringify(params)
+  );
+}
+
+function runMergeSetBatch(
+  db: Database,
+  labelStr: string,
+  nodes: ReadonlyArray<UpsertNodeArgs>
+): void {
+  const params: Record<string, unknown> = {};
+  const matchParts: string[] = [];
+  const setParts: string[] = [];
+  for (let i = 0; i < nodes.length; i++) {
+    const n = nodes[i]!;
+    const idKey = `id_${i}`;
+    const propsKey = `props_${i}`;
+    params[idKey] = n.id;
+    // Validate keys to match per-node validation; props go through
+    // bulk SET += so individual key validation happens lazily here.
+    for (const key of Object.keys(n.properties ?? {})) {
+      if (!IDENT_RE.test(key)) {
+        throw new TypeError(
+          `Invalid property key: ${JSON.stringify(key)}. Must match ${IDENT_RE}.`
+        );
+      }
+    }
+    params[propsKey] = { ...(n.properties ?? {}), id: n.id };
+    matchParts.push(`(n${i}:${labelStr} {id: $${idKey}})`);
+    setParts.push(`n${i} += $${propsKey}`);
+  }
+  db.prepare("SELECT cypher(?, ?)").get(
+    `MATCH ${matchParts.join(", ")} SET ${setParts.join(", ")}`,
+    JSON.stringify(params)
+  );
+}
+
+function runEdgeBatch(
+  db: Database,
+  edges: ReadonlyArray<UpsertEdgeArgs>
+): void {
+  const params: Record<string, unknown> = {};
+  const matchParts: string[] = [];
+  const mergeParts: string[] = [];
+  for (let i = 0; i < edges.length; i++) {
+    const e = edges[i]!;
+    const fk = `f${i}`;
+    const tk = `t${i}`;
+    params[fk] = e.from;
+    params[tk] = e.to;
+    matchParts.push(`(a${i} {id: $${fk}})`, `(b${i} {id: $${tk}})`);
+
+    let propMap = "";
+    if (e.properties && Object.keys(e.properties).length > 0) {
+      const propParts: string[] = [];
+      for (const [key, value] of Object.entries(e.properties)) {
+        if (!IDENT_RE.test(key)) {
+          throw new TypeError(
+            `Invalid property key: ${JSON.stringify(key)}. Must match ${IDENT_RE}.`
+          );
+        }
+        const paramName = `p_${key}_${i}`;
+        propParts.push(`${key}: $${paramName}`);
+        params[paramName] = value;
+      }
+      propMap = ` {${propParts.join(", ")}}`;
+    }
+    mergeParts.push(
+      `(a${i})-[:${escapeRelType(e.type)}${propMap}]->(b${i})`
+    );
+  }
+  db.prepare("SELECT cypher(?, ?)").get(
+    `MATCH ${matchParts.join(", ")} MERGE ${mergeParts.join(", ")}`,
+    JSON.stringify(params)
+  );
 }

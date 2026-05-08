@@ -1,18 +1,11 @@
 /**
- * Tests for the SDK bulk-insert path — RFC-0007 §4.4 (Phase 2A).
+ * Tests for the SDK bulk-insert path — RFC-0007 §4.4 (Phase 2A,
+ * extended for the multi-MERGE batched fast path).
  *
- * `store.graph.upsertNodesBulk` / `upsertEdgesBulk` wrap the per-call
- * upsertNode/upsertEdge inside a single SQLite transaction. This
- * amortizes per-statement fsync cost across the batch and is the path
- * the indexing pipeline (PR-17) uses for entity extraction at ingest
- * time.
- *
- * Note: GraphQLite v0.4.4 has a documented "bulk insert API" that
- * bypasses Cypher parsing entirely. We don't use it directly because
- * (a) it requires the binary's specific C-API which isn't exposed via
- * the SQL extension surface, and (b) wrapping the existing upsert in
- * a transaction already eliminates the dominant overhead. Revisit if
- * Phase 2 perf shows the per-node Cypher parse to be the bottleneck.
+ * `store.graph.upsertNodesBulk` / `upsertEdgesBulk` issue ~one Cypher
+ * call per chunk of 100 elements (instead of one per element), using
+ * comma-separated CREATE / MATCH+SET / MATCH+MERGE patterns. v0.4.4
+ * quirks documented in `test/spikes/probe-multi-merge.ts`.
  */
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { existsSync, mkdtempSync, rmSync } from "node:fs";
@@ -166,6 +159,135 @@ describe.skipIf(!HAS_REAL_BINARY)("graph bulk SDK (real binary)", () => {
         cypher`MATCH (n) RETURN count(n) AS c`
       );
       expect(Number(rows[0]?.c)).toBe(0);
+    } finally {
+      store.close();
+    }
+  });
+
+  it("splits across multiple internal batches (BULK_*_BATCH boundary)", () => {
+    const store = createStore(join(tmpDir, "bulk-split.sqlite"));
+    try {
+      // 250 nodes → 3 CREATE batches (100 + 100 + 50).
+      const nodes = Array.from({ length: 250 }, (_, i) => ({
+        id: `s:${i}`,
+        label: "S",
+        properties: { idx: i },
+      }));
+      store.graph.upsertNodesBulk(nodes);
+
+      // 250 edges → 10 MERGE batches (BULK_MERGE_BATCH = 25).
+      const edges = Array.from({ length: 250 }, (_, i) => ({
+        from: `s:${i}`,
+        to: `s:${(i + 1) % 250}`,
+        type: "RING",
+      }));
+      store.graph.upsertEdgesBulk(edges);
+
+      const nodeRows = store.graph.cypher<{ c: number }>(
+        cypher`MATCH (n:S) RETURN count(n) AS c`
+      );
+      const edgeRows = store.graph.cypher<{ c: number }>(
+        cypher`MATCH ()-[r:RING]->() RETURN count(r) AS c`
+      );
+      expect(Number(nodeRows[0]?.c)).toBe(250);
+      expect(Number(edgeRows[0]?.c)).toBe(250);
+    } finally {
+      store.close();
+    }
+  });
+
+  it("mixed new+existing nodes in one batch — existing get SET, new get CREATE", () => {
+    const store = createStore(join(tmpDir, "bulk-mixed.sqlite"));
+    try {
+      // First batch: 5 nodes with title "v1"
+      const first = Array.from({ length: 5 }, (_, i) => ({
+        id: `m:${i}`,
+        label: "M",
+        properties: { title: "v1" },
+      }));
+      store.graph.upsertNodesBulk(first);
+
+      // Second batch: same 5 ids with title "v2" + 5 new ids with title "v1"
+      const second = [
+        ...Array.from({ length: 5 }, (_, i) => ({
+          id: `m:${i}`,
+          label: "M",
+          properties: { title: "v2" },
+        })),
+        ...Array.from({ length: 5 }, (_, i) => ({
+          id: `m:${i + 5}`,
+          label: "M",
+          properties: { title: "v1" },
+        })),
+      ];
+      store.graph.upsertNodesBulk(second);
+
+      const rows = store.graph.cypher<{ id: string; title: string }>(
+        cypher`MATCH (n:M) RETURN n.id AS id, n.title AS title`
+      );
+      expect(rows).toHaveLength(10);
+      const byId = new Map(rows.map((r) => [r.id, r.title]));
+      // Existing get the new value (SET +=).
+      for (let i = 0; i < 5; i++) expect(byId.get(`m:${i}`)).toBe("v2");
+      // New keep their first value.
+      for (let i = 5; i < 10; i++) expect(byId.get(`m:${i}`)).toBe("v1");
+    } finally {
+      store.close();
+    }
+  });
+
+  it("edges with mixed types in one batch", () => {
+    const store = createStore(join(tmpDir, "bulk-mixed-types.sqlite"));
+    try {
+      const nodes = Array.from({ length: 6 }, (_, i) => ({
+        id: `t:${i}`,
+        label: "T",
+        properties: {},
+      }));
+      store.graph.upsertNodesBulk(nodes);
+
+      const edges = [
+        { from: "t:0", to: "t:1", type: "LINKS_TO" },
+        { from: "t:1", to: "t:2", type: "EMBEDS" },
+        { from: "t:2", to: "t:3", type: "REFERENCES" },
+        { from: "t:3", to: "t:4", type: "LINKS_TO" },
+        { from: "t:4", to: "t:5", type: "EMBEDS" },
+      ];
+      store.graph.upsertEdgesBulk(edges);
+
+      for (const t of ["LINKS_TO", "EMBEDS", "REFERENCES"]) {
+        const expected = edges.filter((e) => e.type === t).length;
+        const rows = store.graph.cypher<{ c: number }>(
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          `MATCH ()-[r:${t}]->() RETURN count(r) AS c` as any
+        );
+        expect(Number(rows[0]?.c)).toBe(expected);
+      }
+    } finally {
+      store.close();
+    }
+  });
+
+  it("edges with inline properties", () => {
+    const store = createStore(join(tmpDir, "bulk-edge-props.sqlite"));
+    try {
+      const nodes = Array.from({ length: 3 }, (_, i) => ({
+        id: `p:${i}`,
+        label: "P",
+        properties: {},
+      }));
+      store.graph.upsertNodesBulk(nodes);
+
+      const edges = [
+        { from: "p:0", to: "p:1", type: "LINKED", properties: { weight: 1 } },
+        { from: "p:1", to: "p:2", type: "LINKED", properties: { weight: 5 } },
+      ];
+      store.graph.upsertEdgesBulk(edges);
+
+      const rows = store.graph.cypher<{ w: number }>(
+        cypher`MATCH ()-[r:LINKED]->() RETURN r.weight AS w`
+      );
+      expect(rows.map((r) => Number(r.w)).sort((a, b) => a - b)).toEqual([1, 5]);
     } finally {
       store.close();
     }
