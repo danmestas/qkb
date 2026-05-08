@@ -2,6 +2,38 @@
 
 ## [Unreleased]
 
+### Changes
+
+- **`qkb graph link` — vault-aware structural graph extraction (no LLM).**
+  Bug-watch on flight-planner-kb (124 MB, 638 docs) found 8,964
+  `[[wikilinks]]` and 38 `![[embeds]]` entirely unused by the graph
+  layer. Phase 2D's LLM extraction can't run on real corpora (model
+  capability gap), but Obsidian-style vaults already encode the graph
+  in markdown — every `[[Page]]` is a relationship. New CLI command
+  walks the document table, parses YAML frontmatter (`type:`, `aliases:`,
+  `title:`), classifies docs by frontmatter-type or path
+  (`wiki/entities/*` → Entity, `wiki/concepts/*` → Concept, etc.),
+  extracts wikilinks/embeds/markdown-refs, resolves them via Obsidian's
+  filename-stem rule plus aliases, and bulk-upserts:
+
+  ```
+  (:Entity)-[:LINKS_TO]->(:Concept)        — resolved wikilink
+  (:Source)-[:EMBEDS]->(:Note)             — resolved ![[X]]
+  (:Note)-[:REFERENCES]->(:Note)           — resolved ](rel.md)
+  (:Note)-[:LINKS_TO]->(:WikiTarget)       — unresolved (dead refs)
+  ```
+
+  On flight-planner-kb: 639 docs → 703 typed nodes (19 distinct labels)
+  + 5,090 LINKS_TO edges + 64 unresolved wikilinks (dead refs surfaced
+  as `:WikiTarget` placeholders) in 14m45s. Inspired by the
+  `vault-ingest` and `vault-query` skills in the flight-planner-kb
+  itself. Pure regex + YAML parsing — no LLM in the loop.
+
+  Performance note: 14m45s for 5,090 edges = ~170 ms/edge. The bulk
+  insert wrap-in-transaction wins fsync amortization but each edge still
+  costs a Cypher MATCH+MERGE round-trip. Future PR can batch edges into
+  multi-MERGE statements for an order-of-magnitude improvement.
+
 ### Fixes
 
 - **`store.graph.cypher()` no longer crashes on write queries.**
