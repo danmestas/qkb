@@ -4,6 +4,15 @@
 
 ### Changes
 
+- **RFC-0007 PR-18 (Phase 2E): 24-hour soak harness + nightly CI.**
+  `bench/graph-soak.ts` runs continuous indexing + querying with
+  RSS / file size / query p95 sampling. Pass criteria: 0 errors, RSS
+  growth < 50 MB/hr, p95 drift < 3x. `--full` enables the 24-hour
+  validation mode for local pre-release runs; default 30 min suits CI.
+  New nightly workflow `.github/workflows/graph-soak-nightly.yml` runs
+  the 30-min soak on macos-latest with brew-installed graphqlite at
+  04:17 UTC daily; results uploaded as artifacts (30-day retention).
+
 - **RFC-0007 PR-17 (Phase 2D): LLM entity extraction + `qkb graph extract`.**
   New module `src/graph/entity-extraction.ts` exports `extractEntities(llm,
   text, types, options?)` and a parser tolerant of `\`\`\`json` fences,

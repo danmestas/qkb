@@ -1,0 +1,51 @@
+name: Graph Soak (Nightly)
+
+# Runs the graph soak harness on a schedule + on demand. RFC-0007 §11
+# specifies a 24-hour soak as the Phase 2 deliverable; GitHub Actions
+# caps job runtime at 6 hours, so the nightly run does 30 minutes —
+# enough to catch RSS / file / latency drift trends. Full 24-hour
+# validation runs locally pre-release.
+
+on:
+  workflow_dispatch:
+    inputs:
+      duration_min:
+        description: "Soak duration in minutes (default 30)"
+        required: false
+        default: "30"
+  schedule:
+    # 04:17 UTC daily (off-hour to avoid contention with publish workflows).
+    - cron: "17 4 * * *"
+
+jobs:
+  soak:
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+
+      - name: Install SQLite (macOS)
+        run: brew install sqlite
+
+      - name: Install GraphQLite
+        run: brew install graphqlite
+
+      - run: npm install
+
+      - name: Run soak (${{ github.event.inputs.duration_min || '30' }} min)
+        run: |
+          npx tsx bench/graph-soak.ts \
+            --duration-min ${{ github.event.inputs.duration_min || '30' }} \
+            --json > soak-results.json
+        timeout-minutes: 360
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: soak-results-${{ github.run_id }}
+          path: soak-results.json
+          retention-days: 30
