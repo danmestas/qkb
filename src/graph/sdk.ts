@@ -162,6 +162,101 @@ export function runPageRank(
   return parsed as PageRankRow[];
 }
 
+export interface FindNeighborsArgs {
+  /** Source node id (e.g. `doc:42`, `entity:Person:alice`). */
+  nodeId: string;
+  /** Hop count, integer in [1, 3]. */
+  hops: number;
+  /**
+   * Optional whitelist of edge type names. Identifier-shaped only
+   * (alphanumeric + underscore). Empty / undefined → all types.
+   */
+  edgeTypes?: ReadonlyArray<string>;
+}
+
+export interface FindNeighborsResult {
+  rows: Array<{ id: string; type?: string }>;
+  /**
+   * `id_and_type` for hops=1 (each row has the edge type that was
+   * traversed). `id_only` for hops>1 (paths may span multiple types,
+   * so a single per-row type is meaningless and v0.4.4 errors on it).
+   */
+  returnType: "id_only" | "id_and_type";
+}
+
+/**
+ * Validate `findNeighbors` args without touching the database. Exposed
+ * separately so callers (e.g. MCP wrappers) can surface validation
+ * errors even when the graph layer is unavailable — i.e. before
+ * checking `isGraphLayerAvailable()`. Throws `RangeError` for hops
+ * out of range, `TypeError` for malformed edge type identifiers.
+ */
+export function validateFindNeighborsArgs(args: FindNeighborsArgs): void {
+  const { hops, edgeTypes } = args;
+  if (!Number.isInteger(hops) || hops < 1 || hops > 3) {
+    throw new RangeError(
+      `hops must be an integer in [1, 3] (got ${hops}).`
+    );
+  }
+  if (edgeTypes) {
+    for (const t of edgeTypes) {
+      if (!IDENT_RE.test(t)) {
+        throw new TypeError(
+          `invalid edge type ${JSON.stringify(t)}. Must match ${IDENT_RE}.`
+        );
+      }
+    }
+  }
+}
+
+/**
+ * Constrained outgoing-traversal helper. Returns nodes reachable from
+ * `nodeId` within `hops` steps, optionally filtered by edge type.
+ *
+ * Hides three v0.4.4 quirks documented in
+ * `test/spikes/probe-mcp-neighbors.ts`:
+ *   - `[r*1..N]` combined with `type(r)` in RETURN errors at runtime —
+ *     so for hops>1 the result drops the type column.
+ *   - Edge-type whitelist must be inlined as `[r:T1|T2]` (not parameterized).
+ *   - Var-length traversal needs `[*1..N]` not `[r*1..N]` if no type
+ *     filter is present (parser specificity).
+ *
+ * Validation (via {@link validateFindNeighborsArgs}) throws
+ * `RangeError` / `TypeError` so callers (CLI, MCP) decide how to
+ * surface the failure to their users.
+ */
+export function findNeighbors(
+  db: Database,
+  args: FindNeighborsArgs
+): FindNeighborsResult {
+  validateFindNeighborsArgs(args);
+  const { nodeId, hops, edgeTypes } = args;
+
+  const typeFilter =
+    edgeTypes && edgeTypes.length > 0 ? edgeTypes.join("|") : "";
+
+  let q: string;
+  let returnType: FindNeighborsResult["returnType"];
+  if (hops === 1) {
+    const relPattern = typeFilter ? `[r:${typeFilter}]` : "[r]";
+    q = `MATCH (a {id: $id})-${relPattern}->(b) RETURN DISTINCT b.id AS id, type(r) AS type`;
+    returnType = "id_and_type";
+  } else {
+    const varPattern = typeFilter
+      ? `[:${typeFilter}*1..${hops}]`
+      : `[*1..${hops}]`;
+    q = `MATCH (a {id: $id})-${varPattern}->(b) RETURN DISTINCT b.id AS id`;
+    returnType = "id_only";
+  }
+
+  const rows = runCypher<{ id: string; type?: string }>(
+    db,
+    q as CypherQuery,
+    { id: nodeId }
+  );
+  return { rows, returnType };
+}
+
 /**
  * Upsert a node by external `id`. If a node with the same id and label
  * exists, properties are merged via `SET n += $props`. Idempotent.

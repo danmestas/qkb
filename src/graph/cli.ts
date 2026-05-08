@@ -17,7 +17,13 @@ import {
   getGraphLayerUnavailableReason,
   type Store,
 } from "../store.js";
-import { runCypher, runPageRank, type CypherQuery } from "./sdk.js";
+import {
+  runCypher,
+  runPageRank,
+  findNeighbors,
+  validateFindNeighborsArgs,
+  type CypherQuery,
+} from "./sdk.js";
 import { dumpGraph, restoreGraph } from "./dump-restore.js";
 
 export interface GraphCliResult {
@@ -126,6 +132,91 @@ export function graphQuery(
       exitCode: 1,
     };
   }
+}
+
+export interface GraphNeighborsCliOptions {
+  hops: number;
+  edgeTypes?: ReadonlyArray<string>;
+  json?: boolean;
+}
+
+/**
+ * CLI surface over `findNeighbors`. Pretty-prints the neighbor list as
+ * a hop-shaped text table by default, or JSON when `--json` is passed.
+ *
+ * Hides the same v0.4.4 quirks `findNeighbors` does (hop=1 vs hop>1
+ * return shape, type filter encoding) — CLI users don't need to know
+ * the var-length-relationship gotchas to ask "what does X link to?".
+ */
+export function graphNeighbors(
+  store: Store,
+  nodeId: string,
+  options: GraphNeighborsCliOptions
+): GraphCliResult {
+  // Validate before checking layer availability so users on systems
+  // without GraphQLite still get a precise hops/types error instead
+  // of "layer is unavailable".
+  try {
+    validateFindNeighborsArgs({
+      nodeId,
+      hops: options.hops,
+      edgeTypes: options.edgeTypes,
+    });
+  } catch (err) {
+    return {
+      stdout: "",
+      stderr: `graph neighbors: ${(err as Error).message}\n`,
+      exitCode: 1,
+    };
+  }
+
+  if (!isGraphLayerAvailable()) {
+    return {
+      stdout: "",
+      stderr: `graph neighbors: layer is unavailable (${getGraphLayerUnavailableReason() ?? "unknown"}).\n`,
+      exitCode: 1,
+    };
+  }
+
+  let result;
+  try {
+    result = findNeighbors(store.db, {
+      nodeId,
+      hops: options.hops,
+      edgeTypes: options.edgeTypes,
+    });
+  } catch (err) {
+    return {
+      stdout: "",
+      stderr: `graph neighbors: ${(err as Error).message}\n`,
+      exitCode: 1,
+    };
+  }
+
+  if (options.json) {
+    return {
+      stdout: JSON.stringify(result.rows, null, 2) + "\n",
+      stderr: "",
+      exitCode: 0,
+    };
+  }
+
+  const lines: string[] = [];
+  lines.push(
+    `Neighbors of ${nodeId} (hops=${options.hops}` +
+      (options.edgeTypes && options.edgeTypes.length > 0
+        ? `, types=${options.edgeTypes.join("|")}`
+        : "") +
+      `): ${result.rows.length}`
+  );
+  for (const r of result.rows) {
+    lines.push(
+      result.returnType === "id_and_type"
+        ? `  ${r.id}  [${r.type ?? "?"}]`
+        : `  ${r.id}`
+    );
+  }
+  return { stdout: lines.join("\n") + "\n", stderr: "", exitCode: 0 };
 }
 
 export function graphPageRank(store: Store, top: number): GraphCliResult {
