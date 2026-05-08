@@ -21,6 +21,7 @@ import {
   runCypher,
   runPageRank,
   findNeighbors,
+  validateFindNeighborsArgs,
   type CypherQuery,
 } from "./sdk.js";
 import { dumpGraph, restoreGraph } from "./dump-restore.js";
@@ -152,6 +153,23 @@ export function graphNeighbors(
   nodeId: string,
   options: GraphNeighborsCliOptions
 ): GraphCliResult {
+  // Validate before checking layer availability so users on systems
+  // without GraphQLite still get a precise hops/types error instead
+  // of "layer is unavailable".
+  try {
+    validateFindNeighborsArgs({
+      nodeId,
+      hops: options.hops,
+      edgeTypes: options.edgeTypes,
+    });
+  } catch (err) {
+    return {
+      stdout: "",
+      stderr: `graph neighbors: ${(err as Error).message}\n`,
+      exitCode: 1,
+    };
+  }
+
   if (!isGraphLayerAvailable()) {
     return {
       stdout: "",

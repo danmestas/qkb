@@ -25,7 +25,12 @@ import {
   getGraphLayerUnavailableReason,
   type Store,
 } from "../store.js";
-import { runCypher, type CypherQuery, findNeighbors } from "./sdk.js";
+import {
+  runCypher,
+  type CypherQuery,
+  findNeighbors,
+  validateFindNeighborsArgs,
+} from "./sdk.js";
 
 const DOLLAR_VAR_RE = /\$[A-Za-z_][A-Za-z0-9_]*/g;
 
@@ -111,6 +116,28 @@ export function runGraphNeighbors(
   store: Store,
   args: GraphNeighborsArgs
 ): GraphMcpResult {
+  // Validate args *before* checking layer availability so callers see
+  // shape errors regardless of whether GraphQLite is loaded — the
+  // tests in `graph-mcp.test.ts > graph_neighbors hop limit (always-on)`
+  // run on platforms without the binary and rely on this ordering.
+  try {
+    validateFindNeighborsArgs({
+      nodeId: args.node_id,
+      hops: args.hops,
+      edgeTypes: args.edge_types,
+    });
+  } catch (err) {
+    return {
+      content: [
+        {
+          type: "text",
+          text: `graph_neighbors: ${(err as Error).message}`,
+        },
+      ],
+      isError: true,
+    };
+  }
+
   if (!isGraphLayerAvailable()) return unavailable("graph_neighbors");
 
   try {

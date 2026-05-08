@@ -185,6 +185,31 @@ export interface FindNeighborsResult {
 }
 
 /**
+ * Validate `findNeighbors` args without touching the database. Exposed
+ * separately so callers (e.g. MCP wrappers) can surface validation
+ * errors even when the graph layer is unavailable — i.e. before
+ * checking `isGraphLayerAvailable()`. Throws `RangeError` for hops
+ * out of range, `TypeError` for malformed edge type identifiers.
+ */
+export function validateFindNeighborsArgs(args: FindNeighborsArgs): void {
+  const { hops, edgeTypes } = args;
+  if (!Number.isInteger(hops) || hops < 1 || hops > 3) {
+    throw new RangeError(
+      `hops must be an integer in [1, 3] (got ${hops}).`
+    );
+  }
+  if (edgeTypes) {
+    for (const t of edgeTypes) {
+      if (!IDENT_RE.test(t)) {
+        throw new TypeError(
+          `invalid edge type ${JSON.stringify(t)}. Must match ${IDENT_RE}.`
+        );
+      }
+    }
+  }
+}
+
+/**
  * Constrained outgoing-traversal helper. Returns nodes reachable from
  * `nodeId` within `hops` steps, optionally filtered by edge type.
  *
@@ -196,30 +221,16 @@ export interface FindNeighborsResult {
  *   - Var-length traversal needs `[*1..N]` not `[r*1..N]` if no type
  *     filter is present (parser specificity).
  *
- * Validation throws `RangeError` / `TypeError` so callers (CLI, MCP)
- * decide how to surface the failure to their users.
+ * Validation (via {@link validateFindNeighborsArgs}) throws
+ * `RangeError` / `TypeError` so callers (CLI, MCP) decide how to
+ * surface the failure to their users.
  */
 export function findNeighbors(
   db: Database,
   args: FindNeighborsArgs
 ): FindNeighborsResult {
+  validateFindNeighborsArgs(args);
   const { nodeId, hops, edgeTypes } = args;
-
-  if (!Number.isInteger(hops) || hops < 1 || hops > 3) {
-    throw new RangeError(
-      `hops must be an integer in [1, 3] (got ${hops}).`
-    );
-  }
-
-  if (edgeTypes) {
-    for (const t of edgeTypes) {
-      if (!IDENT_RE.test(t)) {
-        throw new TypeError(
-          `invalid edge type ${JSON.stringify(t)}. Must match ${IDENT_RE}.`
-        );
-      }
-    }
-  }
 
   const typeFilter =
     edgeTypes && edgeTypes.length > 0 ? edgeTypes.join("|") : "";
