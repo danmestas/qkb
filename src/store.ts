@@ -26,6 +26,7 @@ import {
   runFilterThenRank,
   runRankThenRerank,
   runEdgeWeightedRank,
+  mergeFusedWithGraphExpansion,
   DEFAULT_EDGE_WEIGHTS,
 } from "./graph/hybrid.js";
 import { loadConfig } from "./collections.js";
@@ -4433,11 +4434,23 @@ export async function hybridQuery(
   let candidates = fused.slice(0, candidateLimit);
 
   // Step 4b: RFC-0008 strategy #2 — edge-weighted graph expansion.
-  // Best-effort: if the graph layer is unavailable, empty, or throws,
-  // we keep `candidates` as-is and proceed.
+  //
+  // Implementation note (post-PR-#53 follow-up): the previous append-then-slice
+  // approach left graph candidates competing only for *tail* slots in the
+  // rerank pool. On corpora where vector/BM25 already saturates the pool
+  // (the common case), graph candidates were sliced out before reaching the
+  // reranker — `--graph` was effectively a no-op.
+  //
+  // The fix: treat graph-expanded candidates as one more ranked list and
+  // re-RRF against the full fused list. Graph candidates compete fairly
+  // for slots in the rerank pool by their per-edge-weighted rank rather
+  // than appearing only after the existing ones. The reranker still has
+  // final say; bad graph promotions get demoted by the cross-encoder.
+  //
+  // Best-effort: if the graph layer is unavailable, empty, or throws, we
+  // keep `candidates` as-is and proceed.
   if (options?.useGraph && candidates.length > 0 && isGraphLayerAvailable()) {
     try {
-      const seenFiles = new Set(candidates.map((c) => c.file));
       const expansion = runEdgeWeightedRank(store, {
         seeds: candidates.slice(0, 20).map((c) => ({
           file: c.file,
@@ -4445,30 +4458,35 @@ export async function hybridQuery(
         })),
         weights: options.graphWeights ?? { ...DEFAULT_EDGE_WEIGHTS },
       });
-      const novel = expansion.expanded.filter((e) => !seenFiles.has(e.file));
-      if (novel.length > 0) {
-        // Append novel docs after the existing candidates so the post-RRF
-        // ranking is preserved at the head and graph-only finds get a
-        // shot at the reranker. The reranker is the final arbiter.
-        const merged: RankedResult[] = [
-          ...candidates,
-          ...novel.map((e) => ({
-            file: e.file,
-            displayPath: e.displayPath,
-            title: e.title,
-            body: e.body,
-            score: e.score,
-          })),
-        ];
-        candidates = merged.slice(0, candidateLimit);
-        for (const e of novel) {
-          // Approximate docid for explain traces (6-char prefix of hash);
-          // we don't have the hash here so leave docidMap untouched —
-          // the consumer of this map tolerates missing entries.
+      const seenFiles = new Set(candidates.map((c) => c.file));
+      const novelCount = expansion.expanded.filter(
+        (e) => !seenFiles.has(e.file)
+      ).length;
+
+      if (expansion.expanded.length > 0) {
+        const graphList: RankedResult[] = expansion.expanded.map((e) => ({
+          file: e.file,
+          displayPath: e.displayPath,
+          title: e.title,
+          body: e.body,
+          score: e.score,
+        }));
+        // Use the FULL fused list (not the prior slice) so existing
+        // candidates retain their correct ranks during the second RRF.
+        candidates = mergeFusedWithGraphExpansion(
+          fused,
+          graphList,
+          candidateLimit,
+          (lists) => reciprocalRankFusion(lists)
+        );
+        // Graph-only docs need a docidMap entry so downstream consumers
+        // (which tolerate empty values) don't choke. The 6-char hash
+        // prefix would require an extra SQL roundtrip; leave it empty.
+        for (const e of expansion.expanded) {
           if (!docidMap.has(e.file)) docidMap.set(e.file, "");
         }
       }
-      hooks?.onGraphExpansion?.(novel.length);
+      hooks?.onGraphExpansion?.(novelCount);
     } catch (err) {
       // Surface but don't fail the query.
       hooks?.onGraphExpansionError?.((err as Error).message);

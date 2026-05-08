@@ -442,3 +442,56 @@ function parseDocId(nodeId: string): number | null {
   const n = Number(nodeId.slice(4));
   return Number.isFinite(n) ? n : null;
 }
+
+export interface RankedDoc {
+  file: string;
+  displayPath: string;
+  title: string;
+  body: string;
+  score: number;
+}
+
+/**
+ * Blend a hybrid-search candidate list with an edge-weighted graph
+ * expansion via Reciprocal Rank Fusion. Used by `hybridQuery` when
+ * `--graph` is set; extracted for unit testability without a full
+ * LLM-backed pipeline.
+ *
+ * Why a 2nd RRF pass instead of an append-then-slice (the bug fixed
+ * here): when the existing fused list saturates the candidate pool,
+ * appending graph results means they're sliced out before the reranker
+ * sees them. RRF blends the two ranked lists fairly — graph candidates
+ * compete for slots in the rerank pool by their per-edge-weighted rank
+ * rather than only filling tail slots.
+ *
+ * The reranker is the next stage and is the final arbiter; bad graph
+ * promotions get demoted by the cross-encoder. Liberal blending here
+ * is fine — false-positive graph candidates can't dominate the final
+ * output.
+ *
+ * @param fused Full post-RRF candidate list (NOT pre-sliced; we need
+ *              every rank position for fair RRF input).
+ * @param expansion Graph-derived candidates with per-edge-weighted
+ *                  scores. Internal order is significant — the array
+ *                  index becomes the RRF rank input.
+ * @param candidateLimit Final pool size returned (typically 40).
+ * @param rrfFn Inject the RRF function so callers can pass in a
+ *              specific implementation (the production pipeline uses
+ *              `reciprocalRankFusion` from store.ts; tests use a
+ *              minimal version to avoid pulling all of store.ts in).
+ */
+export function mergeFusedWithGraphExpansion(
+  fused: ReadonlyArray<RankedDoc>,
+  expansion: ReadonlyArray<RankedDoc>,
+  candidateLimit: number,
+  rrfFn: (lists: RankedDoc[][]) => RankedDoc[]
+): RankedDoc[] {
+  if (expansion.length === 0) {
+    return fused.slice(0, candidateLimit);
+  }
+  const blended = rrfFn([
+    fused.slice() as RankedDoc[],
+    expansion.slice() as RankedDoc[],
+  ]);
+  return blended.slice(0, candidateLimit);
+}

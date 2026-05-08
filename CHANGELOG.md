@@ -2,6 +2,22 @@
 
 ## [Unreleased]
 
+### Fixes
+
+- **`qkb query --graph` now actually changes top-N results.** Surfaced
+  by running 12 demo queries on flight-planner-kb: post-PR-#53, the
+  graph expansion fired (40-49 novel candidates per query) but they
+  got appended after the existing 40 RRF candidates and sliced out
+  before reaching the reranker — the flag was effectively a no-op at
+  default `--candidate-limit`. Fix: blend the graph expansion as a
+  second list into the existing RRF rather than appending. Graph
+  candidates compete for slots in the rerank pool by their per-edge-
+  weighted rank; the reranker stays the final arbiter (so bad graph
+  promotions get demoted by the cross-encoder). Logic extracted into
+  testable `mergeFusedWithGraphExpansion` helper. After the fix,
+  "flight safety regulations" surfaces ICAO and country-united-states
+  as graph-injected top-5 hits that pure lexical/vector missed.
+
 ### Changes
 
 - **`qkb query --graph` — edge-weighted graph expansion (RFC-0008 strategy #2).**

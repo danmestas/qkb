@@ -8,14 +8,16 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createStore } from "../src/store.js";
+import { createStore, reciprocalRankFusion } from "../src/store.js";
 import { setConfigSource } from "../src/collections.js";
 import { cypher } from "../src/graph/sdk.js";
 import {
   runFilterThenRank,
   runRankThenRerank,
   runEdgeWeightedRank,
+  mergeFusedWithGraphExpansion,
   DEFAULT_EDGE_WEIGHTS,
+  type RankedDoc,
 } from "../src/graph/hybrid.js";
 
 const DEFAULT_BREW_PATH =
@@ -417,5 +419,151 @@ describe.skipIf(!HAS_REAL_BINARY)("hybrid query strategies", () => {
       );
       expect(Object.isFrozen(DEFAULT_EDGE_WEIGHTS)).toBe(true);
     });
+  });
+});
+
+/**
+ * Tests for `mergeFusedWithGraphExpansion` — the fix for the
+ * "graph candidates appended then sliced out" bug. These tests don't
+ * need the GraphQLite binary (pure RRF logic over synthetic lists),
+ * so they run on every CI matrix entry, not just macOS.
+ */
+describe("mergeFusedWithGraphExpansion", () => {
+  function mkDoc(file: string, score = 0): RankedDoc {
+    return { file, displayPath: file, title: file, body: "", score };
+  }
+
+  it("returns sliced fused list unchanged when expansion is empty", () => {
+    const fused = Array.from({ length: 50 }, (_, i) => mkDoc(`/f${i}`));
+    const result = mergeFusedWithGraphExpansion(
+      fused,
+      [],
+      40,
+      reciprocalRankFusion
+    );
+    expect(result).toHaveLength(40);
+    expect(result[0]?.file).toBe("/f0");
+    expect(result[39]?.file).toBe("/f39");
+  });
+
+  it("PROMOTES novel graph candidates above tail of saturated fused list (bug fix)", () => {
+    // Reproduce the exact bug: fused has 50 items (saturating the
+    // candidateLimit=40 pool), graph adds 5 novel docs. Pre-fix: novel
+    // docs got appended after fused and sliced out at index 40+. Now:
+    // they should appear in the result via RRF blend.
+    const fused = Array.from({ length: 50 }, (_, i) => mkDoc(`/f${i}`));
+    const expansion = Array.from({ length: 5 }, (_, i) => mkDoc(`/g${i}`));
+
+    const result = mergeFusedWithGraphExpansion(
+      fused,
+      expansion,
+      40,
+      reciprocalRankFusion
+    );
+    expect(result).toHaveLength(40);
+
+    const files = result.map((r) => r.file);
+    // At least the top graph result MUST appear in the rerank pool now.
+    expect(files).toContain("/g0");
+    // It should outrank a tail-of-fused item — `/f49` (would be sliced
+    // at index 40 anyway in the pre-fix code, but post-fix `/g0` should
+    // appear ahead of e.g. `/f30`).
+    const g0Idx = files.indexOf("/g0");
+    const tailFusedIdx = files.indexOf("/f30");
+    expect(g0Idx).toBeGreaterThanOrEqual(0);
+    if (tailFusedIdx >= 0) {
+      // Both present; graph rank-1 should beat or tie fused rank-30.
+      expect(g0Idx).toBeLessThanOrEqual(tailFusedIdx);
+    }
+  });
+
+  it("preserves the head of fused (graph doesn't displace strong lexical hits)", () => {
+    // Fused #1-3 are strong matches; graph has 3 novel candidates.
+    // Top 3 of fused should still win.
+    const fused = Array.from({ length: 50 }, (_, i) => mkDoc(`/f${i}`));
+    const expansion = [
+      mkDoc("/gA"),
+      mkDoc("/gB"),
+      mkDoc("/gC"),
+    ];
+
+    const result = mergeFusedWithGraphExpansion(
+      fused,
+      expansion,
+      40,
+      reciprocalRankFusion
+    );
+    // Top 3 by RRF should be docs that are #1 in fused or #1 in graph.
+    // /f0 has fused-rank-1 + topRank bonus. /gA has graph-rank-1 + topRank
+    // bonus. They tie or fused wins; either way, /f0 must be in top 3
+    // and reasonable lexical heads must dominate.
+    const top3 = result.slice(0, 3).map((r) => r.file);
+    expect(top3).toContain("/f0");
+  });
+
+  it("graph candidate present in BOTH lists scores highest (additive RRF)", () => {
+    // /shared is at rank 5 in fused AND rank 0 in graph. Its RRF score
+    // should beat /f0 (rank 0 in fused only) on weighted contribution
+    // because the bonus + graph contribution stack.
+    const fused = [
+      mkDoc("/f0"),
+      mkDoc("/f1"),
+      mkDoc("/f2"),
+      mkDoc("/f3"),
+      mkDoc("/f4"),
+      mkDoc("/shared"),
+      ...Array.from({ length: 44 }, (_, i) => mkDoc(`/f${i + 6}`)),
+    ];
+    const expansion = [
+      mkDoc("/shared"),
+      mkDoc("/gA"),
+      mkDoc("/gB"),
+    ];
+
+    const result = mergeFusedWithGraphExpansion(
+      fused,
+      expansion,
+      10,
+      reciprocalRankFusion
+    );
+    const sharedIdx = result.findIndex((r) => r.file === "/shared");
+    const f4Idx = result.findIndex((r) => r.file === "/f4");
+    expect(sharedIdx).toBeGreaterThanOrEqual(0);
+    // /shared has fused-rank-5 + graph-rank-0 contributions; should
+    // outrank /f4 (only fused-rank-4).
+    expect(sharedIdx).toBeLessThan(f4Idx);
+  });
+
+  it("respects candidateLimit", () => {
+    const fused = Array.from({ length: 100 }, (_, i) => mkDoc(`/f${i}`));
+    const expansion = Array.from({ length: 30 }, (_, i) => mkDoc(`/g${i}`));
+    const result = mergeFusedWithGraphExpansion(
+      fused,
+      expansion,
+      25,
+      reciprocalRankFusion
+    );
+    expect(result).toHaveLength(25);
+  });
+
+  it("returns empty when both inputs are empty", () => {
+    const result = mergeFusedWithGraphExpansion([], [], 40, reciprocalRankFusion);
+    expect(result).toEqual([]);
+  });
+
+  it("handles fused-only (no expansion) without invoking RRF", () => {
+    const fused = [mkDoc("/a"), mkDoc("/b")];
+    const result = mergeFusedWithGraphExpansion(
+      fused,
+      [],
+      40,
+      // RRF function should NOT be invoked when expansion is empty.
+      // Throw if called, and the test passes only if the early-return
+      // branch handles it.
+      () => {
+        throw new Error("RRF should not be called for empty expansion");
+      }
+    );
+    expect(result.map((r) => r.file)).toEqual(["/a", "/b"]);
   });
 });
