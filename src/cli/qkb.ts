@@ -629,6 +629,29 @@ async function updateCollections(): Promise<void> {
     console.log("");
   }
 
+  // Refresh the structural graph (wikilinks, embeds, frontmatter labels)
+  // when the graph layer is enabled. Idempotent + fast since PR #50's
+  // multi-MERGE bulk path. Soft-failure: link errors warn but don't fail
+  // update — the index itself is still correct.
+  const { isGraphLayerAvailable } = await import("../store.js");
+  if (isGraphLayerAvailable()) {
+    try {
+      const { graphLink } = await import("../graph/cli.js");
+      console.log(`${c.dim}Linking graph (structural extraction)...${c.reset}`);
+      const linkResult = await graphLink(storeInstance);
+      if (linkResult.stdout) {
+        console.log("  " + linkResult.stdout.trim());
+      }
+      if (linkResult.exitCode !== 0 && linkResult.stderr) {
+        console.log(`${c.yellow}  ${linkResult.stderr.trim()}${c.reset}`);
+      }
+    } catch (err) {
+      console.log(
+        `${c.yellow}  graph link failed (continuing): ${(err as Error).message}${c.reset}`
+      );
+    }
+  }
+
   // Check if any documents need embedding (show once at end)
   const needsEmbedding = getHashesNeedingEmbedding(db);
   closeDb();
