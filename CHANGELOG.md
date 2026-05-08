@@ -4,6 +4,17 @@
 
 ### Changes
 
+- **RFC-0007 PR-15 (Phase 2B): hybrid query strategies.** Adds two
+  graph-aware composition primitives. `store.graph.filterThenRank({cypher,
+  params})` runs a Cypher query and returns the resulting `(hash, seq)`
+  candidate set; the caller passes those to existing FTS/vector scoring
+  for the cheap "filter first, then rank" path. `store.graph.rankThenRerank
+  ({seeds, hops?, edgeTypes?, rrfK?})` blends a precomputed seed-list
+  ranking with a graph-neighbor expansion via Reciprocal Rank Fusion
+  (k=60 by default). Both are additive — existing `store.search()`
+  defaults are unchanged. Edge-type whitelist validates against the
+  Cypher identifier regex.
+
 - **RFC-0007 PR-14 (Phase 2A): bulk insert SDK.** Adds
   `store.graph.upsertNodesBulk(nodes[])` and
   `store.graph.upsertEdgesBulk(edges[])`. Wraps the per-call upsert in

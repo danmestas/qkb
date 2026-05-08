@@ -22,6 +22,7 @@ import {
   runUpsertNodesBulk,
   runUpsertEdgesBulk,
 } from "./graph/sdk.js";
+import { runFilterThenRank, runRankThenRerank } from "./graph/hybrid.js";
 import { loadConfig } from "./collections.js";
 import type { Database } from "./db.js";
 import picomatch from "picomatch";
@@ -1309,6 +1310,12 @@ export type Store = {
     pageRank: (
       args?: import("./graph/sdk.js").PageRankArgs
     ) => import("./graph/sdk.js").PageRankRow[];
+    filterThenRank: (
+      args: import("./graph/hybrid.js").FilterThenRankArgs
+    ) => import("./graph/hybrid.js").FilterThenRankResult;
+    rankThenRerank: (
+      args: import("./graph/hybrid.js").RankThenRerankArgs
+    ) => import("./graph/hybrid.js").RankThenRerankResult;
   };
 };
 
@@ -1858,6 +1865,14 @@ export function createStore(dbPath?: string): Store {
       pageRank: (args?: import("./graph/sdk.js").PageRankArgs) => {
         ensureGraphAvailable();
         return runPageRank(db, args);
+      },
+      filterThenRank: (args: import("./graph/hybrid.js").FilterThenRankArgs) => {
+        ensureGraphAvailable();
+        return runFilterThenRank(store, args);
+      },
+      rankThenRerank: (args: import("./graph/hybrid.js").RankThenRerankArgs) => {
+        ensureGraphAvailable();
+        return runRankThenRerank(store, args);
       },
     },
   };
