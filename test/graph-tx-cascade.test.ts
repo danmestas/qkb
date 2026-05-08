@@ -93,12 +93,7 @@ describe.skipIf(!HAS_REAL_BINARY)("cross-extension tx + cascade", () => {
     }
   });
 
-  // TODO: re-enable on Bun once we diagnose the bun:sqlite + graphqlite
-  // rollback edge case (passes under Node/vitest; fails under bun test on
-  // macOS-arm64 with graphqlite loaded — one of the 3 writes survives the
-  // ROLLBACK). The commit-side test above passes under both runners, so
-  // this is rollback-specific.
-  it.skipIf(typeof globalThis.Bun !== "undefined")("rolls back content + content_vectors + graph node atomically", () => {
+  it("rolls back content + content_vectors + graph node atomically", () => {
     const store = createStore(dbPath("rollback"));
     try {
       store.ensureVecTable(3);
@@ -128,18 +123,20 @@ describe.skipIf(!HAS_REAL_BINARY)("cross-extension tx + cascade", () => {
         store.db.exec("ROLLBACK");
       }
 
-      // None of the three writes survived
+      // None of the three writes survived. SQLite drivers differ on the
+      // sentinel they return for "no row": better-sqlite3 returns
+      // `undefined`, bun:sqlite returns `null`. `toBeFalsy()` accepts both.
       const contentRow = store.db
         .prepare("SELECT hash FROM content WHERE hash = ?")
         .get(hash);
-      expect(contentRow).toBeUndefined();
+      expect(contentRow).toBeFalsy();
 
       const cvRow = store.db
         .prepare(
           "SELECT hash FROM content_vectors WHERE hash = ? AND seq = ?"
         )
         .get(hash, seq);
-      expect(cvRow).toBeUndefined();
+      expect(cvRow).toBeFalsy();
 
       const graphRows = store.graph.cypher<{ id: string }>(
         cypher`MATCH (c:Chunk {id: $id}) RETURN c.id AS id`,
