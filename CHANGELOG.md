@@ -4,6 +4,19 @@
 
 ### Changes
 
+- **RFC-0007 PR-17 (Phase 2D): LLM entity extraction + `qkb graph extract`.**
+  New module `src/graph/entity-extraction.ts` exports `extractEntities(llm,
+  text, types, options?)` and a parser tolerant of `\`\`\`json` fences,
+  leading prose, and malformed JSON (degrades to `[]`). New CLI command
+  `qkb graph extract [collection] [-n N]` iterates active documents,
+  invokes the configured generate model, and bulk-upserts `entity:{type}:
+  {normalized_name}` nodes linked from `doc:{id}` via MENTIONS. Document-
+  level (not chunk-level) — the natural granularity for "find docs that
+  mention X" queries. Extraction is opportunistic: LLM unavailable or
+  malformed output simply produces 0 entities for that doc; doesn't abort.
+  **NOT** wired into the `qkb embed` loop — keeps embed perf characteristics
+  unchanged and makes resource cost visible.
+
 - **RFC-0007 PR-16 (Phase 2C): entity extraction config flag.** Adds
   `graph.entity_extraction.{enabled, model, types}` to the YAML config
   schema. Defaults: enabled=false, types=`[Person, Organization, Concept]`.

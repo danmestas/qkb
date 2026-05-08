@@ -230,3 +230,133 @@ export function graphRestore(store: Store, ndjson: string): GraphCliResult {
     };
   }
 }
+
+export interface GraphExtractOptions {
+  collection?: string;
+  limit?: number;
+}
+
+/**
+ * Run LLM-based entity extraction over indexed documents and upsert
+ * the resulting `entity:*` nodes and `doc:*-[:MENTIONS]->entity:*`
+ * edges into the graph.
+ *
+ * Document-level extraction is cleaner than chunk-level here because:
+ *   - QKB doesn't store chunk text separately (chunks are derived
+ *     from `content.doc` at embed time)
+ *   - "documents that mention X" is the more natural top-level query
+ *
+ * Per-chunk linkage stays as future work if a real use case emerges.
+ */
+export async function graphExtract(
+  store: Store,
+  llm: import("../llm.js").LLM,
+  options: GraphExtractOptions = {}
+): Promise<GraphCliResult> {
+  if (!isGraphLayerAvailable()) {
+    return {
+      stdout: "",
+      stderr: `graph extract: layer is unavailable (${getGraphLayerUnavailableReason() ?? "unknown"}).\n`,
+      exitCode: 1,
+    };
+  }
+
+  // Read entity-extraction config (types + optional model override).
+  const { resolveGraphConfig } = await import("./config.js");
+  const { loadConfig } = await import("../collections.js");
+  const resolved = resolveGraphConfig(loadConfig());
+  if (!resolved.entity_extraction.enabled) {
+    return {
+      stdout: "",
+      stderr:
+        `graph extract: graph.entity_extraction.enabled=false. ` +
+        `Set it to true in ~/.config/qkb/index.yml first.\n`,
+      exitCode: 1,
+    };
+  }
+
+  const { extractEntities, entityNodeId } = await import("./entity-extraction.js");
+
+  // Pull active docs (optionally filtered + limited).
+  const params: unknown[] = [];
+  let where = "d.active = 1";
+  if (options.collection) {
+    where += " AND d.collection = ?";
+    params.push(options.collection);
+  }
+  let limitClause = "";
+  if (options.limit && options.limit > 0) {
+    limitClause = " LIMIT ?";
+    params.push(options.limit);
+  }
+  const sql = `SELECT d.id AS docId, d.collection AS collection, d.path AS path, d.title AS title, d.hash AS hash, c.doc AS doc
+               FROM documents d JOIN content c ON c.hash = d.hash
+               WHERE ${where}
+               ORDER BY d.id ASC${limitClause}`;
+  const rows = store.db.prepare(sql).all(...params) as Array<{
+    docId: number;
+    collection: string;
+    path: string;
+    title: string;
+    hash: string;
+    doc: string;
+  }>;
+
+  if (rows.length === 0) {
+    return {
+      stdout: "graph extract: no documents to process.\n",
+      stderr: "",
+      exitCode: 0,
+    };
+  }
+
+  let totalEntities = 0;
+  let totalEdges = 0;
+  let docsProcessed = 0;
+  const types = resolved.entity_extraction.types;
+
+  for (const row of rows) {
+    const entities = await extractEntities(llm, row.doc, types, {
+      model: resolved.entity_extraction.model,
+    });
+    if (entities.length === 0) continue;
+
+    const docNodeId = `doc:${row.docId}`;
+    const nodeBatch = [
+      {
+        id: docNodeId,
+        label: "Doc",
+        properties: {
+          collection: row.collection,
+          path: row.path,
+          title: row.title,
+        },
+      },
+      ...entities.map((e) => ({
+        id: entityNodeId(e.type, e.name),
+        label: e.type,
+        properties: { name: e.name },
+      })),
+    ];
+    const edgeBatch = entities.map((e) => ({
+      from: docNodeId,
+      to: entityNodeId(e.type, e.name),
+      type: "MENTIONS",
+    }));
+
+    store.graph.upsertNodesBulk(nodeBatch);
+    store.graph.upsertEdgesBulk(edgeBatch);
+
+    totalEntities += entities.length;
+    totalEdges += edgeBatch.length;
+    docsProcessed++;
+  }
+
+  return {
+    stdout:
+      `graph extract: processed ${docsProcessed} docs, upserted ${totalEntities} entity nodes ` +
+      `and ${totalEdges} MENTIONS edges (over ${rows.length} candidates).\n`,
+    stderr: "",
+    exitCode: 0,
+  };
+}
