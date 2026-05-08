@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+### Changes
+
+- **RFC-0007 PR-14 (Phase 2A): bulk insert SDK.** Adds
+  `store.graph.upsertNodesBulk(nodes[])` and
+  `store.graph.upsertEdgesBulk(edges[])`. Wraps the per-call upsert in
+  a single SQLite transaction, amortizing per-statement fsync overhead
+  across the batch. Atomicity preserved — invalid input rejects the
+  whole batch (no partial commit). Indexing pipeline (PR-17) uses this
+  path for entity-extraction-time emissions.
+
 ## [2.2.0] - 2026-05-07
 
 ### Changes

@@ -283,3 +283,41 @@ function escapeRelType(type: string): string {
   }
   return type;
 }
+
+/**
+ * Bulk upsert nodes inside a single SQLite transaction. Amortizes
+ * per-statement fsync overhead across the batch — meaningful win for
+ * indexing pipelines that emit hundreds-to-thousands of nodes per
+ * document.
+ *
+ * Atomicity: the entire batch commits together, or rolls back together
+ * if any element fails validation or the underlying write fails.
+ *
+ * Note: GraphQLite v0.4.4 has a documented "bulk insert API" exposed
+ * through the C-API but not through the SQL extension surface that
+ * better-sqlite3 / bun:sqlite see. Wrapping the existing per-node
+ * upsert in a transaction captures the dominant fsync win without
+ * binding to a private API. Revisit if perf data shows per-node
+ * Cypher parse to be the bottleneck.
+ */
+export function runUpsertNodesBulk(
+  db: Database,
+  nodes: ReadonlyArray<UpsertNodeArgs>
+): void {
+  if (nodes.length === 0) return;
+  const tx = db.transaction((batch: ReadonlyArray<UpsertNodeArgs>) => {
+    for (const n of batch) runUpsertNode(db, n);
+  });
+  tx(nodes);
+}
+
+export function runUpsertEdgesBulk(
+  db: Database,
+  edges: ReadonlyArray<UpsertEdgeArgs>
+): void {
+  if (edges.length === 0) return;
+  const tx = db.transaction((batch: ReadonlyArray<UpsertEdgeArgs>) => {
+    for (const e of batch) runUpsertEdge(db, e);
+  });
+  tx(edges);
+}
