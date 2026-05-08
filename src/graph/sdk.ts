@@ -83,12 +83,26 @@ export function runCypher<T = Record<string, unknown>>(
     .get(query, paramsJson) as { r: string } | undefined;
 
   if (!row) return [];
-  const parsed = JSON.parse(row.r) as unknown;
+
+  // GraphQLite returns one of:
+  //   - a JSON array of result objects (read queries with RETURN)
+  //   - a status string like "Query executed successfully - nodes
+  //     created: N, relationships created: M" (write queries with no
+  //     RETURN, or when the executor wants to report status)
+  //   - garbled output if a quirk fires
+  //
+  // JSON.parse throws on the status-string case. Treat any non-parseable
+  // or non-array result as "no rows" — the caller of cypher() asked for
+  // typed rows, so a write-status return is information they didn't
+  // request. Surfacing it would just complicate the typed-array contract.
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(row.r);
+  } catch {
+    return [];
+  }
 
   if (Array.isArray(parsed)) return parsed as T[];
-
-  // Non-array means status string from a write query — caller didn't
-  // ask for typed rows, return empty.
   return [];
 }
 

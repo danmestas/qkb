@@ -208,6 +208,25 @@ describe("graph SDK", () => {
       }
     });
 
+    it("cypher write queries (no RETURN) don't throw on status-string output", () => {
+      // GraphQLite returns "Query executed successfully - nodes
+      // created: N, ..." for write queries with no RETURN. JSON.parse
+      // throws on that; runCypher must swallow + return [].
+      const store = enabledStore("write-status");
+      try {
+        expect(() =>
+          store.graph.cypher(cypher`CREATE (:Mark {id: 'w1'})`, {})
+        ).not.toThrow();
+        const rows = store.graph.cypher<{ c: number }>(
+          cypher`MATCH (n:Mark) RETURN count(n) AS c`,
+          {}
+        );
+        expect(Number(rows[0]?.c)).toBe(1);
+      } finally {
+        store.close();
+      }
+    });
+
     it("cypher passes parameters by name", () => {
       const store = enabledStore("params");
       try {

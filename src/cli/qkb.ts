@@ -3138,7 +3138,11 @@ if (isMain) {
         graphExtract,
       } = await import("../graph/cli.js");
 
-      const store = createStore();
+      // getStore() respects --index / setIndexName; createStore() ignores them
+      // and always opens ~/.cache/qkb/index.sqlite. Found in production via
+      // bug-watch session — `qkb --index foo graph extract` was silently
+      // operating on the default index instead of `foo`.
+      const store = getStore();
       try {
         let result;
         switch (subcommand) {

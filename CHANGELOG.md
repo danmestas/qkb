@@ -2,6 +2,39 @@
 
 ## [Unreleased]
 
+### Fixes
+
+- **`store.graph.cypher()` no longer crashes on write queries.**
+  GraphQLite returns a status string like
+  `"Query executed successfully - nodes created: N, ..."` for write
+  queries with no `RETURN` clause. `runCypher()` did `JSON.parse(row.r)`
+  unconditionally, which threw on the status text. The CLI surfaced
+  this as `graph query: JSON Parse error: Unexpected identifier "Query"`.
+  Fix: wrap the parse in try/catch, return `[]` on parse failure
+  (consistent with the existing non-array fallback). Test added.
+
+- **`qkb graph` subcommands now respect `--index`.** Previously the
+  `case "graph"` block in the CLI dispatcher used `createStore()`
+  directly instead of the cached `getStore()`, which meant
+  `--index foo` was silently ignored — all graph subcommands operated
+  on the default `~/.cache/qkb/index.sqlite` regardless of which
+  index the user selected. Surfaced in production via a real-corpus
+  bug-watch session: `qkb --index flight-extract graph extract` saw
+  0 documents because the empty default index was queried instead of
+  the 638-doc flight-planner index. One-line fix in `src/cli/qkb.ts`.
+
+- **Entity-extraction parser now accepts NDJSON.** Small generate
+  models (notably the default 1.7B `qmd-query-expansion`) emit one
+  `{"type":"...","name":"..."}` per line instead of a JSON array
+  even when prompted for an array. The parser now tries the JSON-
+  array form first, then falls back to line-by-line parsing.
+  Surrounding prose, blank lines, and bare top-level objects are all
+  tolerated. **Note**: the 1.7B query-expansion model isn't a
+  capable enough entity extractor for documents over ~500 chars
+  (returns empty string on most real documents) — a stronger
+  `models.generate` is needed for production extraction. The parser
+  fix is what unblocks users who DO have a capable model configured.
+
 ## [3.0.0] - 2026-05-08
 
 ### BREAKING
