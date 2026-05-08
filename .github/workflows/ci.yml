@@ -31,6 +31,10 @@ jobs:
         if: runner.os == 'macOS'
         run: brew install sqlite
 
+      - name: Install GraphQLite (macOS — RFC-0007 happy-path coverage)
+        if: runner.os == 'macOS'
+        run: brew install graphqlite
+
       - run: npm install
 
       - name: Build typecheck (src/)
@@ -63,6 +67,10 @@ jobs:
       - name: Install SQLite (macOS)
         if: runner.os == 'macOS'
         run: brew install sqlite
+
+      - name: Install GraphQLite (macOS — RFC-0007 happy-path coverage)
+        if: runner.os == 'macOS'
+        run: brew install graphqlite
 
       - name: Verify lockfile is up-to-date
         run: bun install --frozen-lockfile
