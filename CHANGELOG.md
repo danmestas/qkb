@@ -25,14 +25,19 @@
 
   On flight-planner-kb: 639 docs → 703 typed nodes (19 distinct labels)
   + 5,090 LINKS_TO edges + 64 unresolved wikilinks (dead refs surfaced
-  as `:WikiTarget` placeholders) in 14m45s. Inspired by the
-  `vault-ingest` and `vault-query` skills in the flight-planner-kb
-  itself. Pure regex + YAML parsing — no LLM in the loop.
+  as `:WikiTarget` placeholders). Inspired by the `vault-ingest` and
+  `vault-query` skills in the flight-planner-kb itself. Pure regex +
+  YAML parsing — no LLM in the loop.
 
-  Performance note: 14m45s for 5,090 edges = ~170 ms/edge. The bulk
-  insert wrap-in-transaction wins fsync amortization but each edge still
-  costs a Cypher MATCH+MERGE round-trip. Future PR can batch edges into
-  multi-MERGE statements for an order-of-magnitude improvement.
+- **Graph bulk-insert is ~25× faster (14m45s → 35s on flight-planner-kb).**
+  `store.graph.upsertNodesBulk` and `upsertEdgesBulk` now issue one
+  Cypher call per chunk of 25 (edges) or 100 (new nodes), using a
+  single MATCH clause + comma-separated MERGE/SET patterns rather than
+  one Cypher round-trip per element. The interface is unchanged — every
+  caller (`graph link`, `graph extract`, `graph restore`) gets the
+  speedup automatically. Chunk caps are tuned to SQLite's
+  `at most 64 tables in a join` limit; v0.4.4 quirks empirically pinned
+  in `test/spikes/probe-multi-merge.ts` and `probe-limit.ts`.
 
 ### Fixes
 
