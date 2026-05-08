@@ -14,6 +14,8 @@ import { cypher } from "../src/graph/sdk.js";
 import {
   runFilterThenRank,
   runRankThenRerank,
+  runEdgeWeightedRank,
+  DEFAULT_EDGE_WEIGHTS,
 } from "../src/graph/hybrid.js";
 
 const DEFAULT_BREW_PATH =
@@ -209,6 +211,211 @@ describe.skipIf(!HAS_REAL_BINARY)("hybrid query strategies", () => {
       } finally {
         store.close();
       }
+    });
+  });
+
+  describe("runEdgeWeightedRank (RFC-0008 #2)", () => {
+    /**
+     * Build a tiny vault-style corpus: 4 docs, with LINKS_TO + EMBEDS +
+     * REFERENCES edges. Documents table seeded so SQL resolution works.
+     */
+    function setupVaultCorpus(store: ReturnType<typeof createStore>) {
+      // Insert content + documents rows so the SQL resolution path
+      // (file URL → docId, docId → file URL + body) succeeds.
+      const now = new Date().toISOString();
+      const insertContent = store.db.prepare(
+        "INSERT OR IGNORE INTO content (hash, doc, created_at) VALUES (?, ?, ?)"
+      );
+      const insertDoc = store.db.prepare(
+        "INSERT INTO documents (id, collection, path, title, hash, active, created_at, modified_at) VALUES (?, ?, ?, ?, ?, 1, ?, ?)"
+      );
+      const docs = [
+        { id: 1, hash: "h1", title: "Alpha", body: "alpha body" },
+        { id: 2, hash: "h2", title: "Beta", body: "beta body" },
+        { id: 3, hash: "h3", title: "Gamma", body: "gamma body" },
+        { id: 4, hash: "h4", title: "Delta", body: "delta body" },
+      ];
+      for (const d of docs) {
+        insertContent.run(d.hash, d.body, now);
+        insertDoc.run(
+          d.id,
+          "test",
+          `${d.title.toLowerCase()}.md`,
+          d.title,
+          d.hash,
+          now,
+          now
+        );
+        store.graph.upsertNode({
+          id: `doc:${d.id}`,
+          label: "Note",
+          properties: { title: d.title },
+        });
+      }
+      // Edges: 1 →(EMBEDS) 2, 1 →(LINKS_TO) 3, 1 →(REFERENCES) 4, 2 →(LINKS_TO) 4
+      store.graph.upsertEdge({ from: "doc:1", to: "doc:2", type: "EMBEDS" });
+      store.graph.upsertEdge({ from: "doc:1", to: "doc:3", type: "LINKS_TO" });
+      store.graph.upsertEdge({ from: "doc:1", to: "doc:4", type: "REFERENCES" });
+      store.graph.upsertEdge({ from: "doc:2", to: "doc:4", type: "LINKS_TO" });
+    }
+
+    it("expands seeds via 1-hop edges with default weights", () => {
+      const store = createStore(join(tmpDir, "ewr-default.sqlite"));
+      try {
+        setupVaultCorpus(store);
+        const r = runEdgeWeightedRank(store, {
+          seeds: [{ file: "qkb://test/alpha.md", score: 1.0 }],
+        });
+        // Doc 1 is the seed; expansion should reach docs 2, 3, 4.
+        const files = r.expanded.map((e) => e.file).sort();
+        expect(files).toEqual([
+          "qkb://test/beta.md",
+          "qkb://test/delta.md",
+          "qkb://test/gamma.md",
+        ]);
+        // EMBEDS (0.9) → Beta should outrank LINKS_TO (0.4) → Gamma which
+        // outranks REFERENCES (0.2) → Delta.
+        const byTitle = new Map(r.expanded.map((e) => [e.title, e.score]));
+        expect(byTitle.get("Beta")!).toBeGreaterThan(byTitle.get("Gamma")!);
+        expect(byTitle.get("Gamma")!).toBeGreaterThan(byTitle.get("Delta")!);
+      } finally {
+        store.close();
+      }
+    });
+
+    it("filters out edge types not in weight map", () => {
+      const store = createStore(join(tmpDir, "ewr-filter.sqlite"));
+      try {
+        setupVaultCorpus(store);
+        // Only LINKS_TO; EMBEDS and REFERENCES are dropped.
+        const r = runEdgeWeightedRank(store, {
+          seeds: [{ file: "qkb://test/alpha.md", score: 1.0 }],
+          weights: { LINKS_TO: 1.0 },
+        });
+        const files = r.expanded.map((e) => e.file).sort();
+        // Only doc 3 (LINKS_TO from doc 1).
+        expect(files).toEqual(["qkb://test/gamma.md"]);
+      } finally {
+        store.close();
+      }
+    });
+
+    it("treats weight=0 same as omitted (filters out)", () => {
+      const store = createStore(join(tmpDir, "ewr-zero.sqlite"));
+      try {
+        setupVaultCorpus(store);
+        const r = runEdgeWeightedRank(store, {
+          seeds: [{ file: "qkb://test/alpha.md", score: 1.0 }],
+          weights: { EMBEDS: 0.9, LINKS_TO: 0, REFERENCES: 0 },
+        });
+        // Only EMBEDS edge survives → only Beta.
+        const files = r.expanded.map((e) => e.file);
+        expect(files).toEqual(["qkb://test/beta.md"]);
+      } finally {
+        store.close();
+      }
+    });
+
+    it("excludes seeds from the expansion (no self-loops)", () => {
+      const store = createStore(join(tmpDir, "ewr-self.sqlite"));
+      try {
+        setupVaultCorpus(store);
+        // Use docs 1 AND 2 as seeds. Doc 2 is reachable from doc 1 via
+        // EMBEDS but should NOT appear in expansion (already a seed).
+        const r = runEdgeWeightedRank(store, {
+          seeds: [
+            { file: "qkb://test/alpha.md", score: 1.0 },
+            { file: "qkb://test/beta.md", score: 0.9 },
+          ],
+        });
+        const files = r.expanded.map((e) => e.file);
+        expect(files).not.toContain("qkb://test/alpha.md");
+        expect(files).not.toContain("qkb://test/beta.md");
+      } finally {
+        store.close();
+      }
+    });
+
+    it("respects expansionLimit", () => {
+      const store = createStore(join(tmpDir, "ewr-limit.sqlite"));
+      try {
+        setupVaultCorpus(store);
+        const r = runEdgeWeightedRank(store, {
+          seeds: [{ file: "qkb://test/alpha.md", score: 1.0 }],
+          expansionLimit: 2,
+        });
+        expect(r.expanded.length).toBe(2);
+        // Top 2 by weight should be EMBEDS:Beta and LINKS_TO:Gamma.
+        const titles = r.expanded.map((e) => e.title);
+        expect(titles).toEqual(["Beta", "Gamma"]);
+      } finally {
+        store.close();
+      }
+    });
+
+    it("returns empty expansion on empty seeds", () => {
+      const store = createStore(join(tmpDir, "ewr-empty.sqlite"));
+      try {
+        setupVaultCorpus(store);
+        const r = runEdgeWeightedRank(store, { seeds: [] });
+        expect(r.expanded).toEqual([]);
+      } finally {
+        store.close();
+      }
+    });
+
+    it("returns empty expansion when seeds resolve to no doc rows", () => {
+      const store = createStore(join(tmpDir, "ewr-noresolve.sqlite"));
+      try {
+        setupVaultCorpus(store);
+        const r = runEdgeWeightedRank(store, {
+          seeds: [{ file: "qkb://test/nonexistent.md", score: 1.0 }],
+        });
+        expect(r.expanded).toEqual([]);
+      } finally {
+        store.close();
+      }
+    });
+
+    it("strips ?index= suffix from seed URLs", () => {
+      const store = createStore(join(tmpDir, "ewr-suffix.sqlite"));
+      try {
+        setupVaultCorpus(store);
+        const r = runEdgeWeightedRank(store, {
+          seeds: [
+            { file: "qkb://test/alpha.md?index=foo", score: 1.0 },
+          ],
+        });
+        // Should still resolve and expand normally.
+        expect(r.expanded.length).toBeGreaterThan(0);
+      } finally {
+        store.close();
+      }
+    });
+
+    it("rejects malformed edge type names", () => {
+      const store = createStore(join(tmpDir, "ewr-badtype.sqlite"));
+      try {
+        setupVaultCorpus(store);
+        expect(() =>
+          runEdgeWeightedRank(store, {
+            seeds: [{ file: "qkb://test/alpha.md", score: 1.0 }],
+            weights: { "BAD-TYPE": 0.5 },
+          })
+        ).toThrow(/invalid edge type/i);
+      } finally {
+        store.close();
+      }
+    });
+
+    it("DEFAULT_EDGE_WEIGHTS is frozen and has expected keys", () => {
+      expect(DEFAULT_EDGE_WEIGHTS.EMBEDS).toBeGreaterThan(
+        DEFAULT_EDGE_WEIGHTS.LINKS_TO!
+      );
+      expect(DEFAULT_EDGE_WEIGHTS.LINKS_TO).toBeGreaterThan(
+        DEFAULT_EDGE_WEIGHTS.REFERENCES!
+      );
+      expect(Object.isFrozen(DEFAULT_EDGE_WEIGHTS)).toBe(true);
     });
   });
 });
