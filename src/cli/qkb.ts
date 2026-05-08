@@ -3124,6 +3124,7 @@ if (isMain) {
         console.error("  qkb graph gc [--dry-run]                  Sweep orphan chunk:* nodes");
         console.error("  qkb graph dump                            Dump graph as NDJSON to stdout");
         console.error("  qkb graph restore                         Restore graph from NDJSON on stdin");
+        console.error("  qkb graph extract [collection] [-n N]     LLM-extract entities, link doc -> entity (Phase 2D)");
         process.exit(1);
       }
 
@@ -3134,6 +3135,7 @@ if (isMain) {
         graphGc,
         graphDump,
         graphRestore,
+        graphExtract,
       } = await import("../graph/cli.js");
 
       const store = createStore();
@@ -3179,9 +3181,23 @@ if (isMain) {
             result = graphRestore(store, ndjson);
             break;
           }
+          case "extract": {
+            const collection = cli.args[1];
+            const limitArg = cli.values.n;
+            const llmInstance = await getDefaultLlamaCpp();
+            try {
+              result = await graphExtract(store, llmInstance, {
+                ...(collection ? { collection } : {}),
+                ...(limitArg ? { limit: parseInt(String(limitArg), 10) } : {}),
+              });
+            } finally {
+              await disposeDefaultLlamaCpp();
+            }
+            break;
+          }
           default:
             console.error(`Unknown graph subcommand: ${subcommand}`);
-            console.error("Available: status, query, pagerank, gc, dump, restore");
+            console.error("Available: status, query, pagerank, gc, dump, restore, extract");
             process.exit(1);
         }
 
