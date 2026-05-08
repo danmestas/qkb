@@ -2,6 +2,25 @@
 
 ## [Unreleased]
 
+## [3.0.0] - 2026-05-08
+
+### BREAKING
+
+- **RFC-0007 PR-20 (Phase 3): `graph.enabled` default flipped to true.**
+  Users with no `graph` block in their config now get the graph layer
+  enabled by default. Behavior gracefully degrades to "unavailable"
+  when the GraphQLite extension can't be loaded, so this is safe for
+  users without graphqlite installed — they see no functional change.
+  Users who want to opt out explicitly should set:
+
+  ```yaml
+  graph:
+    enabled: false
+  ```
+
+  in `~/.config/qkb/index.yml`. The version bump to v3.0.0 is justified
+  by this default-behavior change alone — no API-surface breaks.
+
 ## [2.3.0] - 2026-05-08
 
 ### Changes
