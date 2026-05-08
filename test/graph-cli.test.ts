@@ -48,7 +48,7 @@ describe("graph CLI logic", () => {
 
   describe("graph status (always-on)", () => {
     it("reports 'disabled' when graph.enabled=false", () => {
-      setConfigSource({ config: { collections: {} } });
+      setConfigSource({ config: { collections: {}, graph: { enabled: false } } });
       const store = createStore(dbPath("status-disabled"));
       try {
         const r = graphStatus(store);
@@ -84,7 +84,7 @@ describe("graph CLI logic", () => {
 
   describe("graph query (always-on guard)", () => {
     it("refuses queries with $-vars when --params not supplied", () => {
-      setConfigSource({ config: { collections: {} } }); // doesn't matter — guard runs first
+      setConfigSource({ config: { collections: {}, graph: { enabled: false } } }); // doesn't matter — guard runs first
       const store = createStore(dbPath("query-no-params"));
       try {
         const r = graphQuery(

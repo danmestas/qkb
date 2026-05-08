@@ -60,7 +60,7 @@ describe("graph schema bootstrap", () => {
   }
 
   it("does not create graph_meta when graph is absent from config (default)", () => {
-    setConfigSource({ config: { collections: {} } });
+    setConfigSource({ config: { collections: {}, graph: { enabled: false } } });
     const store = createStore(dbPath("disabled-default"));
     try {
       expect(tableExists(store, "graph_meta")).toBe(false);

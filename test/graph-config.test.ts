@@ -20,12 +20,12 @@ import { GraphDisabledError, resolveGraphConfig } from "../src/graph/config.js";
 
 describe("graph config", () => {
   describe("resolveGraphConfig", () => {
-    it("applies all documented defaults when graph block is absent", () => {
+    it("applies all documented defaults when graph block is absent (Phase 3: enabled defaults to true)", () => {
       const config: CollectionConfig = { collections: {} };
       const resolved = resolveGraphConfig(config);
 
       expect(resolved).toEqual({
-        enabled: false,
+        enabled: true, // Phase 3 default flip — was `false` through v2.x
         bulk_insert_threshold: 64,
         query_timeout_ms: 5000,
         max_path_length: 6,
@@ -34,6 +34,15 @@ describe("graph config", () => {
           types: ["Person", "Organization", "Concept"],
         },
       });
+    });
+
+    it("explicit graph.enabled=false continues to opt out post-Phase-3", () => {
+      const config: CollectionConfig = {
+        collections: {},
+        graph: { enabled: false },
+      };
+      const resolved = resolveGraphConfig(config);
+      expect(resolved.enabled).toBe(false);
     });
 
     it("entity_extraction.enabled defaults to false even when graph.enabled=true", () => {

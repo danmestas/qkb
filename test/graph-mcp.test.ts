@@ -45,7 +45,7 @@ describe("graph MCP handlers", () => {
 
   describe("disabled state (always-on)", () => {
     it("graph_query returns isError + helpful text when layer disabled", () => {
-      setConfigSource({ config: { collections: {} } });
+      setConfigSource({ config: { collections: {}, graph: { enabled: false } } });
       const store = createStore(dbPath("disabled-q"));
       try {
         const res = runGraphQuery(store, { cypher: "RETURN 1", params: {} });
@@ -58,7 +58,7 @@ describe("graph MCP handlers", () => {
     });
 
     it("graph_neighbors returns isError when layer disabled", () => {
-      setConfigSource({ config: { collections: {} } });
+      setConfigSource({ config: { collections: {}, graph: { enabled: false } } });
       const store = createStore(dbPath("disabled-n"));
       try {
         const res = runGraphNeighbors(store, { node_id: "a", hops: 1 });
@@ -71,7 +71,7 @@ describe("graph MCP handlers", () => {
 
   describe("graph_query parameter rules (always-on)", () => {
     it("rejects $-prefixed identifiers without params", () => {
-      setConfigSource({ config: { collections: {} } });
+      setConfigSource({ config: { collections: {}, graph: { enabled: false } } });
       const store = createStore(dbPath("noparams"));
       try {
         const res = runGraphQuery(store, {

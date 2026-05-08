@@ -43,7 +43,7 @@ describe("graph SDK", () => {
 
   describe("disabled state (graph.enabled=false)", () => {
     it("upsertNode throws GraphDisabledError", () => {
-      setConfigSource({ config: { collections: {} } });
+      setConfigSource({ config: { collections: {}, graph: { enabled: false } } });
       const store = createStore(dbPath("disabled-1"));
       try {
         expect(() =>
@@ -59,7 +59,7 @@ describe("graph SDK", () => {
     });
 
     it("upsertEdge throws GraphDisabledError", () => {
-      setConfigSource({ config: { collections: {} } });
+      setConfigSource({ config: { collections: {}, graph: { enabled: false } } });
       const store = createStore(dbPath("disabled-2"));
       try {
         expect(() =>
@@ -75,7 +75,7 @@ describe("graph SDK", () => {
     });
 
     it("cypher throws GraphDisabledError", () => {
-      setConfigSource({ config: { collections: {} } });
+      setConfigSource({ config: { collections: {}, graph: { enabled: false } } });
       const store = createStore(dbPath("disabled-3"));
       try {
         expect(() =>
