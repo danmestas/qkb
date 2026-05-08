@@ -32,7 +32,7 @@ describe("graph bulk SDK (disabled state)", () => {
   it("upsertNodesBulk throws GraphDisabledError when layer is unavailable", () => {
     const tmp = mkdtempSync(join(tmpdir(), "qkb-bulk-disabled-"));
     try {
-      setConfigSource({ config: { collections: {} } });
+      setConfigSource({ config: { collections: {}, graph: { enabled: false } } });
       const store = createStore(join(tmp, "x.sqlite"));
       try {
         expect(() =>

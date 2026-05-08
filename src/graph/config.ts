@@ -44,7 +44,12 @@ const entityExtractionSchema = z.object({
 });
 
 const graphConfigSchema = z.object({
-  enabled: z.boolean({ message: "graph.enabled must be a boolean" }).default(false),
+  // RFC-0007 Phase 3: default flipped from false → true. Users who
+  // explicitly set `enabled: false` continue to opt out. Users with no
+  // graph block in their config now get the layer enabled by default
+  // (still gracefully degrades to disabled if the GraphQLite extension
+  // can't be loaded).
+  enabled: z.boolean({ message: "graph.enabled must be a boolean" }).default(true),
   bulk_insert_threshold: z.number().int().positive().default(64),
   query_timeout_ms: z.number().int().positive().default(5000),
   max_path_length: z
