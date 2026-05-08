@@ -58,6 +58,24 @@ describe("parseEntityResponse", () => {
     expect(result).toEqual([]);
   });
 
+  it("accepts NDJSON — small LLMs emit one-object-per-line", () => {
+    // Real shape observed from default 1.7B generate model:
+    const text = `\n\n{"type": "Concept", "name": "Cessna 172"}\n{"type": "Person", "name": "Alice"}\n{"type": "Organization", "name": "NASA"}`;
+    const result = parseEntityResponse(text, ALLOWED);
+    expect(result).toHaveLength(3);
+    expect(result.map((r) => r.name).sort()).toEqual([
+      "Alice",
+      "Cessna 172",
+      "NASA",
+    ]);
+  });
+
+  it("NDJSON tolerates surrounding prose and blank lines", () => {
+    const text = `Here are the entities:\n\n{"type":"Person","name":"Bob"}\n  \n{"type":"Concept","name":"physics"}\n\nThat's all.`;
+    const result = parseEntityResponse(text, ALLOWED);
+    expect(result.map((r) => r.name).sort()).toEqual(["Bob", "physics"]);
+  });
+
   it("returns [] on empty input", () => {
     expect(parseEntityResponse("", ALLOWED)).toEqual([]);
   });
@@ -102,8 +120,12 @@ describe("parseEntityResponse", () => {
     expect(result).toHaveLength(5);
   });
 
-  it("ignores non-array JSON top-level", () => {
-    expect(parseEntityResponse('{"type":"Person","name":"X"}', ALLOWED)).toEqual([]);
+  it("accepts a single JSON object as a degenerate NDJSON case", () => {
+    // A bare top-level object like `{"type":"...","name":"..."}` is the
+    // degenerate one-line NDJSON shape. Permissive parser accepts it.
+    expect(parseEntityResponse('{"type":"Person","name":"X"}', ALLOWED)).toEqual([
+      { type: "Person", name: "X" },
+    ]);
   });
 });
 

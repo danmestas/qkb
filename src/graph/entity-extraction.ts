@@ -66,21 +66,38 @@ export function parseEntityResponse(
     text = fenceMatch[1].trim();
   }
 
-  // Find the first JSON array. The LLM may have prose before it.
+  // Try in order: JSON array, NDJSON (line-delimited objects), single
+  // object. Different LLMs emit different shapes for "list of entities"
+  // depending on prompt + model size. The 1.7B query-expansion model
+  // currently default for `models.generate` emits NDJSON-style output
+  // even when the prompt asks for an array — accept both.
+  let parsed: unknown[] = [];
+
   const arrayStart = text.indexOf("[");
   const arrayEnd = text.lastIndexOf("]");
-  if (arrayStart === -1 || arrayEnd === -1 || arrayEnd <= arrayStart) {
-    return [];
+  if (arrayStart !== -1 && arrayEnd !== -1 && arrayEnd > arrayStart) {
+    try {
+      const tryArr = JSON.parse(text.slice(arrayStart, arrayEnd + 1));
+      if (Array.isArray(tryArr)) parsed = tryArr as unknown[];
+    } catch {
+      /* fall through to NDJSON */
+    }
   }
-  const jsonText = text.slice(arrayStart, arrayEnd + 1);
 
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(jsonText);
-  } catch {
-    return [];
+  if (parsed.length === 0) {
+    // NDJSON / line-by-line objects fallback.
+    for (const line of text.split("\n")) {
+      const t = line.trim();
+      if (!t.startsWith("{") || !t.endsWith("}")) continue;
+      try {
+        parsed.push(JSON.parse(t));
+      } catch {
+        /* skip malformed line */
+      }
+    }
   }
-  if (!Array.isArray(parsed)) return [];
+
+  if (parsed.length === 0) return [];
 
   const allowedSet = new Set(allowedTypes);
   const seen = new Set<string>();
