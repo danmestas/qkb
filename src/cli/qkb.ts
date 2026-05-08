@@ -1835,6 +1835,8 @@ type OutputOptions = {
   intent?: string;       // Domain intent for disambiguation
   skipRerank?: boolean;  // Skip LLM reranking, use RRF scores only
   chunkStrategy?: ChunkStrategy;  // "auto" (default) or "regex"
+  useGraph?: boolean;    // RFC-0008 #2: edge-weighted graph expansion
+  graphWeights?: Record<string, number>;  // override per-edge-type weights
 };
 
 // Highlight query terms in text (skip short words < 3 chars)
@@ -2430,6 +2432,8 @@ async function querySearch(query: string, opts: OutputOptions, _embedModel: stri
         explain: !!opts.explain,
         intent,
         chunkStrategy: opts.chunkStrategy,
+        ...(opts.useGraph ? { useGraph: true } : {}),
+        ...(opts.graphWeights ? { graphWeights: opts.graphWeights } : {}),
         hooks: {
           onStrongSignal: (score) => {
             process.stderr.write(`${c.dim}Strong BM25 signal (${score.toFixed(2)}) — skipping expansion${c.reset}\n`);
@@ -2447,6 +2451,14 @@ async function querySearch(query: string, opts: OutputOptions, _embedModel: stri
           },
           onEmbedDone: (ms) => {
             process.stderr.write(`${c.dim} (${formatMs(ms)})${c.reset}\n`);
+          },
+          onGraphExpansion: (n) => {
+            if (n > 0) {
+              process.stderr.write(`${c.dim}Graph expansion: ${n} novel candidate(s)${c.reset}\n`);
+            }
+          },
+          onGraphExpansionError: (msg) => {
+            process.stderr.write(`${c.yellow}Graph expansion failed (continuing): ${msg}${c.reset}\n`);
           },
           onRerankStart: (chunkCount) => {
             process.stderr.write(`${c.dim}Reranking ${chunkCount} chunks...${c.reset}`);
@@ -2556,6 +2568,8 @@ function parseCLI() {
       "dry-run": { type: "boolean" },    // graph gc --dry-run
       hops: { type: "string" },          // graph neighbors --hops 2
       "edge-types": { type: "string" },  // graph neighbors --edge-types LINKS_TO,REFERENCES
+      graph: { type: "boolean" },        // qkb query --graph (RFC-0008 #2)
+      "graph-weights": { type: "string" }, // qkb query --graph-weights '{"LINKS_TO": 0.5}'
     },
     allowPositionals: true,
     strict: false, // Allow unknown options to pass through
@@ -2581,6 +2595,25 @@ function parseCLI() {
   const defaultLimit = (format === "files" || format === "json") ? 20 : 5;
   const isAll = !!values.all;
 
+  // Parse --graph-weights JSON; reject anything that isn't a flat
+  // {string: number} map. Bad JSON / wrong shape → fall through to
+  // defaults silently rather than failing the query.
+  let graphWeights: Record<string, number> | undefined;
+  if (typeof values["graph-weights"] === "string") {
+    try {
+      const parsed = JSON.parse(values["graph-weights"]) as unknown;
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        const valid: Record<string, number> = {};
+        for (const [k, v] of Object.entries(parsed as Record<string, unknown>)) {
+          if (typeof v === "number" && Number.isFinite(v)) valid[k] = v;
+        }
+        if (Object.keys(valid).length > 0) graphWeights = valid;
+      }
+    } catch {
+      // ignore — falls through to defaults
+    }
+  }
+
   const opts: OutputOptions = {
     format,
     full: !!values.full,
@@ -2594,6 +2627,8 @@ function parseCLI() {
     explain: !!values.explain,
     intent: values.intent as string | undefined,
     chunkStrategy: parseChunkStrategy(values["chunk-strategy"]),
+    useGraph: !!values.graph,
+    ...(graphWeights ? { graphWeights } : {}),
   };
 
   return {

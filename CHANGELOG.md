@@ -4,6 +4,28 @@
 
 ### Changes
 
+- **`qkb query --graph` — edge-weighted graph expansion (RFC-0008 strategy #2).**
+  Optional flag that injects 1-hop graph-derived candidates into the
+  hybrid retrieval pool, weighted by edge type. After the existing
+  RRF fuse produces post-vector/BM25 candidates, the top-20 seed an
+  outgoing-edge expansion: each `EMBEDS` neighbor contributes 0.9,
+  `LINKS_TO` 0.4, `REFERENCES` 0.2 (tunable via `--graph-weights`).
+  Novel docs (not already in the candidate pool) get appended for the
+  reranker to consider. Single batched Cypher call (~10ms) + two SQL
+  joins (~5ms) — well under the latency budget. No-op when the graph
+  layer is empty/unavailable; failures during expansion log a warning
+  and the query proceeds without it.
+
+  RFC-0008 (`docs/rfcs/0008-hybrid-graph-query.md`) documents this
+  strategy plus three more (Personalized PageRank, subgraph-as-context
+  for the reranker, GraphRAG-lite community summaries) for future work.
+
+  Examples:
+  ```
+  qkb query "FAA NMS landing requirements" --graph
+  qkb query "..." --graph --graph-weights '{"EMBEDS": 1.0, "LINKS_TO": 0.3}'
+  ```
+
 - **`qkb update` now auto-runs `graph link` when the graph layer is enabled.**
   After every collection re-index, the structural graph is refreshed
   in-place — wikilinks, embeds, and frontmatter labels stay in sync

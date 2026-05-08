@@ -22,7 +22,12 @@ import {
   runUpsertNodesBulk,
   runUpsertEdgesBulk,
 } from "./graph/sdk.js";
-import { runFilterThenRank, runRankThenRerank } from "./graph/hybrid.js";
+import {
+  runFilterThenRank,
+  runRankThenRerank,
+  runEdgeWeightedRank,
+  DEFAULT_EDGE_WEIGHTS,
+} from "./graph/hybrid.js";
 import { loadConfig } from "./collections.js";
 import type { Database } from "./db.js";
 import picomatch from "picomatch";
@@ -1316,6 +1321,9 @@ export type Store = {
     rankThenRerank: (
       args: import("./graph/hybrid.js").RankThenRerankArgs
     ) => import("./graph/hybrid.js").RankThenRerankResult;
+    edgeWeightedRank: (
+      args: import("./graph/hybrid.js").EdgeWeightedRankArgs
+    ) => import("./graph/hybrid.js").EdgeWeightedRankResult;
   };
 };
 
@@ -1873,6 +1881,12 @@ export function createStore(dbPath?: string): Store {
       rankThenRerank: (args: import("./graph/hybrid.js").RankThenRerankArgs) => {
         ensureGraphAvailable();
         return runRankThenRerank(store, args);
+      },
+      edgeWeightedRank: (
+        args: import("./graph/hybrid.js").EdgeWeightedRankArgs
+      ) => {
+        ensureGraphAvailable();
+        return runEdgeWeightedRank(store, args);
       },
     },
   };
@@ -4230,6 +4244,10 @@ export interface SearchHooks {
   onRerankStart?: (chunkCount: number) => void;
   /** Reranking finished */
   onRerankDone?: (elapsedMs: number) => void;
+  /** RFC-0008 #2: graph-expansion ran and contributed N novel candidates. */
+  onGraphExpansion?: (novelCount: number) => void;
+  /** Graph expansion threw — query proceeds without it. */
+  onGraphExpansionError?: (message: string) => void;
 }
 
 export interface HybridQueryOptions {
@@ -4242,6 +4260,20 @@ export interface HybridQueryOptions {
   skipRerank?: boolean;     // skip LLM reranking, use only RRF scores
   chunkStrategy?: ChunkStrategy;
   hooks?: SearchHooks;
+  /**
+   * Enable RFC-0008 strategy #2: edge-weighted 1-hop graph expansion.
+   * Top-N post-RRF candidates seed an outgoing-edge expansion via the
+   * graph layer; per-edge-type weights determine each neighbor's
+   * contribution to the candidate pool. Off by default; flips on with
+   * `qkb query --graph`. No-op if graph layer unavailable or empty.
+   */
+  useGraph?: boolean;
+  /**
+   * Override per-edge-type weights for graph expansion. Only meaningful
+   * when {@link useGraph} is true. Defaults to
+   * `{EMBEDS: 0.9, LINKS_TO: 0.4, REFERENCES: 0.2}` — see RFC-0008 §2.
+   */
+  graphWeights?: Record<string, number>;
 }
 
 export interface HybridQueryResult {
@@ -4398,7 +4430,50 @@ export async function hybridQuery(
   const weights = rankedLists.map((_, i) => i < 2 ? 2.0 : 1.0);
   const fused = reciprocalRankFusion(rankedLists, weights);
   const rrfTraceByFile = explain ? buildRrfTrace(rankedLists, weights, rankedListMeta) : null;
-  const candidates = fused.slice(0, candidateLimit);
+  let candidates = fused.slice(0, candidateLimit);
+
+  // Step 4b: RFC-0008 strategy #2 — edge-weighted graph expansion.
+  // Best-effort: if the graph layer is unavailable, empty, or throws,
+  // we keep `candidates` as-is and proceed.
+  if (options?.useGraph && candidates.length > 0 && isGraphLayerAvailable()) {
+    try {
+      const seenFiles = new Set(candidates.map((c) => c.file));
+      const expansion = runEdgeWeightedRank(store, {
+        seeds: candidates.slice(0, 20).map((c) => ({
+          file: c.file,
+          score: c.score,
+        })),
+        weights: options.graphWeights ?? { ...DEFAULT_EDGE_WEIGHTS },
+      });
+      const novel = expansion.expanded.filter((e) => !seenFiles.has(e.file));
+      if (novel.length > 0) {
+        // Append novel docs after the existing candidates so the post-RRF
+        // ranking is preserved at the head and graph-only finds get a
+        // shot at the reranker. The reranker is the final arbiter.
+        const merged: RankedResult[] = [
+          ...candidates,
+          ...novel.map((e) => ({
+            file: e.file,
+            displayPath: e.displayPath,
+            title: e.title,
+            body: e.body,
+            score: e.score,
+          })),
+        ];
+        candidates = merged.slice(0, candidateLimit);
+        for (const e of novel) {
+          // Approximate docid for explain traces (6-char prefix of hash);
+          // we don't have the hash here so leave docidMap untouched —
+          // the consumer of this map tolerates missing entries.
+          if (!docidMap.has(e.file)) docidMap.set(e.file, "");
+        }
+      }
+      hooks?.onGraphExpansion?.(novel.length);
+    } catch (err) {
+      // Surface but don't fail the query.
+      hooks?.onGraphExpansionError?.((err as Error).message);
+    }
+  }
 
   if (candidates.length === 0) return [];
 
