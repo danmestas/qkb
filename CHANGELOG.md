@@ -4,6 +4,15 @@
 
 ### Changes
 
+- **`qkb update` now auto-runs `graph link` when the graph layer is enabled.**
+  After every collection re-index, the structural graph is refreshed
+  in-place — wikilinks, embeds, and frontmatter labels stay in sync
+  with the corpus without a manual step. Idempotent and fast (~28s
+  on flight-planner-kb's 638 docs / 5,140 edges since the multi-MERGE
+  bulk path landed). Soft-failure: if the link step throws, update
+  prints a warning and continues — the search index itself is correct
+  regardless. Opt out by setting `graph.enabled: false`.
+
 - **`qkb graph link` — vault-aware structural graph extraction (no LLM).**
   Bug-watch on flight-planner-kb (124 MB, 638 docs) found 8,964
   `[[wikilinks]]` and 38 `![[embeds]]` entirely unused by the graph
