@@ -25,10 +25,9 @@ import {
   getGraphLayerUnavailableReason,
   type Store,
 } from "../store.js";
-import { runCypher, type CypherQuery } from "./sdk.js";
+import { runCypher, type CypherQuery, findNeighbors } from "./sdk.js";
 
 const DOLLAR_VAR_RE = /\$[A-Za-z_][A-Za-z0-9_]*/g;
-const IDENT_RE = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
 export interface GraphMcpResult {
   content: Array<{ type: "text"; text: string }>;
@@ -112,69 +111,14 @@ export function runGraphNeighbors(
   store: Store,
   args: GraphNeighborsArgs
 ): GraphMcpResult {
-  const { node_id, hops, edge_types } = args;
-
-  if (!Number.isInteger(hops) || hops < 1 || hops > 3) {
-    return {
-      content: [
-        {
-          type: "text",
-          text: `graph_neighbors: hops must be an integer in [1, 3] (got ${hops}).`,
-        },
-      ],
-      isError: true,
-    };
-  }
-
-  if (edge_types !== undefined) {
-    for (const t of edge_types) {
-      if (!IDENT_RE.test(t)) {
-        return {
-          content: [
-            {
-              type: "text",
-              text: `graph_neighbors: invalid edge type ${JSON.stringify(t)}. Must match ${IDENT_RE}.`,
-            },
-          ],
-          isError: true,
-        };
-      }
-    }
-  }
-
   if (!isGraphLayerAvailable()) return unavailable("graph_neighbors");
 
-  // GraphQLite v0.4.4: `[r*1..N]` combined with `type(r)` in RETURN
-  // throws "no such column: _gql_default_alias_*.id". So:
-  //   - hops=1: use `[r:type|...]->` form, return both id and edge type.
-  //   - hops>1: use `[*1..N:type|...]->` form, return id only (type is
-  //     ambiguous along a multi-hop path anyway).
-  const typeFilter =
-    edge_types && edge_types.length > 0
-      ? edge_types.join("|")
-      : "";
-
-  let cypher: string;
-  let returnType: "id_only" | "id_and_type";
-
-  if (hops === 1) {
-    const relPattern = typeFilter ? `[r:${typeFilter}]` : "[r]";
-    cypher = `MATCH (a {id: $id})-${relPattern}->(b) RETURN DISTINCT b.id AS id, type(r) AS type`;
-    returnType = "id_and_type";
-  } else {
-    const varPattern = typeFilter
-      ? `[:${typeFilter}*1..${hops}]`
-      : `[*1..${hops}]`;
-    cypher = `MATCH (a {id: $id})-${varPattern}->(b) RETURN DISTINCT b.id AS id`;
-    returnType = "id_only";
-  }
-
   try {
-    const rows = runCypher<{ id: string; type?: string }>(
-      store.db,
-      cypher as CypherQuery,
-      { id: node_id }
-    );
+    const { rows, returnType } = findNeighbors(store.db, {
+      nodeId: args.node_id,
+      hops: args.hops,
+      edgeTypes: args.edge_types,
+    });
     return {
       content: [{ type: "text", text: JSON.stringify(rows, null, 2) }],
       structuredContent: { neighbors: rows, return_type: returnType },

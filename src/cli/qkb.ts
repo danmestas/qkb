@@ -2554,6 +2554,8 @@ function parseCLI() {
       params: { type: "string" },        // graph query --params '{"id":"x"}'
       top: { type: "string" },           // graph pagerank --top 20
       "dry-run": { type: "boolean" },    // graph gc --dry-run
+      hops: { type: "string" },          // graph neighbors --hops 2
+      "edge-types": { type: "string" },  // graph neighbors --edge-types LINKS_TO,REFERENCES
     },
     allowPositionals: true,
     strict: false, // Allow unknown options to pass through
@@ -3149,7 +3151,9 @@ if (isMain) {
         console.error("  qkb graph restore                         Restore graph from NDJSON on stdin");
         console.error("  qkb graph extract [collection] [-n N]     LLM-extract entities, link doc -> entity (Phase 2D)");
         console.error("  qkb graph link [collection] [-n N]        Vault-aware: parse [[wikilinks]], frontmatter type, build typed graph");
-        console.error("                                            Available: status, query, pagerank, gc, dump, restore, extract, link");
+        console.error("  qkb graph neighbors <node-id> [--hops N] [--edge-types T1,T2]");
+        console.error("                                            List nodes reachable within N hops (1-3), optional type filter");
+        console.error("                                            Available: status, query, pagerank, gc, dump, restore, extract, link, neighbors");
         process.exit(1);
       }
 
@@ -3162,6 +3166,7 @@ if (isMain) {
         graphRestore,
         graphExtract,
         graphLink,
+        graphNeighbors,
       } = await import("../graph/cli.js");
 
       // getStore() respects --index / setIndexName; createStore() ignores them
@@ -3234,9 +3239,32 @@ if (isMain) {
             });
             break;
           }
+          case "neighbors": {
+            const nodeId = cli.args[1];
+            if (!nodeId) {
+              console.error(
+                'Usage: qkb graph neighbors <node-id> [--hops N] [--edge-types T1,T2] [--json]'
+              );
+              process.exit(1);
+            }
+            const hops = cli.values.hops
+              ? parseInt(String(cli.values.hops), 10)
+              : 1;
+            const edgeTypesRaw = cli.values["edge-types"];
+            const edgeTypes =
+              typeof edgeTypesRaw === "string" && edgeTypesRaw.length > 0
+                ? edgeTypesRaw.split(",").map((s) => s.trim()).filter(Boolean)
+                : undefined;
+            result = graphNeighbors(store, nodeId, {
+              hops,
+              ...(edgeTypes ? { edgeTypes } : {}),
+              ...(cli.values.json ? { json: true } : {}),
+            });
+            break;
+          }
           default:
             console.error(`Unknown graph subcommand: ${subcommand}`);
-            console.error("Available: status, query, pagerank, gc, dump, restore, extract");
+            console.error("Available: status, query, pagerank, gc, dump, restore, extract, link, neighbors");
             process.exit(1);
         }
 

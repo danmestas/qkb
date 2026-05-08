@@ -21,6 +21,7 @@ import {
   graphQuery,
   graphPageRank,
   graphGc,
+  graphNeighbors,
 } from "../src/graph/cli.js";
 
 const DEFAULT_BREW_PATH =
@@ -230,6 +231,112 @@ describe("graph CLI logic", () => {
         } finally {
           store.close();
         }
+      });
+
+      describe("graph neighbors", () => {
+        it("returns 1-hop neighbors with edge type", () => {
+          const store = enabledStore("nb-1hop");
+          try {
+            store.graph.upsertNode({ id: "n:a", label: "N", properties: {} });
+            store.graph.upsertNode({ id: "n:b", label: "N", properties: {} });
+            store.graph.upsertNode({ id: "n:c", label: "N", properties: {} });
+            store.graph.upsertEdge({ from: "n:a", to: "n:b", type: "LINKS_TO" });
+            store.graph.upsertEdge({ from: "n:a", to: "n:c", type: "EMBEDS" });
+
+            const r = graphNeighbors(store, "n:a", { hops: 1 });
+            expect(r.exitCode).toBe(0);
+            expect(r.stdout).toMatch(/n:b/);
+            expect(r.stdout).toMatch(/n:c/);
+            expect(r.stdout).toMatch(/\[LINKS_TO\]/);
+            expect(r.stdout).toMatch(/\[EMBEDS\]/);
+          } finally {
+            store.close();
+          }
+        });
+
+        it("returns 2-hop neighbors (id-only)", () => {
+          const store = enabledStore("nb-2hop");
+          try {
+            for (const id of ["x:1", "x:2", "x:3"]) {
+              store.graph.upsertNode({ id, label: "X", properties: {} });
+            }
+            store.graph.upsertEdge({ from: "x:1", to: "x:2", type: "T" });
+            store.graph.upsertEdge({ from: "x:2", to: "x:3", type: "T" });
+
+            const r = graphNeighbors(store, "x:1", { hops: 2 });
+            expect(r.exitCode).toBe(0);
+            expect(r.stdout).toMatch(/x:2/);
+            expect(r.stdout).toMatch(/x:3/);
+            // 2-hop result drops edge-type column.
+            expect(r.stdout).not.toMatch(/\[T\]/);
+          } finally {
+            store.close();
+          }
+        });
+
+        it("filters by edge types", () => {
+          const store = enabledStore("nb-typefilter");
+          try {
+            store.graph.upsertNode({ id: "f:1", label: "F", properties: {} });
+            store.graph.upsertNode({ id: "f:2", label: "F", properties: {} });
+            store.graph.upsertNode({ id: "f:3", label: "F", properties: {} });
+            store.graph.upsertEdge({ from: "f:1", to: "f:2", type: "GOOD" });
+            store.graph.upsertEdge({ from: "f:1", to: "f:3", type: "BAD" });
+
+            const r = graphNeighbors(store, "f:1", {
+              hops: 1,
+              edgeTypes: ["GOOD"],
+            });
+            expect(r.exitCode).toBe(0);
+            expect(r.stdout).toMatch(/f:2/);
+            expect(r.stdout).not.toMatch(/f:3/);
+          } finally {
+            store.close();
+          }
+        });
+
+        it("--json emits JSON of rows", () => {
+          const store = enabledStore("nb-json");
+          try {
+            store.graph.upsertNode({ id: "j:1", label: "J", properties: {} });
+            store.graph.upsertNode({ id: "j:2", label: "J", properties: {} });
+            store.graph.upsertEdge({ from: "j:1", to: "j:2", type: "T" });
+
+            const r = graphNeighbors(store, "j:1", { hops: 1, json: true });
+            expect(r.exitCode).toBe(0);
+            const parsed = JSON.parse(r.stdout) as Array<Record<string, string>>;
+            expect(parsed).toHaveLength(1);
+            expect(parsed[0]?.id).toBe("j:2");
+            expect(parsed[0]?.type).toBe("T");
+          } finally {
+            store.close();
+          }
+        });
+
+        it("rejects hops out of [1,3]", () => {
+          const store = enabledStore("nb-bad-hops");
+          try {
+            const r = graphNeighbors(store, "any", { hops: 5 });
+            expect(r.exitCode).toBe(1);
+            expect(r.stderr).toMatch(/hops/i);
+          } finally {
+            store.close();
+          }
+        });
+
+        it("rejects invalid edge-type identifier", () => {
+          const store = enabledStore("nb-bad-type");
+          try {
+            const r = graphNeighbors(store, "any", {
+              hops: 1,
+              edgeTypes: ["bad-type!"],
+            });
+            expect(r.exitCode).toBe(1);
+            expect(r.stderr).toMatch(/invalid edge type/i);
+          } finally {
+            store.close();
+          }
+        });
       });
     }
   );

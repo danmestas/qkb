@@ -13,6 +13,21 @@
   prints a warning and continues — the search index itself is correct
   regardless. Opt out by setting `graph.enabled: false`.
 
+- **`qkb graph neighbors <id> [--hops N] [--edge-types T1,T2] [--json]`.**
+  CLI exposure of the existing MCP `graph_neighbors` tool path. Drops a
+  Cypher-fluency requirement for "what does this doc link to?" — users
+  pass a node id and hop count, the helper handles the v0.4.4
+  var-length-relationship + `type(r)` quirks internally. Hops capped at
+  3 (use `graph query` for deeper traversal). Single shared
+  implementation (`findNeighbors`) in the SDK; MCP and CLI both
+  delegate, so v0.4.4 quirks are pinned in one place.
+
+  Examples:
+  ```
+  qkb graph neighbors doc:531 --hops 1
+  qkb graph neighbors doc:531 --hops 2 --edge-types LINKS_TO --json
+  ```
+
 - **`qkb graph link` — vault-aware structural graph extraction (no LLM).**
   Bug-watch on flight-planner-kb (124 MB, 638 docs) found 8,964
   `[[wikilinks]]` and 38 `![[embeds]]` entirely unused by the graph
