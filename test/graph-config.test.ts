@@ -29,7 +29,65 @@ describe("graph config", () => {
         bulk_insert_threshold: 64,
         query_timeout_ms: 5000,
         max_path_length: 6,
+        entity_extraction: {
+          enabled: false,
+          types: ["Person", "Organization", "Concept"],
+        },
       });
+    });
+
+    it("entity_extraction.enabled defaults to false even when graph.enabled=true", () => {
+      const config: CollectionConfig = {
+        collections: {},
+        graph: { enabled: true },
+      };
+      const resolved = resolveGraphConfig(config);
+      expect(resolved.entity_extraction.enabled).toBe(false);
+    });
+
+    it("entity_extraction.types accepts a custom whitelist of valid identifiers", () => {
+      const config: CollectionConfig = {
+        collections: {},
+        graph: {
+          enabled: true,
+          entity_extraction: {
+            enabled: true,
+            types: ["Person", "Place", "Product"],
+          },
+        },
+      };
+      const resolved = resolveGraphConfig(config);
+      expect(resolved.entity_extraction.types).toEqual([
+        "Person",
+        "Place",
+        "Product",
+      ]);
+    });
+
+    it("entity_extraction.types rejects entries that aren't valid Cypher identifiers", () => {
+      const config: CollectionConfig = {
+        collections: {},
+        graph: {
+          entity_extraction: {
+            types: ["Person", "Bad-Type!"],
+          },
+        },
+      };
+      expect(() => resolveGraphConfig(config)).toThrow(/identifier/i);
+    });
+
+    it("entity_extraction.model accepts a string override", () => {
+      const config: CollectionConfig = {
+        collections: {},
+        graph: {
+          entity_extraction: {
+            enabled: true,
+            model: "hf://test/model.gguf",
+          },
+        },
+      };
+      const resolved = resolveGraphConfig(config);
+      expect(resolved.entity_extraction.model).toBe("hf://test/model.gguf");
     });
 
     it("respects user-provided enabled=true", () => {
@@ -57,6 +115,10 @@ describe("graph config", () => {
         bulk_insert_threshold: 256,
         query_timeout_ms: 10000,
         max_path_length: 4,
+        entity_extraction: {
+          enabled: false,
+          types: ["Person", "Organization", "Concept"],
+        },
       });
     });
 
@@ -71,6 +133,10 @@ describe("graph config", () => {
         bulk_insert_threshold: 64,
         query_timeout_ms: 1000,
         max_path_length: 6,
+        entity_extraction: {
+          enabled: false,
+          types: ["Person", "Organization", "Concept"],
+        },
       });
     });
 

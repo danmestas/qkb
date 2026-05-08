@@ -15,6 +15,34 @@ import type { CollectionConfig } from "../collections.js";
  */
 const MAX_PATH_LENGTH_CEILING = 12;
 
+/**
+ * Identifier regex shared with the SDK — entity-extraction `types` are
+ * used as Cypher labels at upsert time, so they must be valid
+ * identifiers (alphanumeric + underscore, leading non-digit).
+ */
+const ENTITY_TYPE_RE = /^[A-Za-z_][A-Za-z0-9_]*$/;
+
+const entityExtractionSchema = z.object({
+  enabled: z.boolean().default(false),
+  /** Optional override of the generate-model URI. When unset, falls
+   *  back to whatever the user has configured under `models.generate`
+   *  in the main config (or the built-in default). */
+  model: z.string().min(1).optional(),
+  /** Cypher labels to use for extracted entities. Default is a sensible
+   *  three-way split that covers most knowledge-base use cases. */
+  types: z
+    .array(
+      z
+        .string()
+        .regex(ENTITY_TYPE_RE, {
+          message:
+            "entity_extraction.types entries must be valid Cypher identifiers (alphanumeric + underscore, leading non-digit)",
+        })
+    )
+    .min(1)
+    .default(["Person", "Organization", "Concept"]),
+});
+
 const graphConfigSchema = z.object({
   enabled: z.boolean({ message: "graph.enabled must be a boolean" }).default(false),
   bulk_insert_threshold: z.number().int().positive().default(64),
@@ -25,6 +53,12 @@ const graphConfigSchema = z.object({
     .positive()
     .max(MAX_PATH_LENGTH_CEILING)
     .default(6),
+  // .default(() => parse({})) is the zod 4.x idiom for "trigger the
+  // inner schema's own defaults" — passing a literal `{}` bypasses
+  // the inner schema's `.default()` chain.
+  entity_extraction: entityExtractionSchema.default(() =>
+    entityExtractionSchema.parse({})
+  ),
 });
 
 /**

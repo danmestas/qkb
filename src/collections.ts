@@ -52,6 +52,14 @@ export interface GraphConfigBlock {
   bulk_insert_threshold?: number;
   query_timeout_ms?: number;
   max_path_length?: number;
+  /** Entity extraction during indexing (RFC-0007 Phase 2). */
+  entity_extraction?: {
+    enabled?: boolean;
+    /** Model URI override; falls back to the global `models.generate`. */
+    model?: string;
+    /** Cypher labels for extracted entities. Default: Person, Organization, Concept. */
+    types?: string[];
+  };
 }
 
 /**

@@ -4,6 +4,14 @@
 
 ### Changes
 
+- **RFC-0007 PR-16 (Phase 2C): entity extraction config flag.** Adds
+  `graph.entity_extraction.{enabled, model, types}` to the YAML config
+  schema. Defaults: enabled=false, types=`[Person, Organization, Concept]`.
+  `model` is an optional URI override; when unset, falls back to the
+  global `models.generate`. Type entries validated against the Cypher
+  identifier regex (alphanumeric + underscore, leading non-digit).
+  Scaffold only — actual extraction logic lands in PR-17.
+
 - **RFC-0007 PR-15 (Phase 2B): hybrid query strategies.** Adds two
   graph-aware composition primitives. `store.graph.filterThenRank({cypher,
   params})` runs a Cypher query and returns the resulting `(hash, seq)`
