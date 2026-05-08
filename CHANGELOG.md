@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [2.3.0] - 2026-05-08
+
 ### Changes
 
 - **RFC-0007 PR-18 (Phase 2E): 24-hour soak harness + nightly CI.**
