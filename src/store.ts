@@ -19,6 +19,8 @@ import {
   runUpsertEdge,
   runCypher,
   runPageRank,
+  runUpsertNodesBulk,
+  runUpsertEdgesBulk,
 } from "./graph/sdk.js";
 import { loadConfig } from "./collections.js";
 import type { Database } from "./db.js";
@@ -1294,6 +1296,12 @@ export type Store = {
   graph: {
     upsertNode: (args: import("./graph/sdk.js").UpsertNodeArgs) => void;
     upsertEdge: (args: import("./graph/sdk.js").UpsertEdgeArgs) => void;
+    upsertNodesBulk: (
+      nodes: ReadonlyArray<import("./graph/sdk.js").UpsertNodeArgs>
+    ) => void;
+    upsertEdgesBulk: (
+      edges: ReadonlyArray<import("./graph/sdk.js").UpsertEdgeArgs>
+    ) => void;
     cypher: <T = Record<string, unknown>>(
       query: import("./graph/sdk.js").CypherQuery,
       params?: Record<string, unknown>
@@ -1826,6 +1834,18 @@ export function createStore(dbPath?: string): Store {
       upsertEdge: (args: import("./graph/sdk.js").UpsertEdgeArgs) => {
         ensureGraphAvailable();
         runUpsertEdge(db, args);
+      },
+      upsertNodesBulk: (
+        nodes: ReadonlyArray<import("./graph/sdk.js").UpsertNodeArgs>
+      ) => {
+        ensureGraphAvailable();
+        runUpsertNodesBulk(db, nodes);
+      },
+      upsertEdgesBulk: (
+        edges: ReadonlyArray<import("./graph/sdk.js").UpsertEdgeArgs>
+      ) => {
+        ensureGraphAvailable();
+        runUpsertEdgesBulk(db, edges);
       },
       cypher: <T = Record<string, unknown>>(
         query: import("./graph/sdk.js").CypherQuery,
