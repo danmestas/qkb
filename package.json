@@ -47,6 +47,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.29.0",
+    "@tobilu/qmd": "~2.1.0",
     "better-sqlite3": "12.9.0",
     "fast-glob": "3.3.3",
     "node-llama-cpp": "3.18.1",

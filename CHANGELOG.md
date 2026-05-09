@@ -2,6 +2,26 @@
 
 ## [Unreleased]
 
+### Added
+
+- **`src/store-bridge.ts` — single store entry point (RFC-0009 PR-1).**
+  New `openStore()` wraps `@tobilu/qmd`'s `createStore`, loads the
+  GraphQLite extension into the same connection, and ensures the
+  qkb-owned `graph_meta` schema. First slice of the thin-wrapper
+  architecture; no CLI changes yet.
+- `ensureGraphSchema()` and `readPinnedGraphqliteVersion()` exported
+  from `src/graph/loader.ts` — extracted from `src/store.ts`'s
+  bootstrap path so the new `store-bridge` can ensure schema after qmd
+  has migrated, without depending on the legacy 3.x store.
+- RFC-0009 (thin-wrapper architecture) and its implementation plan
+  added under `docs/rfcs/`.
+
+### Changed
+
+- **`@tobilu/qmd@~2.1.0` is now a runtime dependency.** No CLI surface
+  changes yet — qmd's SDK is only exercised by the new
+  `store-bridge` integration test in this PR.
+
 ### Changes
 
 - **README architecture diagram refreshed** to reflect the post-RFC-0008
