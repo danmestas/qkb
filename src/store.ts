@@ -4264,8 +4264,14 @@ export interface HybridQueryOptions {
    * Enable RFC-0008 strategy #2: edge-weighted 1-hop graph expansion.
    * Top-N post-RRF candidates seed an outgoing-edge expansion via the
    * graph layer; per-edge-type weights determine each neighbor's
-   * contribution to the candidate pool. Off by default; flips on with
-   * `qkb query --graph`. No-op if graph layer unavailable or empty.
+   * contribution to the candidate pool.
+   *
+   * **Default**: `true` when undefined — graph expansion runs whenever
+   * the graph layer is available. PR #56's append+bumped-pool strategy
+   * means this is recall-positive (parity at @5, +3pp at @10 on the
+   * flight-planner-kb bench) with predictable +50% rerank latency. The
+   * graph layer no-ops cleanly if empty. Set to `false` explicitly via
+   * `qkb query --no-graph` for the strict pre-RFC-0008 behavior.
    */
   useGraph?: boolean;
   /**
@@ -4457,14 +4463,16 @@ export async function hybridQuery(
   // Best-effort: if the graph layer is unavailable, empty, or throws,
   // we keep `candidates` as-is and proceed.
   const GRAPH_POOL_BUMP = 20;
-  if (options?.useGraph && candidates.length > 0 && isGraphLayerAvailable()) {
+  // useGraph defaults to true — explicit `false` opts out (qkb query --no-graph).
+  const useGraph = options?.useGraph !== false;
+  if (useGraph && candidates.length > 0 && isGraphLayerAvailable()) {
     try {
       const expansion = runEdgeWeightedRank(store, {
         seeds: candidates.slice(0, 20).map((c) => ({
           file: c.file,
           score: c.score,
         })),
-        weights: options.graphWeights ?? { ...DEFAULT_EDGE_WEIGHTS },
+        weights: options?.graphWeights ?? { ...DEFAULT_EDGE_WEIGHTS },
       });
       const seenFiles = new Set(candidates.map((c) => c.file));
       const novel = expansion.expanded.filter((e) => !seenFiles.has(e.file));

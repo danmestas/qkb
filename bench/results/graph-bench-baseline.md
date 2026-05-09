@@ -1,6 +1,6 @@
 # Graph-query benchmark — flight-planner-kb
 
-**Run**: 2026-05-08T22:51:40.221Z
+**Run**: 2026-05-09T03:57:32.612Z
 **Modes**: bm25, hybrid, hybrid-graph
 **Skip rerank**: false
 **Questions**: 10
@@ -9,9 +9,9 @@
 
 | Mode | Mean recall@5 | Mean recall@10 | Top-1 hit rate | Mean first-hit rank | Mean latency | Failed |
 |------|--------------:|---------------:|---------------:|--------------------:|-------------:|-------:|
-| bm25 | 0% | 0% | 0% | — | 482.5ms | 0/10 |
-| hybrid | 52% | 58% | 30% | 2.1 | 40.6s | 0/10 |
-| hybrid-graph | 25% | 41% | 30% | 3.0 | 14.6s | 0/10 |
+| bm25 | 0% | 0% | 0% | — | 306.2ms | 0/10 |
+| hybrid | 52% | 58% | 30% | 2.1 | 1.4s | 0/10 |
+| hybrid-graph | 52% | 61% | 30% | 2.1 | 1.4s | 0/10 |
 
 ## Per-question
 
@@ -25,9 +25,9 @@
 
 | Mode | recall@5 | recall@10 | top-1 hit | first-hit rank | latency | top-5 hits |
 |------|---------:|----------:|----------:|---------------:|--------:|------------|
-| bm25 | 0% | 0% | ✗ | — | 567ms | wiki/questions/Research-Public-Aviation-Datasets.md<br/>wiki/comparisons/Free-vs-Paid-Data-Sources.md<br/>sources/strategy/execution-priorities.md<br/>wiki/concepts/Service-Arrangement-Layer.md<br/>sources/market/technical-capabilities-research-deep-dive.md |
-| hybrid | 50% | 50% | ✓ | 1 | 44.3s | **wiki/entities/ICAO.md**<br/>wiki/sources/jeppesen-eiwac-2013-integrated-gate-to-gate.md<br/>**wiki/entities/FAA-NMS.md**<br/>sources/lou-kb/notam-structure.md<br/>wiki/sources/resources-for-flight-planning-briefs.md |
-| hybrid-graph | 50% | 50% | ✓ | 1 | 17.8s | **wiki/entities/ICAO.md**<br/>wiki/concepts/Brief-Generation-Workflow.md<br/>wiki/sources/notam-structure.md<br/>**wiki/entities/FAA-NMS.md**<br/>sources/lou-kb/notam-structure.md |
+| bm25 | 0% | 0% | ✗ | — | 450ms | wiki/questions/Research-Public-Aviation-Datasets.md<br/>wiki/comparisons/Free-vs-Paid-Data-Sources.md<br/>sources/strategy/execution-priorities.md<br/>wiki/concepts/Service-Arrangement-Layer.md<br/>sources/market/technical-capabilities-research-deep-dive.md |
+| hybrid | 50% | 50% | ✓ | 1 | 1.4s | **wiki/entities/ICAO.md**<br/>wiki/sources/jeppesen-eiwac-2013-integrated-gate-to-gate.md<br/>**wiki/entities/FAA-NMS.md**<br/>sources/lou-kb/notam-structure.md<br/>wiki/sources/resources-for-flight-planning-briefs.md |
+| hybrid-graph | 50% | 50% | ✓ | 1 | 1.4s | **wiki/entities/ICAO.md**<br/>wiki/sources/jeppesen-eiwac-2013-integrated-gate-to-gate.md<br/>**wiki/entities/FAA-NMS.md**<br/>sources/lou-kb/notam-structure.md<br/>wiki/sources/resources-for-flight-planning-briefs.md |
 
 ### q02-faa-nms-contractor — entity-relation
 
@@ -39,9 +39,9 @@
 
 | Mode | recall@5 | recall@10 | top-1 hit | first-hit rank | latency | top-5 hits |
 |------|---------:|----------:|----------:|---------------:|--------:|------------|
-| bm25 | 0% | 0% | ✗ | — | 469ms | wiki/sources/firestorm-dataworks-session-2026-05-02.md<br/>wiki/sources/nms-api-soapui-project.md<br/>sources/specs/nms-api-integration-guide.md<br/>sources/notes/2026-05-02-firestorm-dataworks-session.md<br/>wiki/sources/dataworks-api-v1-rollout-progress-report-2026-05-05.md |
-| hybrid | 67% | 100% | ✓ | 1 | 43.7s | **wiki/entities/FAA-NMS.md**<br/>wiki/log.md<br/>wiki/sources/nms-api-initial-load-response.md<br/>**wiki/entities/CGI-Federal.md**<br/>wiki/entities/FAA-SWIM.md |
-| hybrid-graph | 33% | 33% | ✓ | 1 | 15.3s | **wiki/entities/FAA-NMS.md**<br/>wiki/concepts/AIXM-5-1.md<br/>sources/specs/nms-api-integration-guide.md<br/>wiki/sources/preflightapi-io-research.md<br/>wiki/entities/Firestorm-Dataworks.md |
+| bm25 | 0% | 0% | ✗ | — | 285ms | wiki/sources/firestorm-dataworks-session-2026-05-02.md<br/>wiki/sources/nms-api-soapui-project.md<br/>sources/specs/nms-api-integration-guide.md<br/>sources/notes/2026-05-02-firestorm-dataworks-session.md<br/>wiki/sources/dataworks-api-v1-rollout-progress-report-2026-05-05.md |
+| hybrid | 67% | 100% | ✓ | 1 | 1.4s | **wiki/entities/FAA-NMS.md**<br/>wiki/log.md<br/>wiki/sources/nms-api-initial-load-response.md<br/>**wiki/entities/CGI-Federal.md**<br/>wiki/entities/FAA-SWIM.md |
+| hybrid-graph | 67% | 100% | ✓ | 1 | 1.4s | **wiki/entities/FAA-NMS.md**<br/>wiki/log.md<br/>wiki/sources/nms-api-initial-load-response.md<br/>**wiki/entities/CGI-Federal.md**<br/>wiki/entities/FAA-SWIM.md |
 
 ### q03-schema-drift — domain-concept
 
@@ -53,9 +53,9 @@
 
 | Mode | recall@5 | recall@10 | top-1 hit | first-hit rank | latency | top-5 hits |
 |------|---------:|----------:|----------:|---------------:|--------:|------------|
-| bm25 | 0% | 0% | ✗ | — | 469ms | sources/research/preflightapi-backend-headstart-plan-2026-04-23.md<br/>wiki/hot.md |
-| hybrid | 33% | 33% | ✗ | 2 | 44.8s | sources/research/preflightapi-backend-headstart-plan-2026-04-23.md<br/>**wiki/concepts/Schema-Drift-Manifest.md**<br/>wiki/entities/NOAA-Aviation-Weather-API.md<br/>wiki/concepts/Transient-Aeronautical-Data.md<br/>wiki/sources/awc-weather-pipeline-build-2026-05-02.md |
-| hybrid-graph | 0% | 0% | ✗ | — | 19.8s | sources/research/preflightapi-backend-headstart-plan-2026-04-23.md<br/>wiki/entities/FAA-NMS.md<br/>sources/notes/awc-weather-pipeline-build-2026-05-02.md<br/>wiki/index.md<br/>wiki/entities/Firestorm-Dataworks.md |
+| bm25 | 0% | 0% | ✗ | — | 302ms | sources/research/preflightapi-backend-headstart-plan-2026-04-23.md<br/>wiki/hot.md |
+| hybrid | 33% | 33% | ✗ | 2 | 1.4s | sources/research/preflightapi-backend-headstart-plan-2026-04-23.md<br/>**wiki/concepts/Schema-Drift-Manifest.md**<br/>wiki/entities/NOAA-Aviation-Weather-API.md<br/>wiki/concepts/Transient-Aeronautical-Data.md<br/>wiki/sources/awc-weather-pipeline-build-2026-05-02.md |
+| hybrid-graph | 33% | 33% | ✗ | 2 | 1.4s | sources/research/preflightapi-backend-headstart-plan-2026-04-23.md<br/>**wiki/concepts/Schema-Drift-Manifest.md**<br/>wiki/entities/NOAA-Aviation-Weather-API.md<br/>wiki/concepts/Transient-Aeronautical-Data.md<br/>wiki/sources/awc-weather-pipeline-build-2026-05-02.md |
 
 ### q04-aixm-version — exact-entity
 
@@ -67,9 +67,9 @@
 
 | Mode | recall@5 | recall@10 | top-1 hit | first-hit rank | latency | top-5 hits |
 |------|---------:|----------:|----------:|---------------:|--------:|------------|
-| bm25 | 0% | 0% | ✗ | — | 455ms | sources/specs/nms-api-integration-guide.md<br/>wiki/sources/nms-api-soapui-project.md<br/>wiki/questions/Research-NOTAM-Reform.md<br/>sources/research/firestorm-gap-analysis-2026-04-23.md<br/>wiki/hot.md |
-| hybrid | 100% | 100% | ✗ | 2 | 43.3s | sources/specs/nms-api-integration-guide.md<br/>**wiki/concepts/AIXM-5-1.md**<br/>wiki/sources/nms-api-checklist-response.md<br/>sources/research/preflightapi-backend-headstart-plan-2026-04-23.md<br/>wiki/concepts/NOTAM-Field-Structure.md |
-| hybrid-graph | 0% | 100% | ✗ | 7 | 13.8s | sources/specs/nms-api-integration-guide.md<br/>wiki/concepts/Brief-Generation-Workflow.md<br/>wiki/sources/nms-api-aixm-sample.md<br/>wiki/sources/nms-api-checklist-response.md<br/>sources/research/preflightapi-backend-headstart-plan-2026-04-23.md |
+| bm25 | 0% | 0% | ✗ | — | 280ms | sources/specs/nms-api-integration-guide.md<br/>wiki/sources/nms-api-soapui-project.md<br/>wiki/questions/Research-NOTAM-Reform.md<br/>sources/research/firestorm-gap-analysis-2026-04-23.md<br/>wiki/hot.md |
+| hybrid | 100% | 100% | ✗ | 2 | 1.4s | sources/specs/nms-api-integration-guide.md<br/>**wiki/concepts/AIXM-5-1.md**<br/>wiki/sources/nms-api-checklist-response.md<br/>sources/research/preflightapi-backend-headstart-plan-2026-04-23.md<br/>wiki/concepts/NOTAM-Field-Structure.md |
+| hybrid-graph | 100% | 100% | ✗ | 2 | 1.4s | sources/specs/nms-api-integration-guide.md<br/>**wiki/concepts/AIXM-5-1.md**<br/>wiki/sources/nms-api-checklist-response.md<br/>sources/research/preflightapi-backend-headstart-plan-2026-04-23.md<br/>wiki/concepts/NOTAM-Field-Structure.md |
 
 ### q05-data-source-priority — domain-concept
 
@@ -81,9 +81,9 @@
 
 | Mode | recall@5 | recall@10 | top-1 hit | first-hit rank | latency | top-5 hits |
 |------|---------:|----------:|----------:|---------------:|--------:|------------|
-| bm25 | 0% | 0% | ✗ | — | 616ms | (no hits) |
-| hybrid | 33% | 33% | ✗ | 4 | 61.1s | wiki/sources/resources-for-flight-planning-briefs.md<br/>wiki/comparisons/NOTAM-Sources.md<br/>wiki/sources/data-sources-and-rate-limits.md<br/>**wiki/sources/official-weather-data-sources.md**<br/>wiki/index.md |
-| hybrid-graph | 0% | 0% | ✗ | — | 12.7s | wiki/sources/resources-for-flight-planning-briefs.md<br/>wiki/concepts/Brief-Generation-Workflow.md<br/>sources/research/public-apis-scan-2026-04-23.md<br/>sources/research/resources-for-flight-planning-briefs.md<br/>wiki/questions/Missing-Data-Sources.md |
+| bm25 | 0% | 0% | ✗ | — | 303ms | (no hits) |
+| hybrid | 33% | 33% | ✗ | 4 | 1.4s | wiki/sources/resources-for-flight-planning-briefs.md<br/>wiki/comparisons/NOTAM-Sources.md<br/>wiki/sources/data-sources-and-rate-limits.md<br/>**wiki/sources/official-weather-data-sources.md**<br/>wiki/index.md |
+| hybrid-graph | 33% | 67% | ✗ | 4 | 1.4s | wiki/sources/resources-for-flight-planning-briefs.md<br/>wiki/comparisons/NOTAM-Sources.md<br/>wiki/sources/data-sources-and-rate-limits.md<br/>**wiki/sources/official-weather-data-sources.md**<br/>wiki/index.md |
 
 ### q06-engine-out — procedure
 
@@ -95,9 +95,9 @@
 
 | Mode | recall@5 | recall@10 | top-1 hit | first-hit rank | latency | top-5 hits |
 |------|---------:|----------:|----------:|---------------:|--------:|------------|
-| bm25 | 0% | 0% | ✗ | — | 450ms | (no hits) |
-| hybrid | 100% | 100% | ✗ | 2 | 34.6s | wiki/concepts/Flight-Crew-Qualifications.md<br/>**sources/research/aviationlessons-2017/aviationlessons-fuel-management-inflight-replanning-2015-2026-05-04.md**<br/>**sources/specs/2026-04-15-checklist-engine-design.md**<br/>wiki/concepts/Fuel-Calculations.md<br/>sources/lou-kb/golden-brief-example-KTEB-EGGW-2026-04-17.md |
-| hybrid-graph | 50% | 50% | ✗ | 4 | 12.7s | wiki/concepts/Flight-Crew-Qualifications.md<br/>wiki/concepts/Computerized-Flight-Plan.md<br/>sources/lou-kb/golden-brief-template.md<br/>**sources/research/aviationlessons-2017/aviationlessons-fuel-management-inflight-replanning-2015-2026-05-04.md**<br/>wiki/sources/aviationlessons-flight-planning-procedures-tow-2015.md |
+| bm25 | 0% | 0% | ✗ | — | 301ms | (no hits) |
+| hybrid | 100% | 100% | ✗ | 2 | 1.4s | wiki/concepts/Flight-Crew-Qualifications.md<br/>**sources/research/aviationlessons-2017/aviationlessons-fuel-management-inflight-replanning-2015-2026-05-04.md**<br/>**sources/specs/2026-04-15-checklist-engine-design.md**<br/>wiki/concepts/Fuel-Calculations.md<br/>sources/lou-kb/golden-brief-example-KTEB-EGGW-2026-04-17.md |
+| hybrid-graph | 100% | 100% | ✗ | 2 | 1.4s | wiki/concepts/Flight-Crew-Qualifications.md<br/>**sources/research/aviationlessons-2017/aviationlessons-fuel-management-inflight-replanning-2015-2026-05-04.md**<br/>**sources/specs/2026-04-15-checklist-engine-design.md**<br/>wiki/concepts/Fuel-Calculations.md<br/>sources/lou-kb/golden-brief-example-KTEB-EGGW-2026-04-17.md |
 
 ### q07-notam-reform-timeline — temporal-multi-hop
 
@@ -109,9 +109,9 @@
 
 | Mode | recall@5 | recall@10 | top-1 hit | first-hit rank | latency | top-5 hits |
 |------|---------:|----------:|----------:|---------------:|--------:|------------|
-| bm25 | 0% | 0% | ✗ | — | 461ms | wiki/log.md<br/>wiki/index.md<br/>wiki/hot.md |
-| hybrid | 33% | 33% | ✗ | 4 | 35.2s | wiki/index.md<br/>sources/notes/notam-classification-analogs-and-operator-criticality-data-2026-05-07.md<br/>wiki/entities/FAA-NMS.md<br/>**wiki/sources/nms-api-openapi-spec.md**<br/>wiki/concepts/NOTAM-Types.md |
-| hybrid-graph | 33% | 67% | ✗ | 4 | 14.2s | wiki/index.md<br/>wiki/concepts/Brief-Generation-Workflow.md<br/>wiki/entities/FAA-SWIM.md<br/>**wiki/concepts/NOTAM-Reform.md**<br/>wiki/entities/FAA-NMS.md |
+| bm25 | 0% | 0% | ✗ | — | 298ms | wiki/log.md<br/>wiki/index.md<br/>wiki/hot.md |
+| hybrid | 33% | 33% | ✗ | 4 | 1.4s | wiki/index.md<br/>sources/notes/notam-classification-analogs-and-operator-criticality-data-2026-05-07.md<br/>wiki/entities/FAA-NMS.md<br/>**wiki/sources/nms-api-openapi-spec.md**<br/>wiki/concepts/NOTAM-Types.md |
+| hybrid-graph | 33% | 33% | ✗ | 4 | 1.4s | wiki/index.md<br/>sources/notes/notam-classification-analogs-and-operator-criticality-data-2026-05-07.md<br/>wiki/entities/FAA-NMS.md<br/>**wiki/sources/nms-api-openapi-spec.md**<br/>wiki/concepts/NOTAM-Types.md |
 
 ### q08-zambia-landing — geographic-rare
 
@@ -123,9 +123,9 @@
 
 | Mode | recall@5 | recall@10 | top-1 hit | first-hit rank | latency | top-5 hits |
 |------|---------:|----------:|----------:|---------------:|--------:|------------|
-| bm25 | 0% | 0% | ✗ | — | 503ms | (no hits) |
-| hybrid | 0% | 0% | ✗ | — | 36.8s | sources/lou-kb/weather-assessment-heuristics.md<br/>sources/lou-kb/country-united-states.md<br/>sources/specs/2026-04-15-mcp-server-interface-design.md<br/>wiki/concepts/Weather-Assessment-Heuristics.md<br/>site/docs/features/graph-view.md |
-| hybrid-graph | 0% | 0% | ✗ | — | 15.1s | sources/lou-kb/weather-assessment-heuristics.md<br/>wiki/concepts/Brief-Generation-Workflow.md<br/>sources/specs/2026-04-15-mcp-server-interface-design.md<br/>sources/lou-kb/country-united-states.md<br/>wiki/concepts/GEN-Section.md |
+| bm25 | 0% | 0% | ✗ | — | 270ms | (no hits) |
+| hybrid | 0% | 0% | ✗ | — | 1.4s | sources/lou-kb/weather-assessment-heuristics.md<br/>sources/lou-kb/country-united-states.md<br/>sources/specs/2026-04-15-mcp-server-interface-design.md<br/>wiki/concepts/Weather-Assessment-Heuristics.md<br/>site/docs/features/graph-view.md |
+| hybrid-graph | 0% | 0% | ✗ | — | 1.4s | sources/lou-kb/weather-assessment-heuristics.md<br/>sources/lou-kb/country-united-states.md<br/>sources/specs/2026-04-15-mcp-server-interface-design.md<br/>wiki/concepts/Weather-Assessment-Heuristics.md<br/>site/docs/features/graph-view.md |
 
 ### q09-jetblue-partnership — entity-strategy
 
@@ -137,9 +137,9 @@
 
 | Mode | recall@5 | recall@10 | top-1 hit | first-hit rank | latency | top-5 hits |
 |------|---------:|----------:|----------:|---------------:|--------:|------------|
-| bm25 | 0% | 0% | ✗ | — | 410ms | (no hits) |
-| hybrid | 67% | 67% | ✓ | 1 | 29.1s | **wiki/entities/JetBlue-Tech-Ventures.md**<br/>wiki/entities/Jetstream-Aviation-Software.md<br/>wiki/sources/autoresearch-collaborator-deep-dive.md<br/>**wiki/domains/Partnership-Opportunities.md**<br/>wiki/index.md |
-| hybrid-graph | 67% | 67% | ✓ | 1 | 11.6s | **wiki/domains/Partnership-Opportunities.md**<br/>**wiki/entities/JetBlue-Tech-Ventures.md**<br/>sources/research/autoresearch-collaborator-deep-dive-2026-04-16.md<br/>wiki/entities/Boeing-Ventures.md<br/>wiki/sources/autoresearch-collaborator-deep-dive.md |
+| bm25 | 0% | 0% | ✗ | — | 295ms | (no hits) |
+| hybrid | 67% | 67% | ✓ | 1 | 1.4s | **wiki/entities/JetBlue-Tech-Ventures.md**<br/>wiki/entities/Jetstream-Aviation-Software.md<br/>wiki/sources/autoresearch-collaborator-deep-dive.md<br/>**wiki/domains/Partnership-Opportunities.md**<br/>wiki/index.md |
+| hybrid-graph | 67% | 67% | ✓ | 1 | 1.4s | **wiki/entities/JetBlue-Tech-Ventures.md**<br/>wiki/entities/Jetstream-Aviation-Software.md<br/>wiki/sources/autoresearch-collaborator-deep-dive.md<br/>**wiki/domains/Partnership-Opportunities.md**<br/>wiki/index.md |
 
 ### q10-international-regs — broad-conceptual
 
@@ -151,9 +151,9 @@
 
 | Mode | recall@5 | recall@10 | top-1 hit | first-hit rank | latency | top-5 hits |
 |------|---------:|----------:|----------:|---------------:|--------:|------------|
-| bm25 | 0% | 0% | ✗ | — | 425ms | wiki/log.md |
-| hybrid | 40% | 60% | ✗ | 2 | 32.6s | wiki/log.md<br/>**wiki/entities/EASA.md**<br/>wiki/entities/DGAC.md<br/>**wiki/entities/FAA.md**<br/>wiki/entities/IS-BAH.md |
-| hybrid-graph | 20% | 40% | ✗ | 3 | 13.3s | wiki/domains/Partnership-Opportunities.md<br/>wiki/log.md<br/>**wiki/entities/ICAO.md**<br/>wiki/entities/CBP.md<br/>wiki/index.md |
+| bm25 | 0% | 0% | ✗ | — | 278ms | wiki/log.md |
+| hybrid | 40% | 60% | ✗ | 2 | 1.4s | wiki/log.md<br/>**wiki/entities/EASA.md**<br/>wiki/entities/DGAC.md<br/>**wiki/entities/FAA.md**<br/>wiki/entities/IS-BAH.md |
+| hybrid-graph | 40% | 60% | ✗ | 2 | 1.4s | wiki/log.md<br/>**wiki/entities/EASA.md**<br/>wiki/entities/DGAC.md<br/>**wiki/entities/FAA.md**<br/>wiki/entities/IS-BAH.md |
 
 ## Methodology
 

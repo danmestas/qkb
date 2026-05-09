@@ -2432,7 +2432,8 @@ async function querySearch(query: string, opts: OutputOptions, _embedModel: stri
         explain: !!opts.explain,
         intent,
         chunkStrategy: opts.chunkStrategy,
-        ...(opts.useGraph ? { useGraph: true } : {}),
+        // useGraph: undefined → default-true; false → opt out; true → explicit on
+        ...(opts.useGraph === false ? { useGraph: false } : {}),
         ...(opts.graphWeights ? { graphWeights: opts.graphWeights } : {}),
         hooks: {
           onStrongSignal: (score) => {
@@ -2568,7 +2569,8 @@ function parseCLI() {
       "dry-run": { type: "boolean" },    // graph gc --dry-run
       hops: { type: "string" },          // graph neighbors --hops 2
       "edge-types": { type: "string" },  // graph neighbors --edge-types LINKS_TO,REFERENCES
-      graph: { type: "boolean" },        // qkb query --graph (RFC-0008 #2)
+      graph: { type: "boolean" },        // qkb query --graph (legacy, default-on now)
+      "no-graph": { type: "boolean" },   // qkb query --no-graph (opt out of graph expansion)
       "graph-weights": { type: "string" }, // qkb query --graph-weights '{"LINKS_TO": 0.5}'
     },
     allowPositionals: true,
@@ -2627,7 +2629,11 @@ function parseCLI() {
     explain: !!values.explain,
     intent: values.intent as string | undefined,
     chunkStrategy: parseChunkStrategy(values["chunk-strategy"]),
-    useGraph: !!values.graph,
+    // Graph expansion is default-on. `--no-graph` opts out; `--graph`
+    // is kept as a legacy explicit-on (no-op now). The internal value
+    // is undefined unless `--no-graph` was passed, so hybridQuery's
+    // `useGraph !== false` default-true logic kicks in.
+    ...(values["no-graph"] ? { useGraph: false } : {}),
     ...(graphWeights ? { graphWeights } : {}),
   };
 
