@@ -8,7 +8,7 @@ name: Changelog Gate
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, "4.0"]
     types: [opened, synchronize, reopened, labeled, unlabeled]
 
 jobs:
