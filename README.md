@@ -38,7 +38,8 @@ qkb embed
 # Search across everything
 qkb search "project timeline"           # Fast keyword search
 qkb vsearch "how to deploy"             # Semantic search
-qkb query "quarterly planning process"  # Hybrid + reranking (best quality)
+qkb query "quarterly planning process"  # Hybrid + reranking + graph (best quality, default)
+qkb query "..." --no-graph              # Hybrid without the graph-layer expansion
 
 # Get a specific document
 qkb get "meetings/2024-01-15.md"
@@ -471,6 +472,88 @@ The `query` command uses **Reciprocal Rank Fusion (RRF)** with position-aware bl
 | 0.5 - 0.8 | Moderately relevant |
 | 0.2 - 0.5 | Somewhat relevant |
 | 0.0 - 0.2 | Low relevance |
+
+## Graph Layer (RFC-0007 + RFC-0008)
+
+QKB indexes structural relationships in your corpus alongside text. For Obsidian-style vaults this means `[[wikilinks]]` (LINKS_TO), `![[embeds]]` (EMBEDS), and relative markdown references (REFERENCES) become typed edges in a SQLite-backed graph (via [GraphQLite](https://github.com/cnamejj/graphqlite)).
+
+### What it does
+
+- **`qkb update`** auto-runs structural extraction after every re-index — no manual step. Idempotent and fast (~30s on a 600-doc vault since the multi-MERGE bulk path).
+- **`qkb query`** uses the graph by default — top-20 post-RRF candidates seed a 1-hop edge expansion, weighted by edge type (`EMBEDS=0.9`, `LINKS_TO=0.4`, `REFERENCES=0.2`). Up to 20 graph candidates are appended to the rerank pool. The cross-encoder is the final arbiter — bad graph promotions get demoted automatically.
+- **`qkb graph status`** shows node/edge counts. **`qkb graph neighbors <id> --hops N`** explores reachability without writing Cypher. **`qkb graph query "MATCH ..."`** runs arbitrary parameterized Cypher for power users.
+
+### Opting out
+
+Pass `--no-graph` to `qkb query` for the strict pre-RFC-0008 hybrid pipeline:
+
+```sh
+qkb query "what regulates flight safety" --no-graph
+```
+
+Or disable the layer globally in `~/.config/qkb/{index}.yml`:
+
+```yaml
+graph:
+  enabled: false
+```
+
+The layer also no-ops cleanly on corpora with no wikilinks — no harm to non-Obsidian vaults.
+
+### Tuning per-edge-type weights
+
+```sh
+qkb query "..." --graph-weights '{"EMBEDS": 1.0, "LINKS_TO": 0.5}'
+```
+
+See `docs/rfcs/0008-hybrid-graph-query.md` for the full strategy catalog (PageRank-from-seeds, ego-graph reranker context, GraphRAG-lite community summaries — strategies #1, #3, #4 documented for future PRs).
+
+## Benchmarks
+
+`qkb` ships a retrieval-quality benchmark at `bench/graph-bench-eval.ts` that runs a fixture of difficult questions through three pipeline depths and scores recall@K against per-question `expected_docs`. Run with:
+
+```sh
+npm run bench:graph
+# or
+npx tsx bench/graph-bench-eval.ts --fixture bench/fixtures/flight-planner-questions.json
+```
+
+### Modes compared
+
+| Mode | What it tests |
+|---|---|
+| `bm25` | `qkb search` — pure FTS5 BM25, no LLM, no graph |
+| `hybrid` | `qkb query --no-graph` — query expansion + vector + RRF + cross-encoder rerank |
+| `hybrid-graph` | `qkb query` (default) — hybrid + edge-weighted graph expansion |
+
+### Reference results (10-question flight-planner-kb fixture)
+
+| Mode | recall@5 | recall@10 | Top-1 hit rate | Mean latency (warm) |
+|---|---|---|---|---|
+| bm25 | 0% | 0% | 0% | ~640ms |
+| hybrid | 52% | 58% | 30% | ~2s |
+| **hybrid-graph** | **52%** | **61%** | 30% | ~7s |
+
+`hybrid-graph` ties hybrid at recall@5 (no displacement of strong lexical hits) and gains +3pp at recall@10 — the graph layer surfaces conceptually-connected docs that pure lexical/vector misses, without breaking the queries lexical/vector handles well. See `bench/results/graph-bench-baseline.md` for the per-question breakdown.
+
+### Methodology
+
+- **`recall@K`**: fraction of the question's curated `expected_docs` that appear in the top-K results.
+- **`expected_docs`**: hand-curated per-question. Edit `bench/fixtures/flight-planner-questions.json` to refine; the bench is meant to be iterated on.
+- Scoring is deterministic — no LLM judge — so question/expected-doc edits drive score changes predictably.
+- Latencies are mean over the fixture with cross-encoder model warm. First query in a session is 15-30× slower (cold model load).
+- bm25 is fast (~640ms) but 0% recall on this conceptual fixture — fast-and-blind, included as a control.
+
+### When to use which mode
+
+| Scenario | Recommended mode |
+|---|---|
+| Exact entity name lookup (`"FAA NMS"`) | `qkb search` (bm25) — fastest; or `qkb query` if recall matters |
+| Vague conceptual question | `qkb query` — graph helps with vocabulary mismatch |
+| Repeated queries in a session | `qkb query` — models stay warm, ~7s/query |
+| Need authoritative citations | `qkb query` + agent reads cited files |
+| Vault has no wikilinks | `qkb query --no-graph` — graph is empty, skip the rerank-pool overhead |
+| Latency-critical, can't wait 30s cold | `qkb search` (~640ms) or warm up `qkb query` with a throwaway first |
 
 ## Requirements
 

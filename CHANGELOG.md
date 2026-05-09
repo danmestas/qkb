@@ -2,6 +2,22 @@
 
 ## [Unreleased]
 
+### Changes
+
+- **`qkb query` now uses the graph layer by default.** The 10-question
+  flight-planner-kb bench (PR #55 + #56) shows `hybrid-graph` matches
+  `hybrid` at recall@5 (52%) and gains +3pp at recall@10 (61% vs 58%)
+  with no observed regression cases. Previously gated behind `--graph`;
+  now on automatically whenever the graph layer is available. Opt out
+  with `qkb query --no-graph` for the strict pre-RFC-0008 hybrid
+  pipeline, or set `graph.enabled: false` globally. Cost: rerank pool
+  grows 40 → 60 chunks (~50% rerank latency increase) when the graph
+  has data — fixed and predictable. No-op on corpora without wikilinks.
+
+  README adds two new sections covering this: "Graph Layer" documents
+  what's indexed, how to tune weights, how to opt out; "Benchmarks"
+  documents the harness, methodology, and reference results table.
+
 ### Fixes
 
 - **`qkb query --graph` no longer displaces strong lexical hits.** The

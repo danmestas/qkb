@@ -177,13 +177,18 @@ function runMode(
       )} --json -n 10 -c ${fixture.qkbCollection}`;
       break;
     case "hybrid": {
+      // After PR #57's default flip, `--no-graph` is required to actually
+      // disable graph expansion in `qkb query`. Without it the bench's
+      // hybrid and hybrid-graph modes collapse to the same code path.
       const norerank = skipRerank ? "--no-rerank" : "";
       cmd = `${qkbBin} --index ${fixture.qkbIndex} query ${shellEscape(
         question.question
-      )} -n 10 --files ${norerank}`.trim();
+      )} -n 10 --files --no-graph ${norerank}`.trim();
       break;
     }
     case "hybrid-graph": {
+      // `--graph` is now a no-op pass-through (default-on); kept in the
+      // command for explicit-intent readability in bench logs.
       const norerank = skipRerank ? "--no-rerank" : "";
       cmd = `${qkbBin} --index ${fixture.qkbIndex} query ${shellEscape(
         question.question
