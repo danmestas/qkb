@@ -4,6 +4,13 @@
 
 ### Changes
 
+- **README architecture diagram refreshed** to reflect the post-RFC-0008
+  pipeline: strong-signal BM25 bypass, original-query 2× RRF weight, RRF
+  constants surfaced, Graph Expansion band with per-edge-type weights and
+  pool-growth annotation, qwen3-reranker called out as chunk-level
+  cross-encoder, position-aware blend, and a footer noting the graph
+  layer auto-populates from wikilinks/embeds/md-refs on every `qkb update`.
+
 - **`qkb query` now uses the graph layer by default.** The 10-question
   flight-planner-kb bench (PR #55 + #56) shows `hybrid-graph` matches
   `hybrid` at recall@5 (52%) and gains +3pp at recall@10 (61% vs 58%)
