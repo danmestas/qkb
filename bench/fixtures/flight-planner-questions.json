@@ -1,0 +1,119 @@
+{
+  "$comment": "Difficult questions for the flight-planner-kb vault. Hand-curated; expected_docs are vault paths that a correct answer should cite. Iterate on these — wrong/missing/extra expected_docs change recall@K scores meaningfully. See bench/graph-bench-eval.ts.",
+  "corpus": "flight-planner-kb",
+  "qmdIndex": "flight-planner-kb",
+  "qmdCollection": "flight-planner-wiki",
+  "qkbIndex": "flight-graph",
+  "qkbCollection": "flight-planner",
+  "questions": [
+    {
+      "id": "q01-international-notam",
+      "question": "What are the international NOTAM coverage requirements?",
+      "expected_docs": [
+        "wiki/concepts/NOTAM-Reform.md",
+        "wiki/entities/ICAO.md",
+        "wiki/concepts/NOTAM-Q-Code.md",
+        "wiki/entities/FAA-NMS.md"
+      ],
+      "category": "multi-hop-conceptual",
+      "notes": "International coverage requires hopping from NOTAM concepts to ICAO (the international body). Pure BM25 may miss ICAO since the page doesn't always say 'NOTAM'."
+    },
+    {
+      "id": "q02-faa-nms-contractor",
+      "question": "Who built the FAA NMS API?",
+      "expected_docs": [
+        "wiki/entities/CGI-Federal.md",
+        "wiki/entities/FAA-NMS.md",
+        "wiki/sources/nms-api-faq.md"
+      ],
+      "category": "entity-relation",
+      "notes": "CGI Federal is the contractor. The CGI-Federal page mentions FAA-NMS via wikilink; graph should surface it even when query says 'contractor' not 'CGI'."
+    },
+    {
+      "id": "q03-schema-drift",
+      "question": "What are the guardrails around schema drift in our aviation data sources?",
+      "expected_docs": [
+        "wiki/concepts/Schema-Drift-Manifest.md",
+        "wiki/concepts/Canonical-Silver-Layer.md",
+        "wiki/sources/aircraft-performance-data-sources.md"
+      ],
+      "category": "domain-concept",
+      "notes": "Originally from vault-query-qmd's example. Tests vocabulary mismatch — 'guardrails' isn't on the manifest page directly."
+    },
+    {
+      "id": "q04-aixm-version",
+      "question": "What version of AIXM does the system use and how is the schema structured?",
+      "expected_docs": [
+        "wiki/concepts/AIXM-5-1.md"
+      ],
+      "category": "exact-entity",
+      "notes": "Strong lexical match. Both BM25 and graph should find this trivially. Used to verify the bench doesn't regress on easy cases."
+    },
+    {
+      "id": "q05-data-source-priority",
+      "question": "How does the system prioritize between official and unofficial flight data sources?",
+      "expected_docs": [
+        "wiki/concepts/Data-Source-Hierarchy.md",
+        "wiki/sources/official-aircraft-data-sources.md",
+        "wiki/sources/official-weather-data-sources.md"
+      ],
+      "category": "domain-concept",
+      "notes": "Hierarchy is a wiki concept; expected to show as top hit. Other sources are graph-connected."
+    },
+    {
+      "id": "q06-engine-out",
+      "question": "What's the procedure for engine-out emergencies during cruise?",
+      "expected_docs": [
+        "sources/specs/2026-04-15-checklist-engine-design.md",
+        "sources/research/aviationlessons-2017/aviationlessons-fuel-management-inflight-replanning-2015-2026-05-04.md"
+      ],
+      "category": "procedure",
+      "notes": "Lexical signal on 'engine' is strong. Tests whether graph adds noise on already-good queries."
+    },
+    {
+      "id": "q07-notam-reform-timeline",
+      "question": "When does NOTAM Reform cut over and what are the dependencies?",
+      "expected_docs": [
+        "wiki/concepts/NOTAM-Reform.md",
+        "wiki/sources/nms-api-openapi-spec.md",
+        "wiki/sources/nms-api-faq.md"
+      ],
+      "category": "temporal-multi-hop",
+      "notes": "Date-anchored question; dependencies require traversing from Reform to NMS-API to FAQ."
+    },
+    {
+      "id": "q08-zambia-landing",
+      "question": "What are the landing requirements for flights operating into Zambia?",
+      "expected_docs": [
+        "wiki/sources/flight-routing-and-restrictions.md",
+        "wiki/entities/ICAO.md"
+      ],
+      "category": "geographic-rare",
+      "notes": "Hard question. The vault may not have a Zambia-specific page. Tests whether retrieval falls back gracefully to ICAO/general restrictions docs."
+    },
+    {
+      "id": "q09-jetblue-partnership",
+      "question": "What's the relationship between JetBlue Tech Ventures and our partnership strategy?",
+      "expected_docs": [
+        "wiki/entities/JetBlue-Tech-Ventures.md",
+        "wiki/domains/Partnership-Opportunities.md",
+        "sources/strategy/collaboration-and-partnership-opportunities.md"
+      ],
+      "category": "entity-strategy",
+      "notes": "Entity-relation question. Graph LINKS_TO from JetBlue to Partnership-Opportunities should help."
+    },
+    {
+      "id": "q10-international-regs",
+      "question": "Which international bodies regulate flight safety and what are their roles?",
+      "expected_docs": [
+        "wiki/entities/ICAO.md",
+        "wiki/entities/IATA.md",
+        "wiki/entities/EASA.md",
+        "wiki/entities/FAA.md",
+        "wiki/concepts/Part-135.md"
+      ],
+      "category": "broad-conceptual",
+      "notes": "The poster-child query for graph value. 'Regulate' is a vague term; ICAO is the canonical answer but its page may not say 'regulate' verbatim. This is the query that proved the bug-fix in PR #54."
+    }
+  ]
+}

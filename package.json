@@ -31,7 +31,8 @@
     "vsearch": "tsx src/cli/qkb.ts vsearch",
     "rerank": "tsx src/cli/qkb.ts rerank",
     "inspector": "npx @modelcontextprotocol/inspector tsx src/cli/qkb.ts mcp",
-    "release": "./scripts/release.sh"
+    "release": "./scripts/release.sh",
+    "bench:graph": "tsx bench/graph-bench-eval.ts"
   },
   "publishConfig": {
     "access": "public"

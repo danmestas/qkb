@@ -16,6 +16,7 @@ texts/
 !finetune/*.md
 !docs/**/*.md
 !.github/**/*.md
+!bench/results/graph-bench-baseline.md
 finetune/outputs/
 finetune/data/train/
 .claude/
