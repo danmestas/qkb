@@ -18,7 +18,7 @@
  * On L4 (binary missing), throws `GraphExtensionUnavailableError` with
  * the attempted path and platform-aware install hints.
  */
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import type { Database } from "../db.js";
 
 const PLATFORM_DEFAULT_PATHS: Record<string, string[]> = {
@@ -123,4 +123,56 @@ export function loadGraphqlite(db: Database): void {
       path
     );
   }
+}
+
+/**
+ * Read the hard-pinned GraphQLite version from
+ * `scripts/graphqlite-versions.json`. The pin is the single source of
+ * truth for the GraphQLite version qkb expects on a given DB. Mirrors
+ * the version-pin readback in `src/store.ts` (which 3.x still owns and
+ * RFC-0009 PR-7 will delete).
+ */
+export function readPinnedGraphqliteVersion(): string {
+  try {
+    const url = new URL(
+      "../../scripts/graphqlite-versions.json",
+      import.meta.url
+    );
+    const raw = readFileSync(url, "utf-8");
+    const parsed = JSON.parse(raw) as { version?: string };
+    if (typeof parsed.version === "string" && parsed.version.length > 0) {
+      return parsed.version;
+    }
+  } catch {
+    /* fall through */
+  }
+  return "unknown";
+}
+
+/**
+ * Ensure qkb's `graph_meta` schema exists on `db`. Idempotent — safe to
+ * re-call on every store open. Single-row CHECK constraint (id='qkb')
+ * keeps the table at one row across re-opens.
+ *
+ * Mirrors the schema produced by `initializeGraphLayer()` in
+ * `src/store.ts` (3.x). Centralising here lets the new
+ * `src/store-bridge.ts` (RFC-0009) ensure the schema after qmd's own
+ * `createStore()` has migrated qmd-owned tables, without depending on
+ * the legacy `store.ts` implementation that PR-7 deletes.
+ */
+export function ensureGraphSchema(db: Database): void {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS graph_meta (
+      id TEXT PRIMARY KEY DEFAULT 'qkb',
+      graphqlite_version TEXT NOT NULL,
+      initialized_at TEXT NOT NULL,
+      CHECK (id = 'qkb')
+    )
+  `);
+
+  const pinnedVersion = readPinnedGraphqliteVersion();
+  const now = new Date().toISOString();
+  db.prepare(
+    `INSERT OR IGNORE INTO graph_meta (id, graphqlite_version, initialized_at) VALUES ('qkb', ?, ?)`
+  ).run(pinnedVersion, now);
 }
