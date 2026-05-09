@@ -2,6 +2,22 @@
 
 ## [Unreleased]
 
+### Fixes
+
+- **`qkb query --graph` no longer displaces strong lexical hits.** The
+  PR #55 baseline benchmark surfaced that the unweighted 2nd-RRF blend
+  (PR #54) over-corrected: graph candidates with high edge-weight ranks
+  could outrank fused mid-rank docs because the topRank bonus (+0.05)
+  fired regardless of weight. On the 10-question flight-planner-kb
+  fixture this dropped recall@5 from 52% (hybrid) to 25% (hybrid-graph).
+
+  Fix: apply RRF weight `[1.0, 0.3]` so graph contributions are scaled
+  to ~30% of the lexical/vector contribution. A graph-only top hit can
+  no longer beat a fused-#0; a doc that appears in BOTH lists still
+  gets promoted (the additive RRF stacking that motivated PR #54). The
+  weight constant is `GRAPH_RRF_WEIGHT` in `src/graph/hybrid.ts` —
+  knob for future tuning.
+
 ### Changes
 
 - **`bench/graph-bench-eval.ts` — retrieval quality benchmark for the

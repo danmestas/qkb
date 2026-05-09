@@ -452,22 +452,39 @@ export interface RankedDoc {
 }
 
 /**
- * Blend a hybrid-search candidate list with an edge-weighted graph
- * expansion via Reciprocal Rank Fusion. Used by `hybridQuery` when
- * `--graph` is set; extracted for unit testability without a full
- * LLM-backed pipeline.
+ * RRF weight available for callers who want a *weighted* fused-vs-graph
+ * blend. NOT used by `hybridQuery` after PR #56 — that path now uses a
+ * simpler "append with bumped pool" approach because the topRank bonus
+ * (+0.05) in `reciprocalRankFusion` isn't itself weighted, so even at
+ * weight 0.3 graph-rank-0 docs would still displace fused-rank-#4+
+ * docs and regress recall.
  *
- * Why a 2nd RRF pass instead of an append-then-slice (the bug fixed
- * here): when the existing fused list saturates the candidate pool,
- * appending graph results means they're sliced out before the reranker
- * sees them. RRF blends the two ranked lists fairly — graph candidates
- * compete for slots in the rerank pool by their per-edge-weighted rank
- * rather than only filling tail slots.
+ * Kept exported for future strategies (e.g. PageRank blend, where the
+ * bonus issue could be addressed differently) and for direct callers
+ * of `mergeFusedWithGraphExpansion`.
+ */
+export const GRAPH_RRF_WEIGHT = 0.3;
+
+/**
+ * Blend two ranked lists via *weighted* Reciprocal Rank Fusion. Standalone
+ * primitive — NOT currently used by `hybridQuery`'s `--graph` path
+ * (see history below). Kept because it's a useful generic helper and
+ * because future graph strategies may want it.
  *
- * The reranker is the next stage and is the final arbiter; bad graph
- * promotions get demoted by the cross-encoder. Liberal blending here
- * is fine — false-positive graph candidates can't dominate the final
- * output.
+ * Why hybridQuery doesn't use this:
+ *   - PR #53: `--graph` appended graph candidates after fused top-40
+ *     and sliced — graph candidates were silently dropped on saturated
+ *     corpora.
+ *   - PR #54: switched to this RRF-blend (unweighted). Bench (PR #55)
+ *     showed recall regression: graph-rank-0 docs got the +0.05 topRank
+ *     bonus and displaced fused-rank-#4+ docs.
+ *   - PR #56: tried weighting the graph list at 0.3 — same regression
+ *     (the topRank bonus is fixed, not weighted, so graph-rank-0 still
+ *     scores higher than fused-rank-#4 regardless of weight).
+ *   - PR #56 (final): hybridQuery now appends graph candidates to a
+ *     bumped rerank pool (40 + 20 = 60) instead of blending. Original
+ *     fused order is preserved; graph candidates compete in the rerank
+ *     stage where the cross-encoder is the final arbiter.
  *
  * @param fused Full post-RRF candidate list (NOT pre-sliced; we need
  *              every rank position for fair RRF input).
@@ -475,23 +492,22 @@ export interface RankedDoc {
  *                  scores. Internal order is significant — the array
  *                  index becomes the RRF rank input.
  * @param candidateLimit Final pool size returned (typically 40).
- * @param rrfFn Inject the RRF function so callers can pass in a
- *              specific implementation (the production pipeline uses
- *              `reciprocalRankFusion` from store.ts; tests use a
- *              minimal version to avoid pulling all of store.ts in).
+ * @param rrfFn Inject the RRF function. Must accept an optional
+ *              `weights` argument matching `reciprocalRankFusion` from
+ *              store.ts.
  */
 export function mergeFusedWithGraphExpansion(
   fused: ReadonlyArray<RankedDoc>,
   expansion: ReadonlyArray<RankedDoc>,
   candidateLimit: number,
-  rrfFn: (lists: RankedDoc[][]) => RankedDoc[]
+  rrfFn: (lists: RankedDoc[][], weights?: number[]) => RankedDoc[]
 ): RankedDoc[] {
   if (expansion.length === 0) {
     return fused.slice(0, candidateLimit);
   }
-  const blended = rrfFn([
-    fused.slice() as RankedDoc[],
-    expansion.slice() as RankedDoc[],
-  ]);
+  const blended = rrfFn(
+    [fused.slice() as RankedDoc[], expansion.slice() as RankedDoc[]],
+    [1.0, GRAPH_RRF_WEIGHT]
+  );
   return blended.slice(0, candidateLimit);
 }
