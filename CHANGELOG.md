@@ -2,6 +2,23 @@
 
 ## [Unreleased]
 
+### Changes
+
+- **`bench/graph-bench-eval.ts` — retrieval quality benchmark for the
+  three pipeline depths.** Runs a fixture of difficult questions through
+  bm25-only (`qkb search`), hybrid (`qkb query`), and hybrid+graph
+  (`qkb query --graph`); measures `recall@K` and first-hit-rank against
+  per-question `expected_docs`, plus per-mode latency. Markdown report
+  per run. Hand-curated 10-question fixture in
+  `bench/fixtures/flight-planner-questions.json` for the
+  flight-planner-kb corpus — iterate on the fixture as questions and
+  expected answers shift. Run with `npm run bench:graph`.
+
+  Companion skill in flight-planner-kb at
+  `.claude/skills/vault-query-graph/SKILL.md` (mirrors the
+  `vault-query-qmd` skill format, swapping `qmd search` for
+  `qkb query --graph`).
+
 ### Fixes
 
 - **`qkb query --graph` now actually changes top-N results.** Surfaced
