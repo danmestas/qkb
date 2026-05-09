@@ -9,6 +9,20 @@
   GraphQLite extension into the same connection, and ensures the
   qkb-owned `graph_meta` schema. First slice of the thin-wrapper
   architecture; no CLI changes yet.
+- **`src/orchestrator/index-orchestrator.ts` — single indexing entry
+  point (RFC-0009 PR-2).** `run(store, opts)` calls qmd's
+  `store.update()` (filesystem walk + hash + BM25/vector indexing)
+  then runs the graph pass on the same connection. Future invariant:
+  every indexing path (CLI `qkb update`, `qkb collection add`, MCP
+  `update` tool, `qkb watch`) flows through this function so the graph
+  is always in sync after a qmd update.
+- **`src/graph/index-pass.ts` — wikilink extraction + orphan GC,
+  internal to the graph pass (RFC-0009 PR-2).** Pulls active docs from
+  qmd's `documents`/`content` tables, extracts wikilinks/embeds/md-refs
+  via the existing `wikilink-extraction` helpers, upserts typed nodes
+  + edges into GraphQLite via `runUpsertNodesBulk` /
+  `runUpsertEdgesBulk`, then prunes orphan doc nodes (deactivated
+  by qmd) and orphan WikiTarget placeholders. Idempotent.
 - `ensureGraphSchema()` and `readPinnedGraphqliteVersion()` exported
   from `src/graph/loader.ts` — extracted from `src/store.ts`'s
   bootstrap path so the new `store-bridge` can ensure schema after qmd
