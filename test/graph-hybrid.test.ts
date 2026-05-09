@@ -551,6 +551,60 @@ describe("mergeFusedWithGraphExpansion", () => {
     expect(result).toEqual([]);
   });
 
+  it("WEIGHTED BLEND: graph-only top hit cannot outrank fused-#0 (PR #56)", () => {
+    // After PR #54 introduced 2nd-RRF blending with equal weights, a
+    // graph-only top hit could outrank fused mid-rank docs because both
+    // got the +0.05 topRank bonus while only the contribution part was
+    // weighted. The bench (PR #55) showed this caused recall regression.
+    // PR #56 weights graph at 0.3 — graph contribution shrinks while
+    // the fused contribution stays at 1.0. A doc in fused-rank-0 should
+    // now beat a graph-rank-0 doc that's absent from fused.
+    const fused = [
+      { file: "/f0", displayPath: "/f0", title: "/f0", body: "", score: 1 },
+    ];
+    const expansion = [
+      { file: "/gA", displayPath: "/gA", title: "/gA", body: "", score: 1 },
+    ];
+    const result = mergeFusedWithGraphExpansion(
+      fused,
+      expansion,
+      10,
+      reciprocalRankFusion
+    );
+    expect(result[0]?.file).toBe("/f0");
+    // /gA still appears (it's in the expansion, just not at the top).
+    expect(result.find((r) => r.file === "/gA")).toBeDefined();
+  });
+
+  it("WEIGHTED BLEND: a fused-mid + graph-top doc beats fused-mid alone", () => {
+    // Stacking still works — a doc that gets contributions from BOTH
+    // lists (lexical mid-rank + graph top) should outrank a peer that
+    // only gets the lexical mid-rank contribution. Otherwise weighted
+    // RRF wouldn't add any value over plain fused.
+    const fused = [
+      { file: "/leader", displayPath: "/leader", title: "/leader", body: "", score: 1 },
+      { file: "/f1", displayPath: "/f1", title: "/f1", body: "", score: 1 },
+      { file: "/f2", displayPath: "/f2", title: "/f2", body: "", score: 1 },
+      { file: "/f3", displayPath: "/f3", title: "/f3", body: "", score: 1 },
+      { file: "/shared", displayPath: "/shared", title: "/shared", body: "", score: 1 },
+      { file: "/f5", displayPath: "/f5", title: "/f5", body: "", score: 1 },
+    ];
+    const expansion = [
+      { file: "/shared", displayPath: "/shared", title: "/shared", body: "", score: 1 },
+    ];
+    const result = mergeFusedWithGraphExpansion(
+      fused,
+      expansion,
+      10,
+      reciprocalRankFusion
+    );
+    const sharedIdx = result.findIndex((r) => r.file === "/shared");
+    const f5Idx = result.findIndex((r) => r.file === "/f5");
+    // /shared should beat /f5 thanks to its graph-#0 contribution
+    // even though both are mid-list in fused.
+    expect(sharedIdx).toBeLessThan(f5Idx);
+  });
+
   it("handles fused-only (no expansion) without invoking RRF", () => {
     const fused = [mkDoc("/a"), mkDoc("/b")];
     const result = mergeFusedWithGraphExpansion(

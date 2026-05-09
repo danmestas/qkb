@@ -26,7 +26,6 @@ import {
   runFilterThenRank,
   runRankThenRerank,
   runEdgeWeightedRank,
-  mergeFusedWithGraphExpansion,
   DEFAULT_EDGE_WEIGHTS,
 } from "./graph/hybrid.js";
 import { loadConfig } from "./collections.js";
@@ -4435,20 +4434,29 @@ export async function hybridQuery(
 
   // Step 4b: RFC-0008 strategy #2 — edge-weighted graph expansion.
   //
-  // Implementation note (post-PR-#53 follow-up): the previous append-then-slice
-  // approach left graph candidates competing only for *tail* slots in the
-  // rerank pool. On corpora where vector/BM25 already saturates the pool
-  // (the common case), graph candidates were sliced out before reaching the
-  // reranker — `--graph` was effectively a no-op.
+  // Strategy history:
+  //   - PR #53: append novel graph candidates AFTER the existing 40-slot
+  //     RRF pool, then slice. Graph candidates were silently dropped on
+  //     saturated corpora (= almost always).
+  //   - PR #54: weighted-RRF blend across `[fused, graphList]`. Fixed
+  //     the slicing bug, but the topRank bonus (+0.05) in RRF wasn't
+  //     weighted — graph-rank-0 docs beat fused-rank-#4+ docs and
+  //     displaced them. The PR #55 bench showed recall@5 dropping from
+  //     52% → 25% on flight-planner-kb.
+  //   - PR #56 (this): append graph candidates to the rerank pool with
+  //     a BUMPED pool size. The original 40 fused candidates retain
+  //     their ranks AND get reranked; up to {@link GRAPH_POOL_SIZE}
+  //     graph candidates are appended and ALSO get reranked. The
+  //     cross-encoder is the final arbiter — bad graph hits get
+  //     demoted, good ones get promoted.
   //
-  // The fix: treat graph-expanded candidates as one more ranked list and
-  // re-RRF against the full fused list. Graph candidates compete fairly
-  // for slots in the rerank pool by their per-edge-weighted rank rather
-  // than appearing only after the existing ones. The reranker still has
-  // final say; bad graph promotions get demoted by the cross-encoder.
+  // Cost: rerank latency grows by ~50% when --graph is set (40→60
+  // chunks). This is a fixed, predictable cost; preferable to the
+  // unpredictable recall regression PR #54 introduced.
   //
-  // Best-effort: if the graph layer is unavailable, empty, or throws, we
-  // keep `candidates` as-is and proceed.
+  // Best-effort: if the graph layer is unavailable, empty, or throws,
+  // we keep `candidates` as-is and proceed.
+  const GRAPH_POOL_BUMP = 20;
   if (options?.useGraph && candidates.length > 0 && isGraphLayerAvailable()) {
     try {
       const expansion = runEdgeWeightedRank(store, {
@@ -4459,34 +4467,31 @@ export async function hybridQuery(
         weights: options.graphWeights ?? { ...DEFAULT_EDGE_WEIGHTS },
       });
       const seenFiles = new Set(candidates.map((c) => c.file));
-      const novelCount = expansion.expanded.filter(
-        (e) => !seenFiles.has(e.file)
-      ).length;
+      const novel = expansion.expanded.filter((e) => !seenFiles.has(e.file));
 
-      if (expansion.expanded.length > 0) {
-        const graphList: RankedResult[] = expansion.expanded.map((e) => ({
-          file: e.file,
-          displayPath: e.displayPath,
-          title: e.title,
-          body: e.body,
-          score: e.score,
-        }));
-        // Use the FULL fused list (not the prior slice) so existing
-        // candidates retain their correct ranks during the second RRF.
-        candidates = mergeFusedWithGraphExpansion(
-          fused,
-          graphList,
-          candidateLimit,
-          (lists) => reciprocalRankFusion(lists)
-        );
+      if (novel.length > 0) {
+        const graphPool: RankedResult[] = novel
+          .slice(0, GRAPH_POOL_BUMP)
+          .map((e) => ({
+            file: e.file,
+            displayPath: e.displayPath,
+            title: e.title,
+            body: e.body,
+            score: e.score,
+          }));
+        // Append: original `candidates` array (length = candidateLimit
+        // or fewer) keeps its rank order; graph candidates take tail
+        // slots. The reranker scores all of them and decides the final
+        // top-N.
+        candidates = [...candidates, ...graphPool];
         // Graph-only docs need a docidMap entry so downstream consumers
         // (which tolerate empty values) don't choke. The 6-char hash
         // prefix would require an extra SQL roundtrip; leave it empty.
-        for (const e of expansion.expanded) {
+        for (const e of graphPool) {
           if (!docidMap.has(e.file)) docidMap.set(e.file, "");
         }
       }
-      hooks?.onGraphExpansion?.(novelCount);
+      hooks?.onGraphExpansion?.(novel.length);
     } catch (err) {
       // Surface but don't fail the query.
       hooks?.onGraphExpansionError?.((err as Error).message);
