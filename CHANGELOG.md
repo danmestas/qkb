@@ -27,6 +27,16 @@
   from `src/graph/loader.ts` — extracted from `src/store.ts`'s
   bootstrap path so the new `store-bridge` can ensure schema after qmd
   has migrated, without depending on the legacy 3.x store.
+- **`src/query/rerank-with-graph.ts` — graph-aware query path
+  (RFC-0009 PR-3).** Vendored ~80 LoC of graph-aware query logic.
+  Calls qmd's `store.search({rerank:false})` for fused candidates,
+  injects 1-hop graph-expanded files via `runEdgeWeightedRank`, and
+  reranks the union via `store.internal.rerank()`. Preserves recall@10
+  vs. today's pre-rerank blend (validated by bench in PR-8). qmd's
+  `SearchHooks` is observability-only and qmd's `exports` field blocks
+  sub-path imports, so we cannot mutate qmd's candidate pool in-place
+  — vendoring this thin slice is the price of staying graph-aware
+  without forking qmd.
 - RFC-0009 (thin-wrapper architecture) and its implementation plan
   added under `docs/rfcs/`.
 
