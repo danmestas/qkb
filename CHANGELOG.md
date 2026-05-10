@@ -2,6 +2,33 @@
 
 ## [Unreleased]
 
+### Changes
+
+- **`qkb mcp` (stdio) now serves the 4.0 MCP server (RFC-0009 PR-6).**
+  The default-stdio branch of `qkb mcp` swaps from the legacy
+  `startMcpServer` (vendored 3.x server in `src/mcp/server.ts`) to
+  `startMcpStdio` from `src/mcp/server-v4.ts`, the PR-5 server that
+  dispatches every tool through the PR-4 `dispatchCommand` table and
+  therefore through `@tobilu/qmd`'s SDK. Tool surface is unchanged
+  (9 tools: `query`, `get`, `multi_get`, `status`, `search`, `vsearch`,
+  `update`, `embed`, `neighbors`); MCP clients see the same names and
+  schemas. `--http` / `--http --daemon` paths stay routed through the
+  legacy `server.ts` until PR-7's deletion sweep ports the HTTP
+  transport onto the 4.0 server. Outside MCP, the rest of the CLI body
+  continues to use the legacy formatters/output shape — wholesale
+  rewiring through `dispatchCommand` would lose
+  format/flag/exit-code parity that today's CLI tests pin; PR-7 takes
+  the cutover the rest of the way alongside deleting the vendored
+  modules in one diff.
+
+  Known regression for 4.0: per-collection `update_command` (3.x's
+  `qkb collection update-cmd <name> <cmd>`) is dropped because qmd's
+  `NamedCollection` doesn't carry the field. `qkb update --pull`
+  unconditionally runs `git pull --ff-only` per collection. The
+  `qkb collection update-cmd` subcommand still parses today (legacy
+  CLI body untouched in PR-6) but the value is ignored at update
+  time. Re-add via a qkb-side meta table in 4.0.x if users complain.
+
 ### Added
 
 - **`src/store-bridge.ts` — single store entry point (RFC-0009 PR-1).**
