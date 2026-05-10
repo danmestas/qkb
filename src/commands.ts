@@ -37,6 +37,7 @@ import {
   type QueryWithGraphOpts,
 } from "./query/rerank-with-graph.js";
 import { contextCheck, updateWithPull } from "./commands-composite.js";
+import { findNeighbors } from "./graph/sdk.js";
 import type { Database } from "./db.js";
 
 /**
@@ -200,6 +201,21 @@ const handlers: Record<string, Handler> = {
       collection: strOpt(a, "collection"),
       intent: strOpt(a, "intent"),
     } as QueryWithGraphOpts),
+
+  // ── Graph ──────────────────────────────────────────────────────
+  // 1-hop neighbour traversal. Same `nodeId` / `hops` / `edgeTypes`
+  // shape as `findNeighbors` in `src/graph/sdk.ts` — args names match
+  // the Cypher parameter convention there. Hop count is validated to
+  // [1, 3] inside `findNeighbors`; surface anything over as a
+  // `RangeError` so MCP/CLI callers don't have to revalidate.
+  neighbors: async (a, c) =>
+    findNeighbors(c.store.internal.db as unknown as Database, {
+      nodeId: str(a, "nodeId"),
+      hops: numOpt(a, "hops") ?? 1,
+      edgeTypes: Array.isArray(a.edgeTypes)
+        ? (a.edgeTypes as string[])
+        : undefined,
+    }),
 };
 
 /**
