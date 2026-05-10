@@ -1417,8 +1417,9 @@ describe("mcp http daemon", () => {
     return proc;
   }
 
-  /** Wait for HTTP server to become ready */
-  async function waitForServer(port: number, timeoutMs = 5000): Promise<boolean> {
+  /** Wait for HTTP server to become ready. CI default 30s — tsx startup
+   * under Bun on GitHub Actions Ubuntu can take 10–20s before binding. */
+  async function waitForServer(port: number, timeoutMs = process.env.CI ? 30000 : 5000): Promise<boolean> {
     const deadline = Date.now() + timeoutMs;
     while (Date.now() < deadline) {
       try {
@@ -1468,7 +1469,7 @@ describe("mcp http daemon", () => {
   // Foreground HTTP
   // -------------------------------------------------------------------------
 
-  test("foreground HTTP server starts and responds to health check", async () => {
+  test("foreground HTTP server starts and responds to health check", { timeout: 120_000 }, async () => {
     const port = randomPort();
     const proc = spawnHttpServer(port);
 
@@ -1490,7 +1491,7 @@ describe("mcp http daemon", () => {
   // Daemon lifecycle
   // -------------------------------------------------------------------------
 
-  test("--daemon writes PID file and starts server", async () => {
+  test("--daemon writes PID file and starts server", { timeout: 120_000 }, async () => {
     const port = randomPort();
     const { stdout, exitCode } = await runDaemonQkb([
       "mcp", "--http", "--daemon", "--port", String(port),
@@ -1514,7 +1515,7 @@ describe("mcp http daemon", () => {
     try { unlinkSync(pidPath()); } catch {}
   });
 
-  test("stop kills daemon and removes PID file", async () => {
+  test("stop kills daemon and removes PID file", { timeout: 120_000 }, async () => {
     const port = randomPort();
     // Start daemon
     const { exitCode: startCode } = await runDaemonQkb([
@@ -1552,7 +1553,7 @@ describe("mcp http daemon", () => {
     expect(existsSync(pidPath())).toBe(false);
   });
 
-  test("--daemon rejects if already running", async () => {
+  test("--daemon rejects if already running", { timeout: 120_000 }, async () => {
     const port = randomPort();
     // Start first daemon
     const { exitCode: firstCode } = await runDaemonQkb([
@@ -1578,7 +1579,7 @@ describe("mcp http daemon", () => {
     try { unlinkSync(pidPath()); } catch {}
   });
 
-  test("--daemon cleans stale PID file and starts fresh", async () => {
+  test("--daemon cleans stale PID file and starts fresh", { timeout: 120_000 }, async () => {
     // Write a stale PID file
     writeFileSync(pidPath(), "999999999");
 
