@@ -35,8 +35,15 @@ jobs:
           node-version: 22
           registry-url: https://registry.npmjs.org
 
+      - name: Upgrade npm (≥11.5.1 for OIDC Trusted Publishing)
+        run: npm install -g npm@latest
+
       - run: npm run build
-      - name: Publish to npm
+      - name: Publish to npm (via OIDC Trusted Publishing)
+        # No NODE_AUTH_TOKEN — npm uses the workflow's id-token (OIDC) to
+        # authenticate with the registry's pre-configured Trusted Publisher
+        # for @agent-ops/qkb. See:
+        # https://docs.npmjs.com/trusted-publishers
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
           if [[ "$VERSION" == *-* ]]; then
@@ -49,8 +56,6 @@ jobs:
             echo "Publishing ${VERSION} as latest"
             npm publish --provenance --access public
           fi
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Smoke-install from registry
         run: |
