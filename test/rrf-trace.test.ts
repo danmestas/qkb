@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { buildRrfTrace, reciprocalRankFusion, type RankedResult } from "../src/store";
+import { buildRrfTrace, reciprocalRankFusion, type RankedResult } from "../src/internals/store-engine";
 
 describe("buildRrfTrace", () => {
   test("matches reciprocalRankFusion totals and records per-list contributions", () => {

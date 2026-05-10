@@ -6,8 +6,8 @@
  */
 
 import { describe, test, expect } from "vitest";
-import { detectLanguage, getASTBreakPoints, extractSymbols } from "../src/ast.js";
-import type { SupportedLanguage } from "../src/ast.js";
+import { detectLanguage, getASTBreakPoints, extractSymbols } from "../src/internals/ast.js";
+import type { SupportedLanguage } from "../src/internals/ast.js";
 
 // =============================================================================
 // Language Detection

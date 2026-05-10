@@ -32,7 +32,7 @@ import { join } from "node:path";
 import {
   startMcpInProcess,
   REGISTERED_TOOLS,
-} from "../../src/mcp/server-v4.js";
+} from "../../src/mcp/server.js";
 
 const DEFAULT_BREW_PATH =
   "/opt/homebrew/opt/graphqlite/lib/sqlite/graphqlite.dylib";

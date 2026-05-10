@@ -13,7 +13,7 @@ import {
   extractEntities,
   type Entity,
 } from "../src/graph/entity-extraction.js";
-import type { LLM } from "../src/llm.js";
+import type { LLM } from "../src/internals/llm.js";
 
 const ALLOWED = ["Person", "Organization", "Concept"];
 

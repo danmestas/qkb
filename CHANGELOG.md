@@ -4,6 +4,34 @@
 
 ### Changes
 
+- **Vendored qmd modules consolidated into `src/internals/` (RFC-0009 PR-7d).**
+  All vendored qmd source — store engine, LlamaCpp lifecycle, YAML config,
+  database shim, maintenance, AST chunking — moved from `src/<name>.ts` to
+  `src/internals/<name>.ts` with attribution headers. Concretely:
+  - `src/store.ts` → `src/internals/store-engine.ts` (4667 LoC)
+  - `src/llm.ts` → `src/internals/llm.ts` (1665 LoC)
+  - `src/collections.ts` → `src/internals/collections-yaml.ts` (533 LoC)
+  - `src/db.ts` → `src/internals/db.ts` (97 LoC)
+  - `src/maintenance.ts` → `src/internals/maintenance.ts` (54 LoC)
+  - `src/ast.ts` → `src/internals/ast.ts` (391 LoC)
+
+  The legacy `src/mcp/server.ts` (zero importers since PR-7c) is **deleted**
+  (~850 LoC removed). `src/mcp/server-v4.ts` renamed to `src/mcp/server.ts`
+  as the canonical 4.0 MCP entry point. ~30 import paths updated across
+  `src/`, `test/`, and `test/spikes/` to reflect the new layout. Tests stay
+  green: 1014/1014 pass.
+
+  The architectural framing this PR finalizes: qkb is a thin wrapper around
+  `@tobilu/qmd` for the **state engine** (Store, search, indexing, rerank,
+  query expansion via the `.` SDK surface). Anything qmd doesn't expose
+  publicly — module-level utilities, the CLI body's helpers, the LlamaCpp
+  lifecycle, YAML config — qkb owns under `src/internals/`. The original
+  RFC-0009 estimate of "~80% deletion" assumed qmd would re-export these
+  helpers; it does not, and the no-upstream-PR rule precludes asking. The
+  honest delta: ~850 LoC actual deletion plus ~7400 LoC reorganized into a
+  clean carve boundary. Net source size unchanged in this PR; the win is
+  architectural clarity, not LoC reduction.
+
 - **MCP HTTP transport ported into `src/mcp/server-v4.ts` (RFC-0009 PR-7c).**
   The HTTP transport (`startMcpHttpServer`), its `HttpServerHandle`
   type, and the REST `/health` + `/query` (alias `/search`) endpoints

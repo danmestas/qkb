@@ -1,3 +1,7 @@
+/* qkb-owned utility — carved from qmd's vendored fork during the RFC-0009
+   thin-wrapper migration (PR-7d). qmd consumed via SDK for what's on its `.`
+   public surface; the rest lives here, no longer tracking upstream qmd. */
+
 /**
  * Collections configuration management
  *

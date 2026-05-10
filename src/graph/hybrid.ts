@@ -24,7 +24,7 @@
  * integration.
  */
 import { runCypher, type CypherQuery } from "./sdk.js";
-import type { Store } from "../store.js";
+import type { Store } from "../internals/store-engine.js";
 
 export interface FilterThenRankArgs {
   /** Cypher query that returns rows with `hash` and `seq` columns. */

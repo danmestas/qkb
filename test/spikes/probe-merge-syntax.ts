@@ -26,7 +26,7 @@
  * Re-run when bumping the pinned GraphQLite version to verify the bugs
  * are fixed; if so, the SDK in PR-6 can be simplified.
  */
-import { openDatabase } from "../../src/db.js";
+import { openDatabase } from "../../src/internals/db.js";
 
 const db = openDatabase(":memory:");
 db.loadExtension("/opt/homebrew/opt/graphqlite/lib/sqlite/graphqlite.dylib");

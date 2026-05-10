@@ -15,7 +15,7 @@ import {
   loadConfig,
   setConfigSource,
   type CollectionConfig,
-} from "../src/collections.js";
+} from "../src/internals/collections-yaml.js";
 import { GraphDisabledError, resolveGraphConfig } from "../src/graph/config.js";
 
 describe("graph config", () => {

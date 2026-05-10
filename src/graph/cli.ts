@@ -16,7 +16,7 @@ import {
   isGraphLayerAvailable,
   getGraphLayerUnavailableReason,
   type Store,
-} from "../store.js";
+} from "../internals/store-engine.js";
 import {
   runCypher,
   runPageRank,
@@ -341,7 +341,7 @@ export interface GraphExtractOptions {
  */
 export async function graphExtract(
   store: Store,
-  llm: import("../llm.js").LLM,
+  llm: import("../internals/llm.js").LLM,
   options: GraphExtractOptions = {}
 ): Promise<GraphCliResult> {
   if (!isGraphLayerAvailable()) {
@@ -354,7 +354,7 @@ export async function graphExtract(
 
   // Read entity-extraction config (types + optional model override).
   const { resolveGraphConfig } = await import("./config.js");
-  const { loadConfig } = await import("../collections.js");
+  const { loadConfig } = await import("../internals/collections-yaml.js");
   const resolved = resolveGraphConfig(loadConfig());
   if (!resolved.entity_extraction.enabled) {
     return {

@@ -8,7 +8,7 @@ import { describe, test, expect, beforeAll, afterAll } from "vitest";
 import { mkdtempSync, rmSync, readFileSync, readdirSync } from "fs";
 import { join, dirname } from "path";
 import { tmpdir } from "os";
-import type { Database } from "../src/db.js";
+import type { Database } from "../src/internals/db.js";
 import { createHash } from "crypto";
 import { fileURLToPath } from "url";
 
@@ -17,7 +17,7 @@ import {
   searchFTS,
   insertDocument,
   insertContent,
-} from "../src/store";
+} from "../src/internals/store-engine";
 
 // Set INDEX_PATH before importing store to prevent using global index
 const tempDir = mkdtempSync(join(tmpdir(), "qkb-eval-unit-"));

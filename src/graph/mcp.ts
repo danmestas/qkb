@@ -24,7 +24,7 @@ import {
   isGraphLayerAvailable,
   getGraphLayerUnavailableReason,
   type Store,
-} from "../store.js";
+} from "../internals/store-engine.js";
 import {
   runCypher,
   type CypherQuery,

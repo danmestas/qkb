@@ -14,8 +14,8 @@ import { describe, test, expect, beforeAll, afterAll } from "vitest";
 import { mkdtempSync, rmSync, readFileSync, readdirSync } from "fs";
 import { join } from "path";
 import { tmpdir } from "os";
-import { openDatabase } from "../src/db.js";
-import type { Database } from "../src/db.js";
+import { openDatabase } from "../src/internals/db.js";
+import type { Database } from "../src/internals/db.js";
 import { createHash } from "crypto";
 import { fileURLToPath } from "url";
 import { dirname } from "path";
@@ -35,8 +35,8 @@ import {
   reciprocalRankFusion,
   DEFAULT_EMBED_MODEL,
   type RankedResult,
-} from "../src/store";
-import { getDefaultLlamaCpp, formatDocForEmbedding, disposeDefaultLlamaCpp } from "../src/llm";
+} from "../src/internals/store-engine";
+import { getDefaultLlamaCpp, formatDocForEmbedding, disposeDefaultLlamaCpp } from "../src/internals/llm";
 
 // Eval queries with expected documents
 const evalQueries: {

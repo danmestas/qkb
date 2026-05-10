@@ -18,7 +18,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { openDatabase } from "../src/db.js";
+import { openDatabase } from "../src/internals/db.js";
 import {
   loadGraphqlite,
   resolveGraphqlitePath,

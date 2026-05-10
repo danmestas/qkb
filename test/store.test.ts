@@ -7,14 +7,14 @@
  */
 
 import { describe, test, expect, beforeAll, afterAll, beforeEach, afterEach, vi } from "vitest";
-import { openDatabase, loadSqliteVec } from "../src/db.js";
-import type { Database } from "../src/db.js";
+import { openDatabase, loadSqliteVec } from "../src/internals/db.js";
+import type { Database } from "../src/internals/db.js";
 import { unlink, mkdtemp, rmdir, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import YAML from "yaml";
-import * as llmModule from "../src/llm.js";
-import { disposeDefaultLlamaCpp, setDefaultLlamaCpp } from "../src/llm.js";
+import * as llmModule from "../src/internals/llm.js";
+import { disposeDefaultLlamaCpp, setDefaultLlamaCpp } from "../src/internals/llm.js";
 import {
   createStore,
   verifySqliteVecLoaded,
@@ -53,8 +53,8 @@ import {
   type DocumentResult,
   type SearchResult,
   type RankedResult,
-} from "../src/store.js";
-import type { CollectionConfig } from "../src/collections.js";
+} from "../src/internals/store-engine.js";
+import type { CollectionConfig } from "../src/internals/collections-yaml.js";
 
 // =============================================================================
 // LlamaCpp Setup

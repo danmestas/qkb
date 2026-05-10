@@ -12,7 +12,7 @@
  * version go through a deliberate migration story.
  */
 import { runCypher, type CypherQuery } from "./sdk.js";
-import type { Store } from "../store.js";
+import type { Store } from "../internals/store-engine.js";
 import { readFileSync } from "node:fs";
 
 const FORMAT_VERSION = 1;

@@ -24,7 +24,7 @@ import {
   type QMDStore,
 } from "@tobilu/qmd";
 import { loadGraphqlite, ensureGraphSchema } from "./graph/loader.js";
-import type { Database } from "./db.js";
+import type { Database } from "./internals/db.js";
 
 /**
  * Open a qmd store and overlay qkb's graph layer on its connection.

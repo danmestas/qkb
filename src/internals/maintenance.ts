@@ -1,3 +1,7 @@
+/* qkb-owned utility — carved from qmd's vendored fork during the RFC-0009
+   thin-wrapper migration (PR-7d). qmd consumed via SDK for what's on its `.`
+   public surface; the rest lives here, no longer tracking upstream qmd. */
+
 /**
  * Maintenance - Database cleanup operations for QKB.
  *
@@ -5,7 +9,7 @@
  * Takes an internal Store in the constructor — allowed to access DB directly.
  */
 
-import type { Store } from "./store.js";
+import type { Store } from "./store-engine.js";
 import {
   vacuumDatabase,
   cleanupOrphanedContent,
@@ -13,7 +17,7 @@ import {
   deleteLLMCache,
   deleteInactiveDocuments,
   clearAllEmbeddings,
-} from "./store.js";
+} from "./store-engine.js";
 
 export class Maintenance {
   private store: Store;

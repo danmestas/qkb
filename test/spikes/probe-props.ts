@@ -1,4 +1,4 @@
-import { openDatabase } from "/Users/dmestas/projects/qkb/src/db.js";
+import { openDatabase } from "/Users/dmestas/projects/qkb/src/internals/db.js";
 const db = openDatabase(":memory:");
 db.loadExtension("/opt/homebrew/opt/graphqlite/lib/sqlite/graphqlite.dylib");
 db.prepare("SELECT cypher(?)").get("CREATE (:Person {id: 'alice', name: 'Alice', age: 30})");

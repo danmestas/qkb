@@ -8,7 +8,7 @@
 import { describe, test, expect, beforeEach, afterEach } from "vitest";
 import { join } from "path";
 import { homedir } from "os";
-import { getConfigPath, setConfigIndexName } from "../src/collections.js";
+import { getConfigPath, setConfigIndexName } from "../src/internals/collections-yaml.js";
 
 // Save/restore env vars around each test
 let savedEnv: Record<string, string | undefined>;

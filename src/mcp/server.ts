@@ -1,570 +1,218 @@
 /**
- * QKB MCP Server - Model Context Protocol server for QKB
+ * qkb MCP server (4.0) — RFC-0009 PR-5 + PR-7c.
  *
- * Exposes QKB search and document retrieval as MCP tools and resources.
- * Documents are accessible via qkb:// URIs.
+ * Tool handlers are one-line wrappers around `dispatchCommand` (the
+ * PR-4 dispatch table) plus `findNeighbors` (which dispatch also
+ * routes via `"neighbors"`). MCP's JSON Schema validates input shape;
+ * the dispatcher coerces with `str`/`numOpt`/`boolOpt`.
  *
- * Follows MCP spec 2025-06-18 for proper response types.
+ * Tool-name parity with qmd's MCP (`query`, `get`, `multi_get`,
+ * `status`) keeps qkb interchangeable with qmd in MCP client configs
+ * — RFC §"MCP server". The remaining tools are qkb-only:
+ * `search`/`vsearch`/`update`/`embed`/`neighbors`.
+ *
+ * Plan-versus-reality deviations (intentional):
+ *   - Plan imported `runFindNeighbors` from `src/graph/sdk.js`. The
+ *     actual export is `findNeighbors` (no `run` prefix). We add
+ *     `"neighbors"` to the PR-4 dispatch table so the MCP handler
+ *     stays a one-liner — option A from the PR-5 brief.
+ *   - Plan registered 5 tools (`search`/`get`/`status`/`update`/
+ *     `query`) plus `neighbors`. Spec says register every tool name
+ *     qmd's MCP exposes for client interchangeability; qmd registers
+ *     `query`/`get`/`multi_get`/`status`. We add `multi_get` here so
+ *     the parity claim holds. We also keep qkb-only tools that the
+ *     CLI surface already exposes (`search`/`vsearch`/`update`/`embed`).
+ *   - Plan's `query` schema took a single string. qmd's MCP takes a
+ *     `searches: [{type, query}, ...]` array. We keep the single-
+ *     string shape because `queryWithGraph` is single-string today
+ *     and reimplementing qmd's typed-sub-query shell is out of PR-5
+ *     scope. A future follow-up widens it if needed.
+ *   - Plan's `McpHandle.listTools` returned `[{name}]` only and used a
+ *     hand-rolled `concat`. We expose a real in-process MCP client
+ *     instead via `InMemoryTransport.createLinkedPair()` so tests
+ *     exercise the actual MCP wire format — same path a stdio client
+ *     takes — without a separate process.
+ *
+ * Transports (all live in this module after PR-7c):
+ *   - stdio:                `startMcpStdio({dbPath})`
+ *   - HTTP foreground:      `startMcpHttpServer(port, opts?)`
+ *   - HTTP daemon:          CLI handles spawn/PID; this module is the body
+ *   - In-process (tests):   `startMcpInProcess({dbPath})`
+ *
+ * The HTTP transport additionally exposes two non-MCP REST endpoints
+ * carried over from the 3.x server for clients that don't speak the
+ * MCP protocol: `POST /query` (alias `POST /search`) for structured
+ * search and `GET /health` for liveness probes.
  */
-
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { randomUUID } from "node:crypto";
-import { readFileSync } from "node:fs";
-import { join, dirname } from "node:path";
-import { fileURLToPath } from "url";
-import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { WebStandardStreamableHTTPServerTransport }
   from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
 import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
-import { z } from "zod";
-import { existsSync } from "fs";
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import {
-  createStore,
   extractSnippet,
   addLineNumbers,
   getDefaultDbPath,
-  DEFAULT_MULTI_GET_MAX_BYTES,
-  type QKBStore,
   type ExpandedQuery,
-  type IndexStatus,
-} from "../index.js";
-import { getConfigPath } from "../collections.js";
-import { enableProductionMode } from "../store.js";
-import { registerGraphMcpTools } from "../graph/mcp.js";
+  type QMDStore,
+} from "@tobilu/qmd";
+import { openStore } from "../store-bridge.js";
+import {
+  dispatchCommand,
+  type CommandContext,
+} from "../commands.js";
+import { run as orchestratorRun } from "../orchestrator/index-orchestrator.js";
+import * as schemas from "./schemas.js";
 
-// =============================================================================
-// Types for structured content
-// =============================================================================
+/** Set of (toolName, dispatchName) pairs that share a one-liner handler. */
+interface ToolBinding {
+  /** MCP tool name as it appears to clients. */
+  name: string;
+  /** Dispatch table key — see `src/commands.ts`. */
+  dispatch: string;
+  /**
+   * Schema spec passed to `McpServer.registerTool`. Contains
+   * `description` + `inputSchema` — keep the rest of `RegisteredTool`
+   * (e.g. `annotations`) defaultable so this stays terse.
+   */
+  schema: { description: string; inputSchema: Record<string, unknown> };
+}
 
-type SearchResultItem = {
-  docid: string;  // Short docid (#abc123) for quick reference
-  file: string;
-  title: string;
-  score: number;
-  context: string | null;
-  snippet: string;
-};
+const TOOLS: ReadonlyArray<ToolBinding> = [
+  // qmd MCP parity — same names, same intent. Schemas may differ in
+  // detail (qkb's `query` is single-string, qmd's takes a typed array)
+  // but the tool-name set is interchangeable.
+  { name: "query",     dispatch: "query",     schema: schemas.schemaQuery     },
+  { name: "get",       dispatch: "get",       schema: schemas.schemaGet       },
+  { name: "multi_get", dispatch: "multi-get", schema: schemas.schemaMultiGet  },
+  { name: "status",    dispatch: "status",    schema: schemas.schemaStatus    },
+  // qkb-only — CLI surface that doesn't exist in qmd's MCP today.
+  { name: "search",    dispatch: "search",    schema: schemas.schemaSearch    },
+  { name: "vsearch",   dispatch: "vsearch",   schema: schemas.schemaVSearch   },
+  { name: "update",    dispatch: "update",    schema: schemas.schemaUpdate    },
+  { name: "embed",     dispatch: "embed",     schema: schemas.schemaEmbed     },
+  { name: "neighbors", dispatch: "neighbors", schema: schemas.schemaNeighbors },
+];
 
-type StatusResult = {
-  totalDocuments: number;
-  needsEmbedding: number;
-  hasVectorIndex: boolean;
-  collections: {
-    name: string;
-    path: string | null;
-    pattern: string | null;
-    documents: number;
-    lastUpdated: string;
-  }[];
-};
-
-// =============================================================================
-// Helper functions
-// =============================================================================
-
-/**
- * Encode a path for use in qkb:// URIs.
- * Encodes special characters but preserves forward slashes for readability.
- */
-function encodeQkbPath(path: string): string {
-  // Encode each path segment separately to preserve slashes
-  return path.split('/').map(segment => encodeURIComponent(segment)).join('/');
+/** Build the per-server `CommandContext` shared by all tool handlers. */
+function buildContext(store: QMDStore): CommandContext {
+  return {
+    store,
+    orchestrator: { run: (opts) => orchestratorRun(store, opts) },
+    // `pruneGraphOrphans` is not needed by MCP tools (no `collection.remove`
+    // here), but the CommandContext interface allows defaulting via the
+    // dispatch table's `c.pruneGraphOrphans ?? pruneGraphOrphans` fallback.
+  };
 }
 
 /**
- * Format search results as human-readable text summary
+ * Wire every tool in `TOOLS` onto `server`. Handler body is one
+ * `dispatchCommand` call per tool — the dispatcher does the strict
+ * arg coercion that qmd's MCP server does inline in each handler.
  */
-function formatSearchSummary(results: SearchResultItem[], query: string): string {
-  if (results.length === 0) {
-    return `No results found for "${query}"`;
-  }
-  const lines = [`Found ${results.length} result${results.length === 1 ? '' : 's'} for "${query}":\n`];
-  for (const r of results) {
-    lines.push(`${r.docid} ${Math.round(r.score * 100)}% ${r.file} - ${r.title}`);
-  }
-  return lines.join('\n');
-}
-
-function getPackageVersion(): string {
-  try {
-    const pkgPath = join(dirname(fileURLToPath(import.meta.url)), "../../package.json");
-    const pkg = JSON.parse(readFileSync(pkgPath, "utf-8"));
-    return pkg.version ?? "unknown";
-  } catch {
-    return "unknown";
-  }
-}
-
-// =============================================================================
-// MCP Server
-// =============================================================================
-
-/**
- * Build dynamic server instructions from actual index state.
- * Injected into the LLM's system prompt via MCP initialize response —
- * gives the LLM immediate context about what's searchable without a tool call.
- */
-async function buildInstructions(store: QKBStore): Promise<string> {
-  const status = await store.getStatus();
-  const contexts = await store.listContexts();
-  const globalCtx = await store.getGlobalContext();
-  const lines: string[] = [];
-
-  // --- What is this? ---
-  lines.push(`QKB is your local search engine over ${status.totalDocuments} markdown documents.`);
-  if (globalCtx) lines.push(`Context: ${globalCtx}`);
-
-  // --- What's searchable? ---
-  if (status.collections.length > 0) {
-    lines.push("");
-    lines.push("Collections (scope with `collection` parameter):");
-    for (const col of status.collections) {
-      // Find root context for this collection
-      const rootCtx = contexts.find(c => c.collection === col.name && (c.path === "" || c.path === "/"));
-      const desc = rootCtx ? ` — ${rootCtx.context}` : "";
-      lines.push(`  - "${col.name}" (${col.documents} docs)${desc}`);
-    }
-  }
-
-  // --- Capability gaps ---
-  if (!status.hasVectorIndex) {
-    lines.push("");
-    lines.push("Note: No vector embeddings yet. Run `qkb embed` to enable semantic search (vec/hyde).");
-  } else if (status.needsEmbedding > 0) {
-    lines.push("");
-    lines.push(`Note: ${status.needsEmbedding} documents need embedding. Run \`qkb embed\` to update.`);
-  }
-
-  // --- Search tool ---
-  lines.push("");
-  lines.push("Search: Use `query` with sub-queries (lex/vec/hyde):");
-  lines.push("  - type:'lex' — BM25 keyword search (exact terms, fast)");
-  lines.push("  - type:'vec' — semantic vector search (meaning-based)");
-  lines.push("  - type:'hyde' — hypothetical document (write what the answer looks like)");
-  lines.push("");
-  lines.push("  Always provide `intent` on every search call to disambiguate and improve snippets.");
-  lines.push("");
-  lines.push("Examples:");
-  lines.push("  Quick keyword lookup: [{type:'lex', query:'error handling'}]");
-  lines.push("  Semantic search: [{type:'vec', query:'how to handle errors gracefully'}]");
-  lines.push("  Best results: [{type:'lex', query:'error'}, {type:'vec', query:'error handling best practices'}]");
-  lines.push("  With intent: searches=[{type:'lex', query:'performance'}], intent='web page load times'");
-
-  // --- Retrieval workflow ---
-  lines.push("");
-  lines.push("Retrieval:");
-  lines.push("  - `get` — single document by path or docid (#abc123). Supports line offset (`file.md:100`).");
-  lines.push("  - `multi_get` — batch retrieve by glob (`journals/2025-05*.md`) or comma-separated list.");
-
-  // --- Non-obvious things that prevent mistakes ---
-  lines.push("");
-  lines.push("Tips:");
-  lines.push("  - File paths in results are relative to their collection.");
-  lines.push("  - Use `minScore: 0.5` to filter low-confidence results.");
-  lines.push("  - Results include a `context` field describing the content type.");
-
-  return lines.join("\n");
-}
-
-/**
- * Create an MCP server with all QKB tools, resources, and prompts registered.
- * Shared by both stdio and HTTP transports.
- */
-async function createMcpServer(store: QKBStore): Promise<McpServer> {
-  const server = new McpServer(
-    { name: "qkb", version: getPackageVersion() },
-    { instructions: await buildInstructions(store) },
-  );
-
-  // Pre-fetch default collection names for search tools
-  const defaultCollectionNames = await store.getDefaultCollectionNames();
-
-  // ---------------------------------------------------------------------------
-  // Resource: qkb://{path} - read-only access to documents by path
-  // Note: No list() - documents are discovered via search tools
-  // ---------------------------------------------------------------------------
-
-  server.registerResource(
-    "document",
-    new ResourceTemplate("qkb://{+path}", { list: undefined }),
-    {
-      title: "QKB Document",
-      description: "A markdown document from your QKB knowledge base. Use search tools to discover documents.",
-      mimeType: "text/markdown",
-    },
-    async (uri, { path }) => {
-      // Decode URL-encoded path (MCP clients send encoded URIs)
-      const pathStr = Array.isArray(path) ? path.join('/') : (path || '');
-      const decodedPath = decodeURIComponent(pathStr);
-
-      // Use SDK to find document — findDocument handles collection/path resolution
-      const result = await store.get(decodedPath, { includeBody: true });
-
-      if ("error" in result) {
-        return { contents: [{ uri: uri.href, text: `Document not found: ${decodedPath}` }] };
-      }
-
-      let text = addLineNumbers(result.body || "");  // Default to line numbers
-      if (result.context) {
-        text = `<!-- Context: ${result.context} -->\n\n` + text;
-      }
-
-      return {
-        contents: [{
-          uri: uri.href,
-          name: result.displayPath,
-          title: result.title || result.displayPath,
-          mimeType: "text/markdown",
-          text,
-        }],
-      };
-    }
-  );
-
-  // ---------------------------------------------------------------------------
-  // Tool: query (Primary search tool)
-  // ---------------------------------------------------------------------------
-
-  const subSearchSchema = z.object({
-    type: z.enum(['lex', 'vec', 'hyde']).describe(
-      "lex = BM25 keywords (supports \"phrase\" and -negation); " +
-      "vec = semantic question; hyde = hypothetical answer passage"
-    ),
-    query: z.string().describe(
-      "The query text. For lex: use keywords, \"quoted phrases\", and -negation. " +
-      "For vec: natural language question. For hyde: 50-100 word answer passage."
-    ),
-  });
-
-  server.registerTool(
-    "query",
-    {
-      title: "Query",
-      description: `Search the knowledge base using a query document — one or more typed sub-queries combined for best recall.
-
-## Query Types
-
-**lex** — BM25 keyword search. Fast, exact, no LLM needed.
-Full lex syntax:
-- \`term\` — prefix match ("perf" matches "performance")
-- \`"exact phrase"\` — phrase must appear verbatim
-- \`-term\` or \`-"phrase"\` — exclude documents containing this
-
-Good lex examples:
-- \`"connection pool" timeout -redis\`
-- \`"machine learning" -sports -athlete\`
-- \`handleError async typescript\`
-
-**vec** — Semantic vector search. Write a natural language question. Finds documents by meaning, not exact words.
-- \`how does the rate limiter handle burst traffic?\`
-- \`what is the tradeoff between consistency and availability?\`
-
-**hyde** — Hypothetical document. Write 50-100 words that look like the answer. Often the most powerful for nuanced topics.
-- \`The rate limiter uses a token bucket algorithm. When a client exceeds 100 req/min, subsequent requests return 429 until the window resets.\`
-
-## Strategy
-
-Combine types for best results. First sub-query gets 2× weight — put your strongest signal first.
-
-| Goal | Approach |
-|------|----------|
-| Know exact term/name | \`lex\` only |
-| Concept search | \`vec\` only |
-| Best recall | \`lex\` + \`vec\` |
-| Complex/nuanced | \`lex\` + \`vec\` + \`hyde\` |
-| Unknown vocabulary | Use a standalone natural-language query (no typed lines) so the server can auto-expand it |
-
-## Examples
-
-Simple lookup:
-\`\`\`json
-[{ "type": "lex", "query": "CAP theorem" }]
-\`\`\`
-
-Best recall on a technical topic:
-\`\`\`json
-[
-  { "type": "lex", "query": "\\"connection pool\\" timeout -redis" },
-  { "type": "vec", "query": "why do database connections time out under load" },
-  { "type": "hyde", "query": "Connection pool exhaustion occurs when all connections are in use and new requests must wait. This typically happens under high concurrency when queries run longer than expected." }
-]
-\`\`\`
-
-Intent-aware lex (C++ performance, not sports):
-\`\`\`json
-[
-  { "type": "lex", "query": "\\"C++ performance\\" optimization -sports -athlete" },
-  { "type": "vec", "query": "how to optimize C++ program performance" }
-]
-\`\`\``,
-      annotations: { readOnlyHint: true, openWorldHint: false },
-      inputSchema: {
-        searches: z.array(subSearchSchema).min(1).max(10).describe(
-          "Typed sub-queries to execute (lex/vec/hyde). First gets 2x weight."
-        ),
-        limit: z.number().optional().default(10).describe("Max results (default: 10)"),
-        minScore: z.number().optional().default(0).describe("Min relevance 0-1 (default: 0)"),
-        candidateLimit: z.number().optional().describe(
-          "Maximum candidates to rerank (default: 40, lower = faster but may miss results)"
-        ),
-        collections: z.array(z.string()).optional().describe("Filter to collections (OR match)"),
-        intent: z.string().optional().describe(
-          "Background context to disambiguate the query. Example: query='performance', intent='web page load times and Core Web Vitals'. Does not search on its own."
-        ),
-        rerank: z.boolean().optional().default(true).describe(
-          "Rerank results using LLM (default: true). Set to false for faster results on CPU-only machines."
-        ),
-      },
-    },
-    async ({ searches, limit, minScore, candidateLimit, collections, intent, rerank }) => {
-      // Map to internal format
-      const queries: ExpandedQuery[] = searches.map(s => ({
-        type: s.type,
-        query: s.query,
-      }));
-
-      // Use default collections if none specified
-      const effectiveCollections = collections ?? defaultCollectionNames;
-
-      const results = await store.search({
-        queries,
-        collections: effectiveCollections.length > 0 ? effectiveCollections : undefined,
-        limit,
-        minScore,
-        rerank,
-        intent,
-      });
-
-      // Use first lex or vec query for snippet extraction
-      const primaryQuery = searches.find(s => s.type === 'lex')?.query
-        || searches.find(s => s.type === 'vec')?.query
-        || searches[0]?.query || "";
-
-      const filtered: SearchResultItem[] = results.map(r => {
-        const { line, snippet } = extractSnippet(r.bestChunk, primaryQuery, 300, undefined, undefined, intent);
+function registerTools(server: McpServer, ctx: CommandContext): void {
+  for (const t of TOOLS) {
+    server.registerTool(
+      t.name,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      t.schema as any,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      async (args: Record<string, unknown>): Promise<any> => {
+        const out = await dispatchCommand(t.dispatch, args ?? {}, ctx);
         return {
-          docid: `#${r.docid}`,
-          file: r.displayPath,
-          title: r.title,
-          score: Math.round(r.score * 100) / 100,
-          context: r.context,
-          snippet: addLineNumbers(snippet, line),
+          content: [{ type: "text", text: JSON.stringify(out, null, 2) }],
         };
-      });
-
-      return {
-        content: [{ type: "text", text: formatSearchSummary(filtered, primaryQuery) }],
-        structuredContent: { results: filtered },
-      };
-    }
-  );
-
-  // ---------------------------------------------------------------------------
-  // Tool: qkb_get (Retrieve document)
-  // ---------------------------------------------------------------------------
-
-  server.registerTool(
-    "get",
-    {
-      title: "Get Document",
-      description: "Retrieve the full content of a document by its file path or docid. Use paths or docids (#abc123) from search results. Suggests similar files if not found.",
-      annotations: { readOnlyHint: true, openWorldHint: false },
-      inputSchema: {
-        file: z.string().describe("File path or docid from search results (e.g., 'pages/meeting.md', '#abc123', or 'pages/meeting.md:100' to start at line 100)"),
-        fromLine: z.number().optional().describe("Start from this line number (1-indexed)"),
-        maxLines: z.number().optional().describe("Maximum number of lines to return"),
-        lineNumbers: z.boolean().optional().default(false).describe("Add line numbers to output (format: 'N: content')"),
       },
-    },
-    async ({ file, fromLine, maxLines, lineNumbers }) => {
-      // Support :line suffix in `file` (e.g. "foo.md:120") when fromLine isn't provided
-      let parsedFromLine = fromLine;
-      let lookup = file;
-      const colonMatch = lookup.match(/:(\d+)$/);
-      if (colonMatch && colonMatch[1] && parsedFromLine === undefined) {
-        parsedFromLine = parseInt(colonMatch[1], 10);
-        lookup = lookup.slice(0, -colonMatch[0].length);
-      }
-
-      const result = await store.get(lookup, { includeBody: false });
-
-      if ("error" in result) {
-        let msg = `Document not found: ${file}`;
-        if (result.similarFiles.length > 0) {
-          msg += `\n\nDid you mean one of these?\n${result.similarFiles.map(s => `  - ${s}`).join('\n')}`;
-        }
-        return {
-          content: [{ type: "text", text: msg }],
-          isError: true,
-        };
-      }
-
-      const body = await store.getDocumentBody(result.filepath, { fromLine: parsedFromLine, maxLines }) ?? "";
-      let text = body;
-      if (lineNumbers) {
-        const startLine = parsedFromLine || 1;
-        text = addLineNumbers(text, startLine);
-      }
-      if (result.context) {
-        text = `<!-- Context: ${result.context} -->\n\n` + text;
-      }
-
-      return {
-        content: [{
-          type: "resource",
-          resource: {
-            uri: `qkb://${encodeQkbPath(result.displayPath)}`,
-            name: result.displayPath,
-            title: result.title,
-            mimeType: "text/markdown",
-            text,
-          },
-        }],
-      };
-    }
-  );
-
-  // ---------------------------------------------------------------------------
-  // Tool: qkb_multi_get (Retrieve multiple documents)
-  // ---------------------------------------------------------------------------
-
-  server.registerTool(
-    "multi_get",
-    {
-      title: "Multi-Get Documents",
-      description: "Retrieve multiple documents by glob pattern (e.g., 'journals/2025-05*.md') or comma-separated list. Skips files larger than maxBytes.",
-      annotations: { readOnlyHint: true, openWorldHint: false },
-      inputSchema: {
-        pattern: z.string().describe("Glob pattern or comma-separated list of file paths"),
-        maxLines: z.number().optional().describe("Maximum lines per file"),
-        maxBytes: z.number().optional().default(10240).describe("Skip files larger than this (default: 10240 = 10KB)"),
-        lineNumbers: z.boolean().optional().default(false).describe("Add line numbers to output (format: 'N: content')"),
-      },
-    },
-    async ({ pattern, maxLines, maxBytes, lineNumbers }) => {
-      const { docs, errors } = await store.multiGet(pattern, { includeBody: true, maxBytes: maxBytes || DEFAULT_MULTI_GET_MAX_BYTES });
-
-      if (docs.length === 0 && errors.length === 0) {
-        return {
-          content: [{ type: "text", text: `No files matched pattern: ${pattern}` }],
-          isError: true,
-        };
-      }
-
-      const content: ({ type: "text"; text: string } | { type: "resource"; resource: { uri: string; name: string; title?: string; mimeType: string; text: string } })[] = [];
-
-      if (errors.length > 0) {
-        content.push({ type: "text", text: `Errors:\n${errors.join('\n')}` });
-      }
-
-      for (const result of docs) {
-        if (result.skipped) {
-          content.push({
-            type: "text",
-            text: `[SKIPPED: ${result.doc.displayPath} - ${result.skipReason}. Use 'qkb_get' with file="${result.doc.displayPath}" to retrieve.]`,
-          });
-          continue;
-        }
-
-        let text = result.doc.body || "";
-        if (maxLines !== undefined) {
-          const lines = text.split("\n");
-          text = lines.slice(0, maxLines).join("\n");
-          if (lines.length > maxLines) {
-            text += `\n\n[... truncated ${lines.length - maxLines} more lines]`;
-          }
-        }
-        if (lineNumbers) {
-          text = addLineNumbers(text);
-        }
-        if (result.doc.context) {
-          text = `<!-- Context: ${result.doc.context} -->\n\n` + text;
-        }
-
-        content.push({
-          type: "resource",
-          resource: {
-            uri: `qkb://${encodeQkbPath(result.doc.displayPath)}`,
-            name: result.doc.displayPath,
-            title: result.doc.title,
-            mimeType: "text/markdown",
-            text,
-          },
-        });
-      }
-
-      return { content };
-    }
-  );
-
-  // ---------------------------------------------------------------------------
-  // Tool: qkb_status (Index status)
-  // ---------------------------------------------------------------------------
-
-  server.registerTool(
-    "status",
-    {
-      title: "Index Status",
-      description: "Show the status of the QKB index: collections, document counts, and health information.",
-      annotations: { readOnlyHint: true, openWorldHint: false },
-      inputSchema: {},
-    },
-    async () => {
-      const status: StatusResult = await store.getStatus();
-
-      const summary = [
-        `QKB Index Status:`,
-        `  Total documents: ${status.totalDocuments}`,
-        `  Needs embedding: ${status.needsEmbedding}`,
-        `  Vector index: ${status.hasVectorIndex ? 'yes' : 'no'}`,
-        `  Collections: ${status.collections.length}`,
-      ];
-
-      for (const col of status.collections) {
-        summary.push(`    - ${col.name}: ${col.path} (${col.documents} docs)`);
-      }
-
-      return {
-        content: [{ type: "text", text: summary.join('\n') }],
-        structuredContent: status,
-      };
-    }
-  );
-
-  // ---------------------------------------------------------------------------
-  // Tools: graph_query, graph_neighbors (RFC-0007 §4.6.3)
-  // ---------------------------------------------------------------------------
-  registerGraphMcpTools(server, store.internal);
-
-  return server;
+    );
+  }
 }
 
-// =============================================================================
-// Transport: stdio (default)
-// =============================================================================
+/** Build an `McpServer` configured with all qkb tools, no transport attached yet. */
+async function buildServer(opts: {
+  dbPath: string;
+}): Promise<{ server: McpServer; store: QMDStore }> {
+  const store = await openStore({ dbPath: opts.dbPath });
+  const server = new McpServer({ name: "qkb", version: "4.0.0" });
+  registerTools(server, buildContext(store));
+  return { server, store };
+}
 
-export async function startMcpServer(): Promise<void> {
-  // Opt into production mode when the MCP server is actually started, not
-  // when this module is merely imported for its exports. Importing the module
-  // at the top level flipped the global production flag and broke test
-  // isolation for downstream suites that expect the default (development)
-  // database path behaviour.
-  enableProductionMode();
-  const configPath = getConfigPath();
-  const store = await createStore({
-    dbPath: getDefaultDbPath(),
-    ...(existsSync(configPath) ? { configPath } : {}),
-  });
-  const server = await createMcpServer(store);
+// ─── In-process handle (used by integration tests) ────────────────
+
+/**
+ * Test-only MCP handle. Wires a `Client` and the `McpServer` together
+ * via `InMemoryTransport` so tests exercise the real MCP request/response
+ * cycle without a child process. The returned `client` is a fully-
+ * featured MCP client — call `client.listTools()` / `client.callTool()`.
+ *
+ * `tools` is a convenience snapshot of the registered tool names so
+ * the simplest assertions don't need a `listTools()` round-trip.
+ */
+export interface InProcessMcpHandle {
+  client: Client;
+  /** Snapshot of registered tool names — no MCP round-trip needed. */
+  toolNames: string[];
+  close(): Promise<void>;
+}
+
+/**
+ * Start the qkb MCP server in-process and return a connected MCP
+ * client paired with it via `InMemoryTransport`. Tests use this to
+ * exercise tools end-to-end through MCP's JSON-RPC layer.
+ */
+export async function startMcpInProcess(opts: {
+  dbPath: string;
+}): Promise<InProcessMcpHandle> {
+  const { server, store } = await buildServer(opts);
+  const [clientTransport, serverTransport] =
+    InMemoryTransport.createLinkedPair();
+
+  const client = new Client(
+    { name: "qkb-test-client", version: "0.0.0" },
+    { capabilities: {} },
+  );
+
+  await Promise.all([
+    server.connect(serverTransport),
+    client.connect(clientTransport),
+  ]);
+
+  return {
+    client,
+    toolNames: TOOLS.map((t) => t.name),
+    async close() {
+      await client.close();
+      await server.close();
+      await store.close();
+    },
+  };
+}
+
+// ─── stdio transport (production path) ────────────────────────────
+
+/**
+ * Start the qkb MCP server over stdio. This is what `qkb mcp` (no
+ * flags) wires up — same shape as today's qkb 3.x MCP entry point.
+ *
+ * The CLI cutover (PR-6) is what swaps `qkb mcp`'s default-stdio
+ * branch from importing `./server.js`'s `startMcpServer` to importing
+ * this `startMcpStdio`.
+ */
+export async function startMcpStdio(opts: {
+  dbPath: string;
+}): Promise<void> {
+  const { server } = await buildServer(opts);
   const transport = new StdioServerTransport();
   await server.connect(transport);
 }
 
-// =============================================================================
-// Transport: Streamable HTTP
-// =============================================================================
+// ─── HTTP transport ───────────────────────────────────────────────
 
+/** Handle returned by `startMcpHttpServer` — exposes the bound port and a stop hook. */
 export type HttpServerHandle = {
   httpServer: import("http").Server;
   port: number;
@@ -572,26 +220,36 @@ export type HttpServerHandle = {
 };
 
 /**
- * Start MCP server over Streamable HTTP (JSON responses, no SSE).
- * Binds to localhost only. Returns a handle for shutdown and port discovery.
+ * Start the qkb MCP server over Streamable HTTP (JSON responses, no SSE).
+ *
+ * Binds to localhost only. Per MCP spec each client gets its own
+ * `McpServer` + `Transport` pair; the underlying `QMDStore` is shared
+ * (SQLite handles concurrent reads).
+ *
+ * In addition to the MCP-protocol `/mcp` endpoint, this exposes two
+ * convenience HTTP endpoints carried over from qkb's 3.x server:
+ *
+ *   - `GET  /health`             — JSON `{status, uptime}` liveness
+ *   - `POST /query` (or `/search`) — structured search without MCP
+ *
+ * `dbPath` defaults to qmd's `getDefaultDbPath()` (which honors the
+ * `INDEX_PATH` env var used by tests).
  */
-export async function startMcpHttpServer(port: number, options?: { quiet?: boolean }): Promise<HttpServerHandle> {
-  // See startMcpServer() for the rationale — flip production mode here so the
-  // HTTP transport resolves the real database path, without leaking state into
-  // callers that only import this module for its exports (e.g. tests).
-  enableProductionMode();
-  const configPath = getConfigPath();
-  const store = await createStore({
-    dbPath: getDefaultDbPath(),
-    ...(existsSync(configPath) ? { configPath } : {}),
-  });
+export async function startMcpHttpServer(
+  port: number,
+  options?: { quiet?: boolean; dbPath?: string },
+): Promise<HttpServerHandle> {
+  const dbPath = options?.dbPath ?? getDefaultDbPath();
+  const store = await openStore({ dbPath });
 
-  // Pre-fetch default collection names for REST endpoint
+  // Pre-fetch default collection names for the REST endpoint.
   const defaultCollectionNames = await store.getDefaultCollectionNames();
 
-  // Session map: each client gets its own McpServer + Transport pair (MCP spec requirement).
-  // The store is shared — it's stateless SQLite, safe for concurrent access.
+  // Per MCP spec, each session owns its own server+transport pair.
+  // The `store` is shared because SQLite + bun:sqlite/better-sqlite3
+  // are safe for concurrent reads.
   const sessions = new Map<string, WebStandardStreamableHTTPServerTransport>();
+  const ctx = buildContext(store);
 
   async function createSession(): Promise<WebStandardStreamableHTTPServerTransport> {
     const transport = new WebStandardStreamableHTTPServerTransport({
@@ -602,7 +260,8 @@ export async function startMcpHttpServer(port: number, options?: { quiet?: boole
         log(`${ts()} New session ${sessionId} (${sessions.size} active)`);
       },
     });
-    const server = await createMcpServer(store);
+    const server = new McpServer({ name: "qkb", version: "4.0.0" });
+    registerTools(server, ctx);
     await server.connect(transport);
 
     transport.onclose = () => {
@@ -617,24 +276,23 @@ export async function startMcpHttpServer(port: number, options?: { quiet?: boole
   const startTime = Date.now();
   const quiet = options?.quiet ?? false;
 
-  /** Format timestamp for request logging */
+  /** Format timestamp for request logging. */
   function ts(): string {
     return new Date().toISOString().slice(11, 23); // HH:mm:ss.SSS
   }
 
-  /** Extract a human-readable label from a JSON-RPC body */
-  function describeRequest(body: any): string {
+  /** Extract a human-readable label from a JSON-RPC body. */
+  function describeRequest(body: { method?: string; params?: { name?: string; arguments?: Record<string, unknown> } }): string {
     const method = body?.method ?? "unknown";
     if (method === "tools/call") {
       const tool = body.params?.name ?? "?";
       const args = body.params?.arguments;
-      // Show query string if present, truncated
-      if (args?.query) {
-        const q = String(args.query).slice(0, 80);
+      if (args && typeof args.query === "string") {
+        const q = args.query.slice(0, 80);
         return `tools/call ${tool} "${q}"`;
       }
-      if (args?.path) return `tools/call ${tool} ${args.path}`;
-      if (args?.pattern) return `tools/call ${tool} ${args.pattern}`;
+      if (args && typeof args.path === "string") return `tools/call ${tool} ${args.path}`;
+      if (args && typeof args.pattern === "string") return `tools/call ${tool} ${args.pattern}`;
       return `tools/call ${tool}`;
     }
     return method;
@@ -644,7 +302,6 @@ export async function startMcpHttpServer(port: number, options?: { quiet?: boole
     if (!quiet) console.error(msg);
   }
 
-  // Helper to collect request body
   async function collectBody(req: IncomingMessage): Promise<string> {
     const chunks: Buffer[] = [];
     for await (const chunk of req) chunks.push(chunk as Buffer);
@@ -664,26 +321,28 @@ export async function startMcpHttpServer(port: number, options?: { quiet?: boole
         return;
       }
 
-      // REST endpoint: POST /search — structured search without MCP protocol
       // REST endpoint: POST /query (alias: /search) — structured search without MCP protocol
       if ((pathname === "/query" || pathname === "/search") && nodeReq.method === "POST") {
         const rawBody = await collectBody(nodeReq);
-        const params = JSON.parse(rawBody);
+        const params = JSON.parse(rawBody) as {
+          searches?: Array<{ type: string; query: string }>;
+          collections?: string[];
+          limit?: number;
+          minScore?: number;
+          intent?: string;
+        };
 
-        // Validate required fields
         if (!params.searches || !Array.isArray(params.searches)) {
           nodeRes.writeHead(400, { "Content-Type": "application/json" });
           nodeRes.end(JSON.stringify({ error: "Missing required field: searches (array)" }));
           return;
         }
 
-        // Map to internal format
-        const queries: ExpandedQuery[] = params.searches.map((s: any) => ({
-          type: s.type as 'lex' | 'vec' | 'hyde',
+        const queries: ExpandedQuery[] = params.searches.map((s) => ({
+          type: s.type as "lex" | "vec" | "hyde",
           query: String(s.query || ""),
         }));
 
-        // Use default collections if none specified
         const effectiveCollections = params.collections ?? defaultCollectionNames;
 
         const results = await store.search({
@@ -694,12 +353,14 @@ export async function startMcpHttpServer(port: number, options?: { quiet?: boole
           intent: params.intent,
         });
 
-        // Use first lex or vec query for snippet extraction
-        const primaryQuery = params.searches.find((s: any) => s.type === 'lex')?.query
-          || params.searches.find((s: any) => s.type === 'vec')?.query
-          || params.searches[0]?.query || "";
+        // Use first lex/vec query for snippet extraction.
+        const primaryQuery =
+          params.searches.find((s) => s.type === "lex")?.query
+          || params.searches.find((s) => s.type === "vec")?.query
+          || params.searches[0]?.query
+          || "";
 
-        const formatted = results.map(r => {
+        const formatted = results.map((r) => {
           const { line, snippet } = extractSnippet(r.bestChunk, primaryQuery, 300);
           return {
             docid: `#${r.docid}`,
@@ -727,7 +388,6 @@ export async function startMcpHttpServer(port: number, options?: { quiet?: boole
           if (typeof v === "string") headers[k] = v;
         }
 
-        // Route to existing session or create new one on initialize
         const sessionId = headers["mcp-session-id"];
         let transport: WebStandardStreamableHTTPServerTransport;
 
@@ -765,12 +425,12 @@ export async function startMcpHttpServer(port: number, options?: { quiet?: boole
       }
 
       if (pathname === "/mcp") {
+        // GET / DELETE on /mcp — must have a valid session.
         const headers: Record<string, string> = {};
         for (const [k, v] of Object.entries(nodeReq.headers)) {
           if (typeof v === "string") headers[k] = v;
         }
 
-        // GET/DELETE must have a valid session
         const sessionId = headers["mcp-session-id"];
         if (!sessionId) {
           nodeRes.writeHead(400, { "Content-Type": "application/json" });
@@ -818,7 +478,7 @@ export async function startMcpHttpServer(port: number, options?: { quiet?: boole
   const actualPort = (httpServer.address() as import("net").AddressInfo).port;
 
   let stopping = false;
-  const stop = async () => {
+  const stop = async (): Promise<void> => {
     if (stopping) return;
     stopping = true;
     for (const transport of sessions.values()) {
@@ -844,7 +504,7 @@ export async function startMcpHttpServer(port: number, options?: { quiet?: boole
   return { httpServer, port: actualPort, stop };
 }
 
-// Run if this is the main module
-if (fileURLToPath(import.meta.url) === process.argv[1] || process.argv[1]?.endsWith("/server.ts") || process.argv[1]?.endsWith("/server.js")) {
-  startMcpServer().catch(console.error);
-}
+// Exported for inspection / future tooling. `_meta` only.
+export const REGISTERED_TOOLS: ReadonlyArray<string> = TOOLS.map(
+  (t) => t.name,
+);

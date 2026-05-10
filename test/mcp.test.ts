@@ -6,19 +6,19 @@
  */
 
 import { describe, test, expect, beforeAll, afterAll, beforeEach, afterEach } from "vitest";
-import { openDatabase, loadSqliteVec } from "../src/db.js";
-import type { Database } from "../src/db.js";
+import { openDatabase, loadSqliteVec } from "../src/internals/db.js";
+import type { Database } from "../src/internals/db.js";
 import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { getDefaultLlamaCpp, disposeDefaultLlamaCpp } from "../src/llm";
+import { getDefaultLlamaCpp, disposeDefaultLlamaCpp } from "../src/internals/llm";
 import { unlinkSync } from "node:fs";
 import { mkdtemp, writeFile, readdir, unlink, rmdir } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import YAML from "yaml";
-import type { CollectionConfig } from "../src/collections";
-import { setConfigIndexName } from "../src/collections";
-import { syncConfigToDb } from "../src/store";
+import type { CollectionConfig } from "../src/internals/collections-yaml";
+import { setConfigIndexName } from "../src/internals/collections-yaml";
+import { syncConfigToDb } from "../src/internals/store-engine";
 
 // =============================================================================
 // Test Database Setup
@@ -215,8 +215,8 @@ import {
   DEFAULT_RERANK_MODEL,
   DEFAULT_MULTI_GET_MAX_BYTES,
   createStore,
-} from "../src/store";
-import type { RankedResult } from "../src/store";
+} from "../src/internals/store-engine";
+import type { RankedResult } from "../src/internals/store-engine";
 // Note: searchResultsToMcpCsv no longer used in MCP - using structuredContent instead
 
 // =============================================================================
@@ -894,8 +894,8 @@ describe("MCP Server", () => {
 // HTTP Transport Tests
 // =============================================================================
 
-import { startMcpHttpServer, type HttpServerHandle } from "../src/mcp/server-v4";
-import { enableProductionMode } from "../src/store";
+import { startMcpHttpServer, type HttpServerHandle } from "../src/mcp/server";
+import { enableProductionMode } from "../src/internals/store-engine";
 
 describe.skipIf(!!process.env.CI)("MCP HTTP Transport", () => {
   let handle: HttpServerHandle;
