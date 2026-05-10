@@ -3478,7 +3478,11 @@ if (isMain) {
         // async cleanup handlers in startMcpHttpServer actually run.
         process.removeAllListeners("SIGTERM");
         process.removeAllListeners("SIGINT");
-        const { startMcpHttpServer } = await import("../mcp/server.js");
+        // RFC-0009 PR-7: import from server-v4.js so the CLI's import
+        // graph no longer reaches the legacy mcp/server.ts directly.
+        // server-v4 re-exports startMcpHttpServer; the underlying transport
+        // still lives in the legacy module pending PR-7b's deletion sweep.
+        const { startMcpHttpServer } = await import("../mcp/server-v4.js");
         try {
           await startMcpHttpServer(port);
         } catch (e: any) {
@@ -3493,9 +3497,7 @@ if (isMain) {
         // production stdio path through the qkb 4.0 MCP server in
         // `mcp/server-v4.ts`, which dispatches every tool through the
         // PR-4 `dispatchCommand` table (and therefore through `@tobilu/qmd`'s
-        // SDK) rather than the vendored 3.x store. HTTP/daemon paths
-        // above stay on `mcp/server.js` until PR-7's deletion sweep
-        // replaces the rest of the legacy surface in one diff.
+        // SDK) rather than the vendored 3.x store.
         const { startMcpStdio } = await import("../mcp/server-v4.js");
         const { getDefaultDbPath: qmdDefaultDbPath } = await import("@tobilu/qmd");
         await startMcpStdio({ dbPath: qmdDefaultDbPath() });

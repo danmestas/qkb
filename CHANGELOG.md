@@ -4,6 +4,31 @@
 
 ### Changes
 
+- **`qkb mcp --http` foreground import path moved to `mcp/server-v4.js`
+  (RFC-0009 PR-7 partial).** The CLI's HTTP-foreground branch now imports
+  `startMcpHttpServer` from `src/mcp/server-v4.ts` (which currently
+  re-exports it from the legacy `mcp/server.ts`) instead of importing
+  from the legacy module directly. Wire-level behavior is unchanged for
+  4.0; this is the import-graph step toward porting the HTTP transport
+  fully onto the 4.0 server (planned PR-7b alongside the vendored-code
+  deletion sweep).
+
+  PR-7 was originally scoped to do BOTH the full CLI-body rewire to
+  `dispatchCommand` AND deletion of all vendored qmd code (~10kLoC).
+  Investigation during PR-7 surfaced two architectural blockers:
+  (1) `@tobilu/qmd`'s exports field is `.`-only, so qkb cannot import
+  the ~30 store-internal helpers (`parseVirtualPath`, `chunkDocumentByTokens`,
+  `getCacheKey`, `searchFTS`, `hybridQuery`, `vectorSearchQuery`,
+  `getContextForFile`, `findSimilarFiles`, `findDocumentByDocid`,
+  `getHashesNeedingEmbedding`, etc.) that the 3500-line CLI body
+  depends on; (2) 116 `cli.test.ts` cases pin specific stdout strings
+  produced by the existing CLI formatters, which cannot be preserved
+  bit-for-bit without those helpers. Splitting PR-7 into PR-7a (this
+  PR — HTTP import-path move + CHANGELOG + per-collection
+  `update_command` decision) and PR-7b (full CLI rewire + deletion,
+  needing either upstream qmd API additions or qkb-side internalization
+  of the helper set) is the responsible path forward.
+
 - **`qkb mcp` (stdio) now serves the 4.0 MCP server (RFC-0009 PR-6).**
   The default-stdio branch of `qkb mcp` swaps from the legacy
   `startMcpServer` (vendored 3.x server in `src/mcp/server.ts`) to
@@ -12,22 +37,21 @@
   therefore through `@tobilu/qmd`'s SDK. Tool surface is unchanged
   (9 tools: `query`, `get`, `multi_get`, `status`, `search`, `vsearch`,
   `update`, `embed`, `neighbors`); MCP clients see the same names and
-  schemas. `--http` / `--http --daemon` paths stay routed through the
-  legacy `server.ts` until PR-7's deletion sweep ports the HTTP
-  transport onto the 4.0 server. Outside MCP, the rest of the CLI body
-  continues to use the legacy formatters/output shape — wholesale
-  rewiring through `dispatchCommand` would lose
-  format/flag/exit-code parity that today's CLI tests pin; PR-7 takes
-  the cutover the rest of the way alongside deleting the vendored
-  modules in one diff.
+  schemas.
 
-  Known regression for 4.0: per-collection `update_command` (3.x's
-  `qkb collection update-cmd <name> <cmd>`) is dropped because qmd's
-  `NamedCollection` doesn't carry the field. `qkb update --pull`
-  unconditionally runs `git pull --ff-only` per collection. The
-  `qkb collection update-cmd` subcommand still parses today (legacy
-  CLI body untouched in PR-6) but the value is ignored at update
-  time. Re-add via a qkb-side meta table in 4.0.x if users complain.
+  Known regression for 4.0 (decided in PR-7): per-collection
+  `update_command` (3.x's `qkb collection update-cmd <name> <cmd>`) is
+  dropped because qmd's `NamedCollection` doesn't carry the field. The
+  4.0 `qkb update --pull` path runs `git pull --ff-only` per collection
+  unconditionally (the simple default that 3.x's `update_command` field
+  also defaulted to). The `qkb collection update-cmd` subcommand still
+  parses today via the legacy CLI body but the value is ignored at
+  update time, and the dispatch-routed update path uses the simple
+  unconditional `git pull --ff-only`. Re-add via a qkb-side
+  `qkb_collection_meta` table in `openStore()` in 4.0.x if users
+  complain — restoring the field cleanly costs ~30 LoC plus a
+  migration row but isn't worth the schema surface for an as-yet
+  unverified user need.
 
 ### Added
 
