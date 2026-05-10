@@ -36,7 +36,19 @@ jobs:
           registry-url: https://registry.npmjs.org
 
       - run: npm run build
-      - run: npm publish --provenance --access public
+      - name: Publish to npm
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          if [[ "$VERSION" == *-* ]]; then
+            # Pre-release: route to a non-`latest` dist-tag matching the suffix family
+            TAG="${VERSION#*-}"
+            TAG="${TAG%%.*}"
+            echo "Publishing pre-release ${VERSION} with --tag ${TAG}"
+            npm publish --provenance --access public --tag "$TAG"
+          else
+            echo "Publishing ${VERSION} as latest"
+            npm publish --provenance --access public
+          fi
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 

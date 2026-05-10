@@ -48,7 +48,7 @@ These constraints shape the design but do not block it.
 
 ```
 ┌──────────────────────────────────────────────────────────┐
-│ qkb (npm pkg @danmestas/qkb v4.0.0)                      │
+│ qkb (npm pkg @agent-ops/qkb v4.0.0)                      │
 │                                                          │
 │  ┌──────────────┐                                        │
 │  │ qkb CLI      │                                        │
@@ -151,7 +151,7 @@ qkb depends on a precise set of "advanced use" lever points that qmd exposes via
 ```jsonc
 // package.json
 {
-  "name": "@danmestas/qkb",
+  "name": "@agent-ops/qkb",
   "version": "4.0.0",
   "dependencies": {
     "@tobilu/qmd": "~2.1.0",         // tilde-pinned (patches only); locked at PR-1 time
@@ -476,7 +476,7 @@ Single PR, big diff. CI integration tests are the safety net.
 ## Version & naming
 
 - Version: **4.0.0** (current is 3.0.0). Architectural change merits major bump.
-- npm package name: unchanged (`@danmestas/qkb`).
+- npm package name: unchanged (`@agent-ops/qkb`).
 - Binary name: unchanged (`qkb`).
 - CLI: backward-compatible where possible. `--graph` default-on; `--no-graph` opt-out; subcommand names unchanged.
 

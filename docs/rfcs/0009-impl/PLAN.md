@@ -1538,7 +1538,7 @@ This triggers `.github/workflows/publish.yml` (publishes to npm with `--tag rc`)
 
 ```bash
 gh run watch
-npm view @danmestas/qkb dist-tags
+npm view @agent-ops/qkb dist-tags
 ```
 
 Expected: `rc: 4.0.0-rc.1` appears under dist-tags.
@@ -1546,7 +1546,7 @@ Expected: `rc: 4.0.0-rc.1` appears under dist-tags.
 - [ ] **9.5: Beta period — install on flight-planner-kb, run for 3-5 days**
 
 ```bash
-npm install -g @danmestas/qkb@rc
+npm install -g @agent-ops/qkb@rc
 qkb --version  # 4.0.0-rc.1
 # Use it daily; log issues in GitHub
 ```
@@ -1571,7 +1571,7 @@ git tag -a v4.0.0 -m "qkb 4.0.0: thin wrapper architecture"
 git push origin v4.0.0
 
 gh run watch
-npm view @danmestas/qkb dist-tags
+npm view @agent-ops/qkb dist-tags
 # Expect: latest: 4.0.0
 ```
 

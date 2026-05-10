@@ -14,13 +14,13 @@ You can read more about QKB's progress in the [CHANGELOG](CHANGELOG.md).
 
 ```sh
 # Install globally (Node or Bun)
-npm install -g @danmestas/qkb
+npm install -g @agent-ops/qkb
 # or
-bun install -g @danmestas/qkb
+bun install -g @agent-ops/qkb
 
 # Or run directly
-npx @danmestas/qkb ...
-bunx @danmestas/qkb ...
+npx @agent-ops/qkb ...
+bunx @agent-ops/qkb ...
 
 # Create collections for your notes, docs, and meeting transcripts
 qkb collection add ~/notes --name notes
@@ -145,13 +145,13 @@ Use QKB as a library in your own Node.js or Bun applications.
 #### Installation
 
 ```sh
-npm install @danmestas/qkb
+npm install @agent-ops/qkb
 ```
 
 #### Quick Start
 
 ```typescript
-import { createStore } from '@danmestas/qkb'
+import { createStore } from '@agent-ops/qkb'
 
 const store = await createStore({
   dbPath: './my-index.sqlite',
@@ -173,7 +173,7 @@ await store.close()
 `createStore()` accepts three modes:
 
 ```typescript
-import { createStore } from '@danmestas/qkb'
+import { createStore } from '@agent-ops/qkb'
 
 // 1. Inline config — no files needed besides the DB
 const store = await createStore({
@@ -352,7 +352,7 @@ import type {
   CollectionConfig,    // Inline config shape
   IndexStatus,         // From getStatus()
   IndexHealthInfo,     // From getIndexHealth()
-} from '@danmestas/qkb'
+} from '@agent-ops/qkb'
 ```
 
 Utility exports:
@@ -363,7 +363,7 @@ import {
   addLineNumbers,              // Add line numbers to text
   DEFAULT_MULTI_GET_MAX_BYTES, // Default max file size for multiGet (10KB)
   Maintenance,                 // Database maintenance operations
-} from '@danmestas/qkb'
+} from '@agent-ops/qkb'
 ```
 
 #### Lifecycle
@@ -624,9 +624,9 @@ Supported model families:
 ## Installation
 
 ```sh
-npm install -g @danmestas/qkb
+npm install -g @agent-ops/qkb
 # or
-bun install -g @danmestas/qkb
+bun install -g @agent-ops/qkb
 ```
 
 ### Development
