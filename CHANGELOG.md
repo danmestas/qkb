@@ -37,6 +37,23 @@
   sub-path imports, so we cannot mutate qmd's candidate pool in-place
   — vendoring this thin slice is the price of staying graph-aware
   without forking qmd.
+- **`src/commands.ts` — dispatch table mapping subcommand names to
+  handlers (RFC-0009 PR-4).** Single map (`"search"`,
+  `"collection.add"`, ...) → handler that delegates to qmd's SDK or
+  qkb's orchestrator. Both the CLI parser (PR-6) and the MCP server
+  (PR-5) call into this layer via `dispatchCommand(name, args, ctx)`.
+  Replaces 17 hypothetical command-file modules with one co-located
+  table; only commands with genuine composite logic earn their own
+  file (`commands-composite.ts`).
+- **`src/commands-composite.ts` — composite commands.** `contextCheck`
+  diffs `listCollections` against `listContexts`; `updateWithPull`
+  fans out `git pull --ff-only` per collection then runs the
+  orchestrator.
+- **`pruneGraphOrphans()` exported from `src/graph/index-pass.ts`.**
+  Standalone orphan GC for `doc:*` and `WikiTarget` placeholder
+  nodes. Lets `qkb collection remove` clean the graph layer without
+  paying for a full filesystem walk + wikilink re-extraction (the
+  cost of `orchestrator.run({})`).
 - RFC-0009 (thin-wrapper architecture) and its implementation plan
   added under `docs/rfcs/`.
 
