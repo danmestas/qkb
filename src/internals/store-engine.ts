@@ -1,3 +1,7 @@
+/* qkb-owned utility — carved from qmd's vendored fork during the RFC-0009
+   thin-wrapper migration (PR-7d). qmd consumed via SDK for what's on its `.`
+   public surface; the rest lives here, no longer tracking upstream qmd. */
+
 /**
  * QKB Store - Core data access and retrieval functions
  *
@@ -12,8 +16,8 @@
  */
 
 import { openDatabase, loadSqliteVec } from "./db.js";
-import { resolveGraphConfig, GraphDisabledError } from "./graph/config.js";
-import { loadGraphqlite, GraphExtensionUnavailableError } from "./graph/loader.js";
+import { resolveGraphConfig, GraphDisabledError } from "../graph/config.js";
+import { loadGraphqlite, GraphExtensionUnavailableError } from "../graph/loader.js";
 import {
   runUpsertNode,
   runUpsertEdge,
@@ -21,14 +25,14 @@ import {
   runPageRank,
   runUpsertNodesBulk,
   runUpsertEdgesBulk,
-} from "./graph/sdk.js";
+} from "../graph/sdk.js";
 import {
   runFilterThenRank,
   runRankThenRerank,
   runEdgeWeightedRank,
   DEFAULT_EDGE_WEIGHTS,
-} from "./graph/hybrid.js";
-import { loadConfig } from "./collections.js";
+} from "../graph/hybrid.js";
+import { loadConfig } from "./collections-yaml.js";
 import type { Database } from "./db.js";
 import picomatch from "picomatch";
 import { createHash } from "crypto";
@@ -49,7 +53,7 @@ import type {
   Collection,
   CollectionConfig,
   ContextMap,
-} from "./collections.js";
+} from "./collections-yaml.js";
 
 // =============================================================================
 // Configuration
@@ -354,7 +358,7 @@ import {
   homedir,
   resolve,
   getRealPath,
-} from "./internals/paths.js";
+} from "./paths.js";
 export {
   homedir,
   isAbsolutePath,
@@ -363,7 +367,7 @@ export {
   resolve,
   getPwd,
   getRealPath,
-} from "./internals/paths.js";
+} from "./paths.js";
 
 // Flag to indicate production mode (set by qkb.ts at startup)
 let _productionMode = false;
@@ -401,18 +405,18 @@ export function getDefaultDbPath(indexName: string = "index"): string {
 // Virtual Path Utilities (qkb://) — carved to src/internals/virtual-paths.ts.
 // =============================================================================
 
-export type { VirtualPath } from "./internals/virtual-paths.js";
+export type { VirtualPath } from "./virtual-paths.js";
 export {
   normalizeVirtualPath,
   parseVirtualPath,
   buildVirtualPath,
   isVirtualPath,
-} from "./internals/virtual-paths.js";
+} from "./virtual-paths.js";
 import {
   parseVirtualPath,
   buildVirtualPath,
   isVirtualPath,
-} from "./internals/virtual-paths.js";
+} from "./virtual-paths.js";
 
 /**
  * Resolve a virtual path to absolute filesystem path.
@@ -1044,30 +1048,30 @@ export type Store = {
   // Graph layer (RFC-0007). All methods throw GraphDisabledError when
   // graph.enabled=false or the GraphQLite extension failed to load.
   graph: {
-    upsertNode: (args: import("./graph/sdk.js").UpsertNodeArgs) => void;
-    upsertEdge: (args: import("./graph/sdk.js").UpsertEdgeArgs) => void;
+    upsertNode: (args: import("../graph/sdk.js").UpsertNodeArgs) => void;
+    upsertEdge: (args: import("../graph/sdk.js").UpsertEdgeArgs) => void;
     upsertNodesBulk: (
-      nodes: ReadonlyArray<import("./graph/sdk.js").UpsertNodeArgs>
+      nodes: ReadonlyArray<import("../graph/sdk.js").UpsertNodeArgs>
     ) => void;
     upsertEdgesBulk: (
-      edges: ReadonlyArray<import("./graph/sdk.js").UpsertEdgeArgs>
+      edges: ReadonlyArray<import("../graph/sdk.js").UpsertEdgeArgs>
     ) => void;
     cypher: <T = Record<string, unknown>>(
-      query: import("./graph/sdk.js").CypherQuery,
+      query: import("../graph/sdk.js").CypherQuery,
       params?: Record<string, unknown>
     ) => T[];
     pageRank: (
-      args?: import("./graph/sdk.js").PageRankArgs
-    ) => import("./graph/sdk.js").PageRankRow[];
+      args?: import("../graph/sdk.js").PageRankArgs
+    ) => import("../graph/sdk.js").PageRankRow[];
     filterThenRank: (
-      args: import("./graph/hybrid.js").FilterThenRankArgs
-    ) => import("./graph/hybrid.js").FilterThenRankResult;
+      args: import("../graph/hybrid.js").FilterThenRankArgs
+    ) => import("../graph/hybrid.js").FilterThenRankResult;
     rankThenRerank: (
-      args: import("./graph/hybrid.js").RankThenRerankArgs
-    ) => import("./graph/hybrid.js").RankThenRerankResult;
+      args: import("../graph/hybrid.js").RankThenRerankArgs
+    ) => import("../graph/hybrid.js").RankThenRerankResult;
     edgeWeightedRank: (
-      args: import("./graph/hybrid.js").EdgeWeightedRankArgs
-    ) => import("./graph/hybrid.js").EdgeWeightedRankResult;
+      args: import("../graph/hybrid.js").EdgeWeightedRankArgs
+    ) => import("../graph/hybrid.js").EdgeWeightedRankResult;
   };
 };
 
@@ -1586,48 +1590,48 @@ export function createStore(dbPath?: string): Store {
 
     // Graph layer (RFC-0007). Each method gates on isGraphLayerAvailable().
     graph: {
-      upsertNode: (args: import("./graph/sdk.js").UpsertNodeArgs) => {
+      upsertNode: (args: import("../graph/sdk.js").UpsertNodeArgs) => {
         ensureGraphAvailable();
         runUpsertNode(db, args);
       },
-      upsertEdge: (args: import("./graph/sdk.js").UpsertEdgeArgs) => {
+      upsertEdge: (args: import("../graph/sdk.js").UpsertEdgeArgs) => {
         ensureGraphAvailable();
         runUpsertEdge(db, args);
       },
       upsertNodesBulk: (
-        nodes: ReadonlyArray<import("./graph/sdk.js").UpsertNodeArgs>
+        nodes: ReadonlyArray<import("../graph/sdk.js").UpsertNodeArgs>
       ) => {
         ensureGraphAvailable();
         runUpsertNodesBulk(db, nodes);
       },
       upsertEdgesBulk: (
-        edges: ReadonlyArray<import("./graph/sdk.js").UpsertEdgeArgs>
+        edges: ReadonlyArray<import("../graph/sdk.js").UpsertEdgeArgs>
       ) => {
         ensureGraphAvailable();
         runUpsertEdgesBulk(db, edges);
       },
       cypher: <T = Record<string, unknown>>(
-        query: import("./graph/sdk.js").CypherQuery,
+        query: import("../graph/sdk.js").CypherQuery,
         params: Record<string, unknown> = {}
       ): T[] => {
         ensureGraphAvailable();
         const cap = currentMaxPathLength();
         return runCypher<T>(db, query, params, cap);
       },
-      pageRank: (args?: import("./graph/sdk.js").PageRankArgs) => {
+      pageRank: (args?: import("../graph/sdk.js").PageRankArgs) => {
         ensureGraphAvailable();
         return runPageRank(db, args);
       },
-      filterThenRank: (args: import("./graph/hybrid.js").FilterThenRankArgs) => {
+      filterThenRank: (args: import("../graph/hybrid.js").FilterThenRankArgs) => {
         ensureGraphAvailable();
         return runFilterThenRank(store, args);
       },
-      rankThenRerank: (args: import("./graph/hybrid.js").RankThenRerankArgs) => {
+      rankThenRerank: (args: import("../graph/hybrid.js").RankThenRerankArgs) => {
         ensureGraphAvailable();
         return runRankThenRerank(store, args);
       },
       edgeWeightedRank: (
-        args: import("./graph/hybrid.js").EdgeWeightedRankArgs
+        args: import("../graph/hybrid.js").EdgeWeightedRankArgs
       ) => {
         ensureGraphAvailable();
         return runEdgeWeightedRank(store, args);
@@ -1730,10 +1734,10 @@ export type DocumentResult = {
 };
 
 // getDocid + handelize carved to src/internals/{docids,handelize}.ts (RFC-0009 PR-7b).
-export { getDocid } from "./internals/docids.js";
-import { getDocid } from "./internals/docids.js";
-export { handelize } from "./internals/handelize.js";
-import { handelize } from "./internals/handelize.js";
+export { getDocid } from "./docids.js";
+import { getDocid } from "./docids.js";
+export { handelize } from "./handelize.js";
+import { handelize } from "./handelize.js";
 
 /**
  * Search result extends DocumentResult with score and source info
@@ -1864,8 +1868,8 @@ export function getIndexHealth(db: Database): IndexHealthInfo {
 // Caching — getCacheKey carved to src/internals/cache.ts (RFC-0009 PR-7b).
 // =============================================================================
 
-export { getCacheKey } from "./internals/cache.js";
-import { getCacheKey } from "./internals/cache.js";
+export { getCacheKey } from "./cache.js";
+import { getCacheKey } from "./cache.js";
 
 export function getCachedResult(db: Database, cacheKey: string): string | null {
   const row = db.prepare(`SELECT result FROM llm_cache WHERE hash = ?`).get(cacheKey) as { result: string } | null;
@@ -1991,8 +1995,8 @@ export async function hashContent(content: string): Promise<string> {
 }
 
 // extractTitle carved to src/internals/title.ts (RFC-0009 PR-7b).
-export { extractTitle } from "./internals/title.js";
-import { extractTitle } from "./internals/title.js";
+export { extractTitle } from "./title.js";
+import { extractTitle } from "./title.js";
 
 // =============================================================================
 // Document indexing operations
@@ -2312,8 +2316,8 @@ function levenshtein(a: string, b: string): number {
 }
 
 // normalizeDocid + isDocid carved to src/internals/docids.ts (RFC-0009 PR-7b).
-export { normalizeDocid, isDocid } from "./internals/docids.js";
-import { normalizeDocid, isDocid } from "./internals/docids.js";
+export { normalizeDocid, isDocid } from "./docids.js";
+import { normalizeDocid, isDocid } from "./docids.js";
 
 /**
  * Find a document by its short docid (first 6 characters of hash).

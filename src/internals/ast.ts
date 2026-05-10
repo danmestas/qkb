@@ -1,3 +1,7 @@
+/* qkb-owned utility — carved from qmd's vendored fork during the RFC-0009
+   thin-wrapper migration (PR-7d). qmd consumed via SDK for what's on its `.`
+   public surface; the rest lives here, no longer tracking upstream qmd. */
+
 /**
  * AST-aware chunking support via web-tree-sitter.
  *
@@ -20,7 +24,7 @@
 
 import { createRequire } from "node:module";
 import { extname } from "node:path";
-import type { BreakPoint } from "./store.js";
+import type { BreakPoint } from "./store-engine.js";
 
 // web-tree-sitter types — imported dynamically to avoid top-level WASM init
 type ParserType = import("web-tree-sitter").Parser;

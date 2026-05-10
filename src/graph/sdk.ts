@@ -12,7 +12,7 @@
  * accepts that branded type. Direct concatenation with user input fails
  * at the type level *and* at runtime.
  */
-import type { Database } from "../db.js";
+import type { Database } from "../internals/db.js";
 import { validateMaxPathLength } from "./safety.js";
 
 declare const __cypherBrand: unique symbol;

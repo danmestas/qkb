@@ -7,7 +7,7 @@
  */
 
 import { describe, test, expect } from "vitest";
-import { getASTBreakPoints } from "../src/ast.js";
+import { getASTBreakPoints } from "../src/internals/ast.js";
 import {
   chunkDocument,
   chunkDocumentAsync,
@@ -15,7 +15,7 @@ import {
   mergeBreakPoints,
   scanBreakPoints,
   findCodeFences,
-} from "../src/store.js";
+} from "../src/internals/store-engine.js";
 
 // ==========================================================================
 // mergeBreakPoints

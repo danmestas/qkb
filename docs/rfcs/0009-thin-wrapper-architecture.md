@@ -97,21 +97,38 @@ These constraints shape the design but do not block it.
 
 ### qkb-owned utilities (`src/internals/`)
 
-Some module-level helpers used by qkb's CLI live in qmd's vendored source but are NOT exported through qmd's `.` SDK boundary (qmd's `package.json` `exports` is strictly root-only). Rather than file upstream PRs, qkb carves these helpers into `src/internals/*.ts` with a header comment marking them qkb-owned. They no longer track upstream qmd.
+qmd's `package.json` `exports` field is strictly `.`-only — sub-path imports are blocked. qmd's public SDK surface is small (~30 symbols: `createStore`, `QMDStore`, `Maintenance`, `extractSnippet`, `addLineNumbers`, `getDefaultDbPath`, `DEFAULT_MULTI_GET_MAX_BYTES`, plus types). qkb's CLI body uses dozens of helpers that aren't on that surface — module-level utilities for path parsing, docid hashing, the LlamaCpp lifecycle, YAML config loading, FTS/vector search internals, AST chunking, and so on.
 
-The carved set lives in:
+Per the no-upstream-PR rule, qkb carves all of these into `src/internals/*.ts` with attribution headers ("carved from qmd's vendored fork during the RFC-0009 thin-wrapper migration"). They no longer track upstream qmd.
+
+The carved set falls in two tiers:
+
+**Tier 1 — small leaf modules** (carved in PR-7b, ~440 LoC):
 
 - `src/internals/paths.ts` — cross-platform path helpers (`homedir`, `isAbsolutePath`, `normalizePathSeparators`, `getRelativePathFromPrefix`, `resolve`, `getPwd`, `getRealPath`)
-- `src/internals/virtual-paths.ts` — `qkb://` URL parsing (`VirtualPath` type, `normalizeVirtualPath`, `parseVirtualPath`, `buildVirtualPath`, `isVirtualPath`)
-- `src/internals/docids.ts` — short docid hashing (`getDocid`, `normalizeDocid`, `isDocid`)
-- `src/internals/handelize.ts` — token-friendly filename slugging (`handelize`, internal `emojiToHex`)
-- `src/internals/cache.ts` — LLM-cache key derivation (`getCacheKey`)
-- `src/internals/title.ts` — markdown / org title extraction (`extractTitle`)
+- `src/internals/virtual-paths.ts` — `qkb://` URL parsing
+- `src/internals/docids.ts` — short docid hashing
+- `src/internals/handelize.ts` — token-friendly filename slugging
+- `src/internals/cache.ts` — LLM-cache key derivation
+- `src/internals/title.ts` — markdown / org title extraction
 
-In PR-7b these were carved so they leave qmd's shadow; later PRs in the 7-series complete the rewire of CLI subcommands onto the qmd SDK and delete the remaining vendored modules. The principle in 4.0 is:
+**Tier 2 — large modules** (consolidated in PR-7d, ~7400 LoC):
 
-- **qmd via SDK**: Store engine — BM25, vector, rerank, query expansion, indexing, collection/context CRUD, model lifecycle
-- **qkb internal**: CLI utilities — paths, docids, formatters, the things you'd reach for between SDK calls
+- `src/internals/store-engine.ts` (4667 LoC) — `createStore`, full `Store` type, FTS/vector search, document/index/cache operations
+- `src/internals/llm.ts` (1665 LoC) — `LlamaCpp` class, model lifecycle, default-model URIs, embed/rerank/expand wrappers
+- `src/internals/collections-yaml.ts` (533 LoC) — YAML config loading and persistence (qmd's `NamedCollection` doesn't carry the field set qkb's config supports)
+- `src/internals/db.ts` (97 LoC) — `Database` shim, `openDatabase`, `loadSqliteVec`
+- `src/internals/maintenance.ts` (54 LoC) — qkb's local `Maintenance` class wrapping the carved store ops
+- `src/internals/ast.ts` (391 LoC) — tree-sitter chunking for code files
+
+The architectural boundary in 4.0:
+
+- **qmd via SDK** (`@tobilu/qmd`): exists when qmd's public surface covers it — `createStore`, `QMDStore` methods, `Maintenance` (qmd's), `extractSnippet`, types
+- **qkb internal** (`src/internals/`): everything else — and "everything else" turns out to be most of qkb's runtime, because qmd's public surface is narrow
+
+The honest framing: qkb depends on qmd for the **state engine creation and schema** (`createStore` opens the DB and creates qmd's tables), and uses qmd's published interface (`QMDStore`) where convenient. But qkb's CLI body still calls into the carved helpers heavily. The "thin wrapper" claim is most true for the state engine; less so for the CLI surface.
+
+Original RFC estimate of "~80% deletion" was based on assuming qmd's `.` SDK covered enough surface area. It doesn't, and the no-upstream-PR rule precludes negotiating. Actual delta after the 7-series PRs land: ~850 LoC pure deletion (legacy MCP server) + ~7800 LoC reorganized into a clean carve boundary. Net source size roughly the same; the win is architectural clarity — every line of qkb code now has a clear ownership story.
 
 ## Internal surface dependencies
 

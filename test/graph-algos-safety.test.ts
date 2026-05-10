@@ -17,8 +17,8 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createStore } from "../src/store.js";
-import { setConfigSource } from "../src/collections.js";
+import { createStore } from "../src/internals/store-engine.js";
+import { setConfigSource } from "../src/internals/collections-yaml.js";
 import { cypher } from "../src/graph/sdk.js";
 import {
   validateMaxPathLength,

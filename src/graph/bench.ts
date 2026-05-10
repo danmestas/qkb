@@ -11,10 +11,10 @@
  */
 import { existsSync, statSync, unlinkSync } from "node:fs";
 import { performance } from "node:perf_hooks";
-import { openDatabase } from "../db.js";
+import { openDatabase } from "../internals/db.js";
 import { runPageRank, runCypher, type CypherQuery } from "./sdk.js";
 import { loadGraphqlite } from "./loader.js";
-import type { Store } from "../store.js";
+import type { Store } from "../internals/store-engine.js";
 
 export interface BenchResult {
   name: string;

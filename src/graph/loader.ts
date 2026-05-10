@@ -19,7 +19,7 @@
  * the attempted path and platform-aware install hints.
  */
 import { existsSync, readFileSync } from "node:fs";
-import type { Database } from "../db.js";
+import type { Database } from "../internals/db.js";
 
 const PLATFORM_DEFAULT_PATHS: Record<string, string[]> = {
   darwin: [

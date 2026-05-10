@@ -5,7 +5,7 @@
  * feature is opt-in for at least the v2.2.x → v2.3.x release window.
  */
 import { z } from "zod";
-import type { CollectionConfig } from "../collections.js";
+import type { CollectionConfig } from "../internals/collections-yaml.js";
 
 /**
  * Hard ceiling on `max_path_length`. Cypher variable-length patterns

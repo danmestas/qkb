@@ -16,7 +16,7 @@ import {
   normalizePathSeparators,
   getRelativePathFromPrefix,
   resolve,
-} from "../src/store.js";
+} from "../src/internals/store-engine.js";
 
 // =============================================================================
 // Test Utilities

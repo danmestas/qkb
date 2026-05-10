@@ -22,7 +22,7 @@ import {
   type VectorSearchOptions,
   type ExpandQueryOptions,
 } from "../src/index.js";
-import { setDefaultLlamaCpp } from "../src/llm.js";
+import { setDefaultLlamaCpp } from "../src/internals/llm.js";
 
 // =============================================================================
 // Test Helpers

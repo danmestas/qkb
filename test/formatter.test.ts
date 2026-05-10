@@ -28,7 +28,7 @@ import {
   formatDocument,
   type MultiGetFile,
 } from "../src/cli/formatter.js";
-import type { SearchResult, DocumentResult } from "../src/store.js";
+import type { SearchResult, DocumentResult } from "../src/internals/store-engine.js";
 
 // =============================================================================
 // Test Fixtures

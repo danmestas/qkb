@@ -17,7 +17,7 @@
  */
 import type { QMDStore, UpdateProgress, UpdateResult } from "@tobilu/qmd";
 import { runGraphPass, type GraphPassResult } from "../graph/index-pass.js";
-import type { Database } from "../db.js";
+import type { Database } from "../internals/db.js";
 
 export interface OrchestratorOptions {
   /** Restrict indexing to specific collection names. Omit to index all. */

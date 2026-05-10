@@ -19,7 +19,7 @@
  * (`runUpsertNodesBulk`, `runUpsertEdgesBulk`) and Cypher deletes for
  * orphan GC.
  */
-import type { Database } from "../db.js";
+import type { Database } from "../internals/db.js";
 import {
   extractLinks,
   parseFrontmatter,

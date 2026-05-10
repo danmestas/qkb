@@ -14,7 +14,7 @@
  * after embedding completes, which keeps embed perf characteristics
  * unchanged and makes the resource cost visible.
  */
-import type { LLM } from "../llm.js";
+import type { LLM } from "../internals/llm.js";
 
 export interface Entity {
   type: string;

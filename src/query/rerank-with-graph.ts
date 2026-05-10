@@ -51,7 +51,7 @@ import {
   DEFAULT_EDGE_WEIGHTS,
   type EdgeWeightedRankResult,
 } from "../graph/hybrid.js";
-import type { Store } from "../store.js";
+import type { Store } from "../internals/store-engine.js";
 
 /**
  * Reranker model. Mirrors qmd's `DEFAULT_RERANK_MODEL_URI` shape

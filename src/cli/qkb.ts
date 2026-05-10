@@ -1,5 +1,5 @@
-import { openDatabase } from "../db.js";
-import type { Database } from "../db.js";
+import { openDatabase } from "../internals/db.js";
+import type { Database } from "../internals/db.js";
 import fastGlob from "fast-glob";
 import { execSync, spawn as nodeSpawn } from "child_process";
 import { fileURLToPath } from "url";
@@ -80,8 +80,8 @@ import {
   syncConfigToDb,
   type ReindexResult,
   type ChunkStrategy,
-} from "../store.js";
-import { disposeDefaultLlamaCpp, getDefaultLlamaCpp, setDefaultLlamaCpp, LlamaCpp, withLLMSession, pullModels, DEFAULT_EMBED_MODEL_URI, DEFAULT_GENERATE_MODEL_URI, DEFAULT_RERANK_MODEL_URI, DEFAULT_MODEL_CACHE_DIR } from "../llm.js";
+} from "../internals/store-engine.js";
+import { disposeDefaultLlamaCpp, getDefaultLlamaCpp, setDefaultLlamaCpp, LlamaCpp, withLLMSession, pullModels, DEFAULT_EMBED_MODEL_URI, DEFAULT_GENERATE_MODEL_URI, DEFAULT_RERANK_MODEL_URI, DEFAULT_MODEL_CACHE_DIR } from "../internals/llm.js";
 import {
   formatSearchResults,
   formatDocuments,
@@ -101,7 +101,7 @@ import {
   listAllContexts,
   setConfigIndexName,
   loadConfig,
-} from "../collections.js";
+} from "../internals/collections-yaml.js";
 import { getEmbeddedQkbSkillContent, getEmbeddedQkbSkillFiles } from "../embedded-skills.js";
 
 // NOTE: enableProductionMode() is intentionally NOT called at module scope here.
@@ -395,7 +395,7 @@ async function showStatus(): Promise<void> {
 
   // AST chunking status
   try {
-    const { getASTStatus } = await import("../ast.js");
+    const { getASTStatus } = await import("../internals/ast.js");
     const ast = await getASTStatus();
     console.log(`\n${c.bold}AST Chunking${c.reset}`);
     if (ast.available) {
@@ -636,7 +636,7 @@ async function updateCollections(): Promise<void> {
   // when the graph layer is enabled. Idempotent + fast since PR #50's
   // multi-MERGE bulk path. Soft-failure: link errors warn but don't fail
   // update — the index itself is still correct.
-  const { isGraphLayerAvailable } = await import("../store.js");
+  const { isGraphLayerAvailable } = await import("../internals/store-engine.js");
   if (isGraphLayerAvailable()) {
     try {
       const { graphLink } = await import("../graph/cli.js");
@@ -1486,7 +1486,7 @@ async function collectionAdd(pwd: string, globPattern: string, name?: string): P
   }
 
   // Add to YAML config + sync to SQLite
-  const { addCollection } = await import("../collections.js");
+  const { addCollection } = await import("../internals/collections-yaml.js");
   addCollection(collName, pwd, globPattern);
   resyncConfig();
 
@@ -3089,7 +3089,7 @@ if (isMain) {
             console.error("  Omit command to clear it");
             process.exit(1);
           }
-          const { updateCollectionSettings, getCollection } = await import("../collections.js");
+          const { updateCollectionSettings, getCollection } = await import("../internals/collections-yaml.js");
           const col = getCollection(name);
           if (!col) {
             console.error(`Collection not found: ${name}`);
@@ -3112,7 +3112,7 @@ if (isMain) {
             console.error(`  ${subcommand === 'include' ? 'Include' : 'Exclude'} collection in default queries`);
             process.exit(1);
           }
-          const { updateCollectionSettings, getCollection } = await import("../collections.js");
+          const { updateCollectionSettings, getCollection } = await import("../internals/collections-yaml.js");
           const col = getCollection(name);
           if (!col) {
             console.error(`Collection not found: ${name}`);
@@ -3131,7 +3131,7 @@ if (isMain) {
             console.error("Usage: qkb collection show <name>");
             process.exit(1);
           }
-          const { getCollection } = await import("../collections.js");
+          const { getCollection } = await import("../internals/collections-yaml.js");
           const col = getCollection(name);
           if (!col) {
             console.error(`Collection not found: ${name}`);
@@ -3486,7 +3486,7 @@ if (isMain) {
         // own `getDefaultDbPath()` requires a private prod-mode flip
         // that's not exposed through qmd's public SDK; qkb's `getDbPath()`
         // already handles `INDEX_PATH` env override + production mode.
-        const { startMcpHttpServer } = await import("../mcp/server-v4.js");
+        const { startMcpHttpServer } = await import("../mcp/server.js");
         try {
           await startMcpHttpServer(port, { dbPath: getDbPath() });
         } catch (e: any) {
@@ -3499,10 +3499,10 @@ if (isMain) {
       } else {
         // Default: stdio transport. RFC-0009 PR-6 cutover: route the
         // production stdio path through the qkb 4.0 MCP server in
-        // `mcp/server-v4.ts`, which dispatches every tool through the
+        // `mcp/server.ts`, which dispatches every tool through the
         // PR-4 `dispatchCommand` table (and therefore through `@tobilu/qmd`'s
         // SDK) rather than the vendored 3.x store.
-        const { startMcpStdio } = await import("../mcp/server-v4.js");
+        const { startMcpStdio } = await import("../mcp/server.js");
         await startMcpStdio({ dbPath: getDbPath() });
       }
       break;

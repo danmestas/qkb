@@ -63,10 +63,10 @@ import {
   type EmbedProgress,
   type EmbedResult,
   type ChunkStrategy,
-} from "./store.js";
+} from "./internals/store-engine.js";
 import {
   LlamaCpp,
-} from "./llm.js";
+} from "./internals/llm.js";
 import {
   setConfigSource,
   loadConfig,
@@ -80,7 +80,7 @@ import {
   type CollectionConfig,
   type NamedCollection,
   type ContextMap,
-} from "./collections.js";
+} from "./internals/collections-yaml.js";
 
 // Re-export types for SDK consumers
 export type {
@@ -111,13 +111,13 @@ export type { InternalStore };
 
 // Re-export utility functions and types used by frontends
 export { extractSnippet, addLineNumbers, DEFAULT_MULTI_GET_MAX_BYTES };
-export type { ChunkStrategy } from "./store.js";
+export type { ChunkStrategy } from "./internals/store-engine.js";
 
 // Re-export getDefaultDbPath for CLI/MCP that need the default database location
-export { getDefaultDbPath } from "./store.js";
+export { getDefaultDbPath } from "./internals/store-engine.js";
 
 // Re-export Maintenance class for CLI housekeeping operations
-export { Maintenance } from "./maintenance.js";
+export { Maintenance } from "./internals/maintenance.js";
 
 /**
  * Progress info emitted during update() for each file processed.

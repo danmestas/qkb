@@ -38,7 +38,7 @@ import {
 } from "./query/rerank-with-graph.js";
 import { contextCheck, updateWithPull } from "./commands-composite.js";
 import { findNeighbors } from "./graph/sdk.js";
-import type { Database } from "./db.js";
+import type { Database } from "./internals/db.js";
 
 /**
  * Per-call context shared across all handlers. The CLI parser builds

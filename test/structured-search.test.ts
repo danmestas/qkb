@@ -20,8 +20,8 @@ import {
   validateLexQuery,
   type ExpandedQuery,
   type Store,
-} from "../src/store.js";
-import { disposeDefaultLlamaCpp } from "../src/llm.js";
+} from "../src/internals/store-engine.js";
+import { disposeDefaultLlamaCpp } from "../src/internals/llm.js";
 
 // =============================================================================
 // parseStructuredQuery Tests (CLI Parser)

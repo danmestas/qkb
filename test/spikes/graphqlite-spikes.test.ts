@@ -15,7 +15,7 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { existsSync, mkdtempSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { openDatabase, loadSqliteVec, type Database } from "../../src/db.js";
+import { openDatabase, loadSqliteVec, type Database } from "../../src/internals/db.js";
 
 const RUN = process.env.QKB_RUN_SPIKES === "1";
 

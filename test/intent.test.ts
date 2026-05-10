@@ -19,7 +19,7 @@ import {
   INTENT_WEIGHT_SNIPPET,
   INTENT_WEIGHT_CHUNK,
   type ExpandedQuery,
-} from "../src/store.js";
+} from "../src/internals/store-engine.js";
 
 // =============================================================================
 // parseStructuredQuery — duplicated from src/cli/qkb.ts for unit testing
