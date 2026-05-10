@@ -1,5 +1,5 @@
 {
-  "name": "@danmestas/qkb",
+  "name": "@agent-ops/qkb",
   "version": "4.0.0-rc.1",
   "description": "QKB - On-device hybrid search for markdown files with BM25, vector search, and LLM reranking",
   "type": "module",
@@ -22,7 +22,7 @@
   ],
   "scripts": {
     "prepare": "[ -d .git ] && ./scripts/install-hooks.sh || true",
-    "build": "tsc -p tsconfig.build.json && printf '#!/usr/bin/env node\n' | cat - dist/cli/qkb.js > dist/cli/qkb.tmp && mv dist/cli/qkb.tmp dist/cli/qkb.js && chmod +x dist/cli/qkb.js",
+    "build": "rm -rf dist && tsc -p tsconfig.build.json && printf '#!/usr/bin/env node\\n' | cat - dist/cli/qkb.js > dist/cli/qkb.tmp && mv dist/cli/qkb.tmp dist/cli/qkb.js && chmod +x dist/cli/qkb.js",
     "test": "vitest run --reporter=verbose test/",
     "qkb": "tsx src/cli/qkb.ts",
     "index": "tsx src/cli/qkb.ts index",
