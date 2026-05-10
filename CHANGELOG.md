@@ -54,6 +54,22 @@
   nodes. Lets `qkb collection remove` clean the graph layer without
   paying for a full filesystem walk + wikilink re-extraction (the
   cost of `orchestrator.run({})`).
+- **`src/mcp/server-v4.ts` + `src/mcp/schemas.ts` — qkb-owned MCP
+  server (RFC-0009 PR-5).** Registers tool names matching qmd's MCP
+  (`query`, `get`, `multi_get`, `status`) so MCP client configs are
+  interchangeable, plus qkb-only tools (`search`, `vsearch`, `update`,
+  `embed`, `neighbors`). Each handler is a one-line `dispatchCommand`
+  call into the PR-4 dispatch table — MCP's JSON Schema validates
+  shape, the dispatcher coerces. The 3.x `src/mcp/server.ts` stays in
+  place until PR-7's deletion sweep so the CLI keeps working through
+  the cutover. `startMcpInProcess` returns an MCP `Client` linked via
+  `InMemoryTransport` for integration tests; `startMcpStdio` is the
+  4.0 stdio transport. HTTP/daemon paths are re-exported from the 3.x
+  server unchanged in this PR — PR-6 ports them onto 4.0.
+- **`"neighbors"` added to `src/commands.ts` dispatch table.** Wraps
+  `findNeighbors(db, {nodeId, hops, edgeTypes})` so the MCP handler
+  stays a one-liner. Pulls graph traversal complexity downward into
+  the dispatch layer (Ousterhout: deeper module, narrower interface).
 - RFC-0009 (thin-wrapper architecture) and its implementation plan
   added under `docs/rfcs/`.
 
