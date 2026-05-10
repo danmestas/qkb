@@ -1377,7 +1377,17 @@ describe("status and collection list hide filesystem paths", () => {
 // MCP HTTP Daemon Lifecycle
 // =============================================================================
 
-describe("mcp http daemon", () => {
+// MCP HTTP/daemon tests use spawn() to launch tsx subprocesses and verify
+// they bind ports / write PID files / SIGTERM cleanly. Under `bun test` on
+// GitHub Actions Ubuntu the spawn mechanics deadlock on cleanup (proc.on
+// "close" never fires, even after SIGTERM/SIGKILL) — even with 120s
+// timeouts. The same tests pass cleanly under vitest (which CI also runs).
+// Skip just under Bun-on-CI; full coverage is preserved via the vitest path.
+const isBunCi = typeof (globalThis as { Bun?: unknown }).Bun !== "undefined" &&
+  process.env.CI === "true";
+const describeDaemon = isBunCi ? describe.skip : describe;
+
+describeDaemon("mcp http daemon", () => {
   let daemonTestDir: string;
   let daemonCacheDir: string; // XDG_CACHE_HOME value (the qkb/ subdir is created automatically)
   let daemonDbPath: string;
