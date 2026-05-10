@@ -3489,9 +3489,16 @@ if (isMain) {
           throw e;
         }
       } else {
-        // Default: stdio transport
-        const { startMcpServer } = await import("../mcp/server.js");
-        await startMcpServer();
+        // Default: stdio transport. RFC-0009 PR-6 cutover: route the
+        // production stdio path through the qkb 4.0 MCP server in
+        // `mcp/server-v4.ts`, which dispatches every tool through the
+        // PR-4 `dispatchCommand` table (and therefore through `@tobilu/qmd`'s
+        // SDK) rather than the vendored 3.x store. HTTP/daemon paths
+        // above stay on `mcp/server.js` until PR-7's deletion sweep
+        // replaces the rest of the legacy surface in one diff.
+        const { startMcpStdio } = await import("../mcp/server-v4.js");
+        const { getDefaultDbPath: qmdDefaultDbPath } = await import("@tobilu/qmd");
+        await startMcpStdio({ dbPath: qmdDefaultDbPath() });
       }
       break;
     }
