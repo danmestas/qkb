@@ -1,6 +1,33 @@
 # Changelog
 
-## [Unreleased]
+## [4.0.0-rc.1] - 2026-05-10
+
+**Architecture (RFC-0009): qkb is now a thin wrapper around `@tobilu/qmd`.**
+
+The state engine — `Store`, BM25/vector indexing, hybrid search, rerank,
+query expansion — moved out of the qkb tree and into the `@tobilu/qmd` SDK
+that qkb depends on. Anything qmd doesn't expose publicly (CLI helpers,
+LlamaCpp lifecycle, YAML config, AST chunking, virtual-path parsing,
+short-docid hashing) lives under `src/internals/` with attribution headers.
+The MCP server, the CLI subcommand parser, and the indexing orchestrator
+all flow through a single `dispatchCommand(name, args, ctx)` table.
+
+**Quality gate.** The 10-question flight-planner-kb retrieval bench
+(`bench/graph-bench-eval.ts`) reproduces the 3.x baseline scores exactly:
+hybrid recall@5 52% / recall@10 58%, hybrid-graph recall@5 52% /
+recall@10 61%, top-1 30%. Per-question hits and ranks are byte-identical
+between the two runs — the wrapper boundary preserves retrieval quality
+because the underlying engine is preserved. See
+`bench/results/graph-bench-baseline.md`.
+
+**Honest accounting on the LoC delta.** The original RFC-0009 estimate of
+"~80% deletion" assumed qmd would re-export ~30 internal helpers via its
+`exports` field; it does not, and the no-upstream-PR rule precluded asking.
+The actual shape: ~850 LoC deleted (the legacy 3.x MCP server) plus ~7400
+LoC reorganized from `src/<name>.ts` into `src/internals/<name>.ts` to mark
+a clean carve boundary. The win is architectural clarity (every line in
+`src/internals/` is qkb-owned and not tracking upstream), not raw LoC
+reduction.
 
 ### Changes
 

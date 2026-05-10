@@ -1,6 +1,6 @@
 {
   "name": "@danmestas/qkb",
-  "version": "3.0.0",
+  "version": "4.0.0-rc.1",
   "description": "QKB - On-device hybrid search for markdown files with BM25, vector search, and LLM reranking",
   "type": "module",
   "main": "dist/index.js",

@@ -377,6 +377,27 @@ The SDK requires explicit `dbPath` — no defaults are assumed. This makes it sa
 
 ## Architecture
 
+Since 4.0 (RFC-0009), qkb is a thin wrapper around the
+[`@tobilu/qmd`](https://www.npmjs.com/package/@tobilu/qmd) SDK rather than
+a fork. qmd owns the **state engine** — `Store`, BM25/vector indexing,
+hybrid search, cross-encoder rerank, query expansion. qkb owns the layers
+qmd does not expose:
+
+- the **graph layer** (GraphQLite-backed wikilink/embed/reference index,
+  edge-weighted 1-hop expansion into the rerank pool — see "Graph Layer"
+  below);
+- everything under [`src/internals/`](src/internals/) — CLI helpers,
+  LlamaCpp lifecycle, YAML collection config, virtual-path (`qkb://...`)
+  parsing, short-docid hashing, AST chunking — carved out behind a stable
+  boundary so the wrapper edge is auditable;
+- the **CLI surface and MCP server**, both of which dispatch through a
+  single `dispatchCommand(name, args, ctx)` table that delegates to qmd's
+  SDK or to `src/internals/`.
+
+The retrieval pipeline below is implemented inside qmd; qkb's
+contribution at query time is the graph-aware rerank-pool rewrite (see
+`src/query/rerank-with-graph.ts`).
+
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                         QKB Hybrid Search Pipeline                          │
