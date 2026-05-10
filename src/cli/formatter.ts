@@ -5,8 +5,8 @@
  * JSON, CSV, XML, Markdown, files list, and CLI (colored terminal output).
  */
 
-import { extractSnippet } from "../store.js";
-import type { SearchResult, MultiGetResult, DocumentResult } from "../store.js";
+import { extractSnippet } from "@tobilu/qmd";
+import type { SearchResult, MultiGetResult, DocumentResult } from "@tobilu/qmd";
 
 // =============================================================================
 // Types
