@@ -3481,13 +3481,14 @@ if (isMain) {
         // async cleanup handlers in startMcpHttpServer actually run.
         process.removeAllListeners("SIGTERM");
         process.removeAllListeners("SIGINT");
-        // RFC-0009 PR-7: import from server-v4.js so the CLI's import
-        // graph no longer reaches the legacy mcp/server.ts directly.
-        // server-v4 re-exports startMcpHttpServer; the underlying transport
-        // still lives in the legacy module pending PR-7b's deletion sweep.
+        // RFC-0009 PR-7c: HTTP transport now lives natively in
+        // server-v4.ts. Pass the resolved dbPath explicitly — qmd's
+        // own `getDefaultDbPath()` requires a private prod-mode flip
+        // that's not exposed through qmd's public SDK; qkb's `getDbPath()`
+        // already handles `INDEX_PATH` env override + production mode.
         const { startMcpHttpServer } = await import("../mcp/server-v4.js");
         try {
-          await startMcpHttpServer(port);
+          await startMcpHttpServer(port, { dbPath: getDbPath() });
         } catch (e: any) {
           if (e?.code === "EADDRINUSE") {
             console.error(`Port ${port} already in use. Try a different port with --port.`);
@@ -3502,8 +3503,7 @@ if (isMain) {
         // PR-4 `dispatchCommand` table (and therefore through `@tobilu/qmd`'s
         // SDK) rather than the vendored 3.x store.
         const { startMcpStdio } = await import("../mcp/server-v4.js");
-        const { getDefaultDbPath: qmdDefaultDbPath } = await import("@tobilu/qmd");
-        await startMcpStdio({ dbPath: qmdDefaultDbPath() });
+        await startMcpStdio({ dbPath: getDbPath() });
       }
       break;
     }

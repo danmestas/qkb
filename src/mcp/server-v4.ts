@@ -1,5 +1,5 @@
 /**
- * qkb MCP server (4.0) — RFC-0009 PR-5.
+ * qkb MCP server (4.0) — RFC-0009 PR-5 + PR-7c.
  *
  * Tool handlers are one-line wrappers around `dispatchCommand` (the
  * PR-4 dispatch table) plus `findNeighbors` (which dispatch also
@@ -10,13 +10,6 @@
  * `status`) keeps qkb interchangeable with qmd in MCP client configs
  * — RFC §"MCP server". The remaining tools are qkb-only:
  * `search`/`vsearch`/`update`/`embed`/`neighbors`.
- *
- * Why a new file (`server-v4.ts`) rather than overwriting the 3.x
- * `server.ts` in this PR: the 3.x file is still imported by
- * `src/cli/qkb.ts` and `test/mcp.test.ts`. PR-7 ("DELETE vendored
- * code") will rip the old file out wholesale; until then the two
- * coexist. The new file owns the single name `qkb-mcp-v4` that the
- * cutover (PR-6) wires the CLI's `mcp` subcommand to.
  *
  * Plan-versus-reality deviations (intentional):
  *   - Plan imported `runFindNeighbors` from `src/graph/sdk.js`. The
@@ -33,28 +26,40 @@
  *     `searches: [{type, query}, ...]` array. We keep the single-
  *     string shape because `queryWithGraph` is single-string today
  *     and reimplementing qmd's typed-sub-query shell is out of PR-5
- *     scope. PR-7 (or a future follow-up) widens if needed.
+ *     scope. A future follow-up widens it if needed.
  *   - Plan's `McpHandle.listTools` returned `[{name}]` only and used a
  *     hand-rolled `concat`. We expose a real in-process MCP client
  *     instead via `InMemoryTransport.createLinkedPair()` so tests
  *     exercise the actual MCP wire format — same path a stdio client
  *     takes — without a separate process.
  *
- * Transports preserved from today's qkb (per RFC §"MCP server" /
- * "follow today's qkb patterns"):
- *   - stdio:           `startMcpStdio({dbPath})`
- *   - HTTP foreground: `startMcpHttpServer(port)` — TODO in PR-6
- *   - HTTP daemon:     CLI handles spawn/PID; this module is the body
+ * Transports (all live in this module after PR-7c):
+ *   - stdio:                `startMcpStdio({dbPath})`
+ *   - HTTP foreground:      `startMcpHttpServer(port, opts?)`
+ *   - HTTP daemon:          CLI handles spawn/PID; this module is the body
+ *   - In-process (tests):   `startMcpInProcess({dbPath})`
  *
- * For HTTP/daemon parity in this PR we re-export the existing 3.x
- * `startMcpHttpServer` from `./server.js`. The 4.0 stdio surface uses
- * the new in-process server. The HTTP and daemon paths get fully
- * cut over in PR-6 alongside the CLI.
+ * The HTTP transport additionally exposes two non-MCP REST endpoints
+ * carried over from the 3.x server for clients that don't speak the
+ * MCP protocol: `POST /query` (alias `POST /search`) for structured
+ * search and `GET /health` for liveness probes.
  */
+import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
+import { randomUUID } from "node:crypto";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { WebStandardStreamableHTTPServerTransport }
+  from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
+import { isInitializeRequest } from "@modelcontextprotocol/sdk/types.js";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
+import {
+  extractSnippet,
+  addLineNumbers,
+  getDefaultDbPath,
+  type ExpandedQuery,
+  type QMDStore,
+} from "@tobilu/qmd";
 import { openStore } from "../store-bridge.js";
 import {
   dispatchCommand,
@@ -62,7 +67,6 @@ import {
 } from "../commands.js";
 import { run as orchestratorRun } from "../orchestrator/index-orchestrator.js";
 import * as schemas from "./schemas.js";
-import type { QMDStore } from "@tobilu/qmd";
 
 /** Set of (toolName, dispatchName) pairs that share a one-liner handler. */
 interface ToolBinding {
@@ -206,18 +210,299 @@ export async function startMcpStdio(opts: {
   await server.connect(transport);
 }
 
-// ─── HTTP transports (deferred to PR-6) ───────────────────────────
+// ─── HTTP transport ───────────────────────────────────────────────
+
+/** Handle returned by `startMcpHttpServer` — exposes the bound port and a stop hook. */
+export type HttpServerHandle = {
+  httpServer: import("http").Server;
+  port: number;
+  stop: () => Promise<void>;
+};
 
 /**
- * HTTP transport for the 4.0 MCP server.
+ * Start the qkb MCP server over Streamable HTTP (JSON responses, no SSE).
  *
- * For PR-5 we re-export the 3.x HTTP server. PR-6 (CLI cutover) will
- * port the HTTP/daemon implementations onto this 4.0 server. Keeping
- * the re-export here means today's `qkb mcp --http` keeps working
- * across the whole 4.0 branch — see RFC §"MCP server" "HTTP/stdio/
- * daemon modes follow today's qkb patterns".
+ * Binds to localhost only. Per MCP spec each client gets its own
+ * `McpServer` + `Transport` pair; the underlying `QMDStore` is shared
+ * (SQLite handles concurrent reads).
+ *
+ * In addition to the MCP-protocol `/mcp` endpoint, this exposes two
+ * convenience HTTP endpoints carried over from qkb's 3.x server:
+ *
+ *   - `GET  /health`             — JSON `{status, uptime}` liveness
+ *   - `POST /query` (or `/search`) — structured search without MCP
+ *
+ * `dbPath` defaults to qmd's `getDefaultDbPath()` (which honors the
+ * `INDEX_PATH` env var used by tests).
  */
-export { startMcpHttpServer, type HttpServerHandle } from "./server.js";
+export async function startMcpHttpServer(
+  port: number,
+  options?: { quiet?: boolean; dbPath?: string },
+): Promise<HttpServerHandle> {
+  const dbPath = options?.dbPath ?? getDefaultDbPath();
+  const store = await openStore({ dbPath });
+
+  // Pre-fetch default collection names for the REST endpoint.
+  const defaultCollectionNames = await store.getDefaultCollectionNames();
+
+  // Per MCP spec, each session owns its own server+transport pair.
+  // The `store` is shared because SQLite + bun:sqlite/better-sqlite3
+  // are safe for concurrent reads.
+  const sessions = new Map<string, WebStandardStreamableHTTPServerTransport>();
+  const ctx = buildContext(store);
+
+  async function createSession(): Promise<WebStandardStreamableHTTPServerTransport> {
+    const transport = new WebStandardStreamableHTTPServerTransport({
+      sessionIdGenerator: () => randomUUID(),
+      enableJsonResponse: true,
+      onsessioninitialized: (sessionId: string) => {
+        sessions.set(sessionId, transport);
+        log(`${ts()} New session ${sessionId} (${sessions.size} active)`);
+      },
+    });
+    const server = new McpServer({ name: "qkb", version: "4.0.0" });
+    registerTools(server, ctx);
+    await server.connect(transport);
+
+    transport.onclose = () => {
+      if (transport.sessionId) {
+        sessions.delete(transport.sessionId);
+      }
+    };
+
+    return transport;
+  }
+
+  const startTime = Date.now();
+  const quiet = options?.quiet ?? false;
+
+  /** Format timestamp for request logging. */
+  function ts(): string {
+    return new Date().toISOString().slice(11, 23); // HH:mm:ss.SSS
+  }
+
+  /** Extract a human-readable label from a JSON-RPC body. */
+  function describeRequest(body: { method?: string; params?: { name?: string; arguments?: Record<string, unknown> } }): string {
+    const method = body?.method ?? "unknown";
+    if (method === "tools/call") {
+      const tool = body.params?.name ?? "?";
+      const args = body.params?.arguments;
+      if (args && typeof args.query === "string") {
+        const q = args.query.slice(0, 80);
+        return `tools/call ${tool} "${q}"`;
+      }
+      if (args && typeof args.path === "string") return `tools/call ${tool} ${args.path}`;
+      if (args && typeof args.pattern === "string") return `tools/call ${tool} ${args.pattern}`;
+      return `tools/call ${tool}`;
+    }
+    return method;
+  }
+
+  function log(msg: string): void {
+    if (!quiet) console.error(msg);
+  }
+
+  async function collectBody(req: IncomingMessage): Promise<string> {
+    const chunks: Buffer[] = [];
+    for await (const chunk of req) chunks.push(chunk as Buffer);
+    return Buffer.concat(chunks).toString();
+  }
+
+  const httpServer = createServer(async (nodeReq: IncomingMessage, nodeRes: ServerResponse) => {
+    const reqStart = Date.now();
+    const pathname = nodeReq.url || "/";
+
+    try {
+      if (pathname === "/health" && nodeReq.method === "GET") {
+        const body = JSON.stringify({ status: "ok", uptime: Math.floor((Date.now() - startTime) / 1000) });
+        nodeRes.writeHead(200, { "Content-Type": "application/json" });
+        nodeRes.end(body);
+        log(`${ts()} GET /health (${Date.now() - reqStart}ms)`);
+        return;
+      }
+
+      // REST endpoint: POST /query (alias: /search) — structured search without MCP protocol
+      if ((pathname === "/query" || pathname === "/search") && nodeReq.method === "POST") {
+        const rawBody = await collectBody(nodeReq);
+        const params = JSON.parse(rawBody) as {
+          searches?: Array<{ type: string; query: string }>;
+          collections?: string[];
+          limit?: number;
+          minScore?: number;
+          intent?: string;
+        };
+
+        if (!params.searches || !Array.isArray(params.searches)) {
+          nodeRes.writeHead(400, { "Content-Type": "application/json" });
+          nodeRes.end(JSON.stringify({ error: "Missing required field: searches (array)" }));
+          return;
+        }
+
+        const queries: ExpandedQuery[] = params.searches.map((s) => ({
+          type: s.type as "lex" | "vec" | "hyde",
+          query: String(s.query || ""),
+        }));
+
+        const effectiveCollections = params.collections ?? defaultCollectionNames;
+
+        const results = await store.search({
+          queries,
+          collections: effectiveCollections.length > 0 ? effectiveCollections : undefined,
+          limit: params.limit ?? 10,
+          minScore: params.minScore ?? 0,
+          intent: params.intent,
+        });
+
+        // Use first lex/vec query for snippet extraction.
+        const primaryQuery =
+          params.searches.find((s) => s.type === "lex")?.query
+          || params.searches.find((s) => s.type === "vec")?.query
+          || params.searches[0]?.query
+          || "";
+
+        const formatted = results.map((r) => {
+          const { line, snippet } = extractSnippet(r.bestChunk, primaryQuery, 300);
+          return {
+            docid: `#${r.docid}`,
+            file: r.displayPath,
+            title: r.title,
+            score: Math.round(r.score * 100) / 100,
+            context: r.context,
+            snippet: addLineNumbers(snippet, line),
+          };
+        });
+
+        nodeRes.writeHead(200, { "Content-Type": "application/json" });
+        nodeRes.end(JSON.stringify({ results: formatted }));
+        log(`${ts()} POST /query ${params.searches.length} queries (${Date.now() - reqStart}ms)`);
+        return;
+      }
+
+      if (pathname === "/mcp" && nodeReq.method === "POST") {
+        const rawBody = await collectBody(nodeReq);
+        const body = JSON.parse(rawBody);
+        const label = describeRequest(body);
+        const url = `http://localhost:${port}${pathname}`;
+        const headers: Record<string, string> = {};
+        for (const [k, v] of Object.entries(nodeReq.headers)) {
+          if (typeof v === "string") headers[k] = v;
+        }
+
+        const sessionId = headers["mcp-session-id"];
+        let transport: WebStandardStreamableHTTPServerTransport;
+
+        if (sessionId) {
+          const existing = sessions.get(sessionId);
+          if (!existing) {
+            nodeRes.writeHead(404, { "Content-Type": "application/json" });
+            nodeRes.end(JSON.stringify({
+              jsonrpc: "2.0",
+              error: { code: -32001, message: "Session not found" },
+              id: body?.id ?? null,
+            }));
+            return;
+          }
+          transport = existing;
+        } else if (isInitializeRequest(body)) {
+          transport = await createSession();
+        } else {
+          nodeRes.writeHead(400, { "Content-Type": "application/json" });
+          nodeRes.end(JSON.stringify({
+            jsonrpc: "2.0",
+            error: { code: -32000, message: "Bad Request: Missing session ID" },
+            id: body?.id ?? null,
+          }));
+          return;
+        }
+
+        const request = new Request(url, { method: "POST", headers, body: rawBody });
+        const response = await transport.handleRequest(request, { parsedBody: body });
+
+        nodeRes.writeHead(response.status, Object.fromEntries(response.headers));
+        nodeRes.end(Buffer.from(await response.arrayBuffer()));
+        log(`${ts()} POST /mcp ${label} (${Date.now() - reqStart}ms)`);
+        return;
+      }
+
+      if (pathname === "/mcp") {
+        // GET / DELETE on /mcp — must have a valid session.
+        const headers: Record<string, string> = {};
+        for (const [k, v] of Object.entries(nodeReq.headers)) {
+          if (typeof v === "string") headers[k] = v;
+        }
+
+        const sessionId = headers["mcp-session-id"];
+        if (!sessionId) {
+          nodeRes.writeHead(400, { "Content-Type": "application/json" });
+          nodeRes.end(JSON.stringify({
+            jsonrpc: "2.0",
+            error: { code: -32000, message: "Bad Request: Missing session ID" },
+            id: null,
+          }));
+          return;
+        }
+        const transport = sessions.get(sessionId);
+        if (!transport) {
+          nodeRes.writeHead(404, { "Content-Type": "application/json" });
+          nodeRes.end(JSON.stringify({
+            jsonrpc: "2.0",
+            error: { code: -32001, message: "Session not found" },
+            id: null,
+          }));
+          return;
+        }
+
+        const url = `http://localhost:${port}${pathname}`;
+        const rawBody = nodeReq.method !== "GET" && nodeReq.method !== "HEAD" ? await collectBody(nodeReq) : undefined;
+        const request = new Request(url, { method: nodeReq.method || "GET", headers, ...(rawBody ? { body: rawBody } : {}) });
+        const response = await transport.handleRequest(request);
+        nodeRes.writeHead(response.status, Object.fromEntries(response.headers));
+        nodeRes.end(Buffer.from(await response.arrayBuffer()));
+        return;
+      }
+
+      nodeRes.writeHead(404);
+      nodeRes.end("Not Found");
+    } catch (err) {
+      console.error("HTTP handler error:", err);
+      nodeRes.writeHead(500);
+      nodeRes.end("Internal Server Error");
+    }
+  });
+
+  await new Promise<void>((resolve, reject) => {
+    httpServer.on("error", reject);
+    httpServer.listen(port, "localhost", () => resolve());
+  });
+
+  const actualPort = (httpServer.address() as import("net").AddressInfo).port;
+
+  let stopping = false;
+  const stop = async (): Promise<void> => {
+    if (stopping) return;
+    stopping = true;
+    for (const transport of sessions.values()) {
+      await transport.close();
+    }
+    sessions.clear();
+    httpServer.close();
+    await store.close();
+  };
+
+  process.on("SIGTERM", async () => {
+    console.error("Shutting down (SIGTERM)...");
+    await stop();
+    process.exit(0);
+  });
+  process.on("SIGINT", async () => {
+    console.error("Shutting down (SIGINT)...");
+    await stop();
+    process.exit(0);
+  });
+
+  log(`QKB MCP server listening on http://localhost:${actualPort}/mcp`);
+  return { httpServer, port: actualPort, stop };
+}
 
 // Exported for inspection / future tooling. `_meta` only.
 export const REGISTERED_TOOLS: ReadonlyArray<string> = TOOLS.map(

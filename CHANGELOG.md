@@ -4,6 +4,29 @@
 
 ### Changes
 
+- **MCP HTTP transport ported into `src/mcp/server-v4.ts` (RFC-0009 PR-7c).**
+  The HTTP transport (`startMcpHttpServer`), its `HttpServerHandle`
+  type, and the REST `/health` + `/query` (alias `/search`) endpoints
+  now live natively in `server-v4.ts` alongside the stdio and
+  in-process transports. Previously `server-v4.ts` re-exported these
+  from the legacy `src/mcp/server.ts`; that re-export shim is gone.
+  Each session uses a fresh `McpServer` instance built from the v4
+  dispatch table, with the underlying `QMDStore` shared across
+  sessions (SQLite reads are concurrency-safe).
+
+  The CLI's `case "mcp"` block now passes an explicit `dbPath` to both
+  stdio and HTTP transports — qkb's `getDbPath()` already honors the
+  `INDEX_PATH` env override and the qkb-side production-mode flag, so
+  the v4 MCP server doesn't need to depend on qmd's private
+  `enableProductionMode()`. `test/mcp.test.ts`'s HTTP suite imports
+  `startMcpHttpServer` from `server-v4.ts` directly. All 1014 passing
+  tests stay passing.
+
+  This was the last consumer of `src/mcp/server.ts`. The legacy file
+  is now deletion-ready; deletion (along with the rest of the vendored
+  store/db/embed/rerank/expand/llm/ast/collections/maintenance modules)
+  is deferred to a follow-up PR — see RFC-0009 §"File layout (4.0)".
+
 - **qkb-owned utilities carved into `src/internals/` (RFC-0009 PR-7b).**
   Six focused leaf modules now hold the helpers qkb's CLI uses but qmd's
   SDK does not surface (qmd's `package.json` `exports` is `.`-only, so
