@@ -167,19 +167,47 @@ export function runGraphPass(
   // 6. Upsert all edges in batches.
   runUpsertEdgesBulk(db, edges);
 
-  // 7. Orphan GC. qmd's update() soft-deletes missing docs (sets
-  //    active=0). The graph layer only knows about the `id` we
-  //    assigned at upsert time (`doc:<docId>`); we prune any graph
-  //    node whose backing doc id is no longer active in `documents`.
-  //
-  //    Implementation: ask Cypher for all `doc:*` nodes, then check
-  //    each id against the `documents` table. Anything orphaned gets
-  //    DETACH DELETEd (also drops incident edges).
+  // 7+8. Orphan GC. Hidden inside `runGraphPass()` so callers don't
+  //       coordinate it. Also exposed standalone via `pruneGraphOrphans`
+  //       for cheap post-`removeCollection` cleanup that doesn't need a
+  //       full filesystem walk.
+  const { nodesPruned, wikiTargetsPruned } = pruneGraphOrphans(db);
+
+  return {
+    edgesUpserted: edges.length,
+    nodesPruned,
+    wikiTargetsPruned,
+  };
+}
+
+/**
+ * Prune orphaned doc nodes and WikiTarget placeholders from the graph
+ * layer. Standalone-callable so commands like `qkb collection remove`
+ * can clean up cheaply after qmd hard-deletes rows from `documents`,
+ * without paying for a full `runGraphPass()` (which re-walks every
+ * active doc, parses frontmatter, and re-extracts links).
+ *
+ * (a) Doc nodes: any `(:* {id: 'doc:N'})` whose backing `documents.id`
+ *     is no longer present + active gets `DETACH DELETE`d (incident
+ *     edges drop with it).
+ * (b) WikiTarget placeholders: any `(:WikiTarget)` with no inbound
+ *     `:LINKS_TO` edge is orphaned and pruned.
+ *
+ * Idempotent — re-running is a cheap no-op when the graph is already
+ * clean.
+ */
+export function pruneGraphOrphans(
+  db: Database
+): { nodesPruned: number; wikiTargetsPruned: number } {
+  // (a) Doc nodes: ask Cypher for all `doc:*` nodes, then check each
+  //     id against the `documents` table. Anything orphaned gets
+  //     DETACH DELETEd (also drops incident edges).
   const docNodesRow = db
     .prepare("SELECT cypher(?, ?) AS r")
-    .get("MATCH (n) WHERE n.id STARTS WITH 'doc:' RETURN n.id AS id", JSON.stringify({})) as {
-    r: string;
-  };
+    .get(
+      "MATCH (n) WHERE n.id STARTS WITH 'doc:' RETURN n.id AS id",
+      JSON.stringify({})
+    ) as { r: string };
   let docNodes: Array<{ id: string }> = [];
   try {
     const parsed = JSON.parse(docNodesRow.r);
@@ -215,9 +243,8 @@ export function runGraphPass(
     }
   }
 
-  // 8. Prune unreferenced WikiTarget placeholders (orphan GC for the
-  //    placeholder side). A WikiTarget with no inbound :LINKS_TO edge
-  //    is orphaned.
+  // (b) WikiTarget placeholders: a WikiTarget with no inbound
+  //     `:LINKS_TO` edge is orphaned.
   const orphanWikiRow = db
     .prepare("SELECT cypher(?, ?) AS r")
     .get(
@@ -240,9 +267,5 @@ export function runGraphPass(
     wikiTargetsPruned++;
   }
 
-  return {
-    edgesUpserted: edges.length,
-    nodesPruned,
-    wikiTargetsPruned,
-  };
+  return { nodesPruned, wikiTargetsPruned };
 }
