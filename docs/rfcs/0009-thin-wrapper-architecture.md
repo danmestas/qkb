@@ -413,9 +413,9 @@ main (3.x)                    4.0 branch
    │                              ├─ PR-6: CUTOVER — replace cli/qkb.ts body
    │                              ├─ PR-7: DELETE vendored code (the big diff)
    │                              ├─ PR-8: bench validation + README + CHANGELOG
-   │                              └─ PR-9: tag 4.0.0-rc.1 → beta → 4.0.0
+   │                              └─ PR-9: tag v0.0.1 → npm publish (first public release)
    ▼                              ▼
-3.x.y patches stay available    npm publishes 4.0.0
+3.x.y kept private              npm publishes @agent-ops/qkb@0.0.1
 ```
 
 Each PR has a single deliverable + integration tests. The `4.0` branch is rebased on `main` weekly.
@@ -435,15 +435,16 @@ On first run after upgrade, delete the existing index and re-run:
 
 Why not auto-migrate: qmd's schema may have evolved since qkb 3.x's vendored fork. Auto-migrating across that gap means tracking qmd's internal migrations — exactly the coupling we're avoiding. Re-indexing is fast.
 
-### Beta cycle
+### Release approach
 
 ```
-4.0.0-rc.1   → install on flight-planner-kb, run for 3-5 days
-4.0.0-rc.2   → fix issues from rc.1; bench against 3.x baseline
-4.0.0        → public release
+0.0.1   → first public release on npm under @agent-ops/qkb
+0.0.x   → patch iterations as we learn from real use
+0.1.0   → first minor when we'd consider the surface usable
+1.0.0   → declared stable
 ```
 
-Bench is the gate. If recall@10 drops more than 5 points vs. 3.x baseline, do not ship.
+No rc/beta cycle for the first publish — pre-1.0 versioning explicitly signals "API may change" and removes the pressure to commit to stability before we have feedback. Bench is still the quality gate before each release: recall@10 must stay within 5 points of the prior baseline.
 
 ### Deprecation
 

@@ -59,7 +59,7 @@ Every row from RFC §"Internal surface dependencies" must have a dedicated integ
 | 6 | `rfc-0009/06-cutover` | Replace `src/cli/qkb.ts` body; wire to dispatch table | ±300 | Integration: existing CLI tests still pass |
 | 7 | `rfc-0009/07-delete-vendored` | Delete vendored qmd code (the big diff) | -10000 | CI integration tests are the safety net |
 | 8 | `rfc-0009/08-bench-docs` | Bench validation, README, CHANGELOG, migration notes | +500 docs | Bench against 3.x baseline (recall@10 within 5pts) |
-| 9 | `rfc-0009/09-release-4.0` | Tag `v4.0.0-rc.1`, beta cycle, then `v4.0.0` | n/a | Smoke install from registry |
+| 9 | `rfc-0009/09-release` | Tag `v0.0.1` — first public release of `@agent-ops/qkb` on npm (no rc cycle for the initial publish; pre-1.0 lets us iterate freely) | n/a | Smoke install from registry |
 
 ---
 
@@ -1453,7 +1453,7 @@ Read `bench/results/graph-bench-baseline.md` and `/tmp/4.0-bench.md` side by sid
 
 Acceptance criteria (per RFC-0009 §"Beta cycle"): recall@10 within 5 points of 3.x baseline.
 
-If 4.0 is within tolerance: append the 4.0 results to `bench/results/graph-bench-baseline.md` under a new "## 4.0.0-rc.1" heading.
+If 4.0 is within tolerance: append the 4.0 results to `bench/results/graph-bench-baseline.md` under a new "## 0.0.1" heading.
 
 If 4.0 regresses more than 5 points: do NOT continue to PR-9. File a new branch from `4.0` with hypotheses, fix, re-bench. Common culprits:
 - `mergeForRerank` is dropping graph candidates with no `body` text
@@ -1469,10 +1469,10 @@ Modify `README.md`:
 
 - [ ] **8.5: Final CHANGELOG entry**
 
-Promote `[Unreleased]` to `[4.0.0-rc.1] - 2026-XX-XX`. Summarize:
+Promote `[Unreleased]` to `[0.0.1] - 2026-XX-XX`. Summarize:
 
 ```markdown
-## [4.0.0-rc.1] - 2026-XX-XX
+## [0.0.1] - 2026-XX-XX
 
 ### Architecture
 qkb is now a thin wrapper around `@tobilu/qmd`, not a fork. ~80% codebase reduction.
@@ -1493,16 +1493,16 @@ qkb is now a thin wrapper around `@tobilu/qmd`, not a fork. ~80% codebase reduct
 git add bench/results/graph-bench-baseline.md README.md CHANGELOG.md assets/
 git commit -m "docs(rfc-0009): 4.0 bench validation + README + CHANGELOG"
 git push -u origin rfc-0009/08-bench-docs
-gh pr create --title "rfc-0009/08: bench validation + docs for 4.0.0-rc.1" --base 4.0
+gh pr create --title "rfc-0009/08: bench validation + docs for 0.0.1" --base 4.0
 gh pr checks --watch && gh pr merge --auto --squash
 ```
 
 ---
 
-## PR-9: Tag 4.0.0-rc.1, beta, then 4.0.0
+## PR-9: Tag 0.0.1 — first public release
 
 **Branch**: none (tag operations on `4.0`)
-**Goal**: Cut the release. Beta period via rc.1, then promote to 4.0.0.
+**Goal**: Cut the release. First publish of @agent-ops/qkb on npm, no rc cycle (pre-1.0 versioning lets us iterate).
 
 ### Tasks
 
@@ -1515,24 +1515,21 @@ gh run list --branch 4.0 --limit 5
 
 Expected: green check on the most recent commit.
 
-- [ ] **9.2: Confirm version in `package.json` is `4.0.0-rc.1`**
-
-If not yet bumped: edit `package.json` to `"version": "4.0.0-rc.1"` and commit:
+- [ ] **9.2: Confirm version in `package.json` is `0.0.1`**
 
 ```bash
-git add package.json
-git commit -m "chore: bump to 4.0.0-rc.1"
-git push origin 4.0
+jq -r .version package.json
+# expect: 0.0.1
 ```
 
 - [ ] **9.3: Tag and push**
 
 ```bash
-git tag -a v4.0.0-rc.1 -m "qkb 4.0.0-rc.1: thin wrapper architecture (RFC-0009)"
-git push origin v4.0.0-rc.1
+git tag -a v0.0.1 -m "qkb 0.0.1: first public release of @agent-ops/qkb (RFC-0009 thin-wrapper architecture)"
+git push origin v0.0.1
 ```
 
-This triggers `.github/workflows/publish.yml` (publishes to npm with `--tag rc`).
+This triggers `.github/workflows/publish.yml` (publishes to npm under the default `latest` dist-tag — the workflow only routes pre-release versions to non-`latest` tags).
 
 - [ ] **9.4: Watch publish workflow**
 
@@ -1541,41 +1538,21 @@ gh run watch
 npm view @agent-ops/qkb dist-tags
 ```
 
-Expected: `rc: 4.0.0-rc.1` appears under dist-tags.
+Expected: `latest: 0.0.1` under dist-tags.
 
-- [ ] **9.5: Beta period — install on flight-planner-kb, run for 3-5 days**
-
-```bash
-npm install -g @agent-ops/qkb@rc
-qkb --version  # 4.0.0-rc.1
-# Use it daily; log issues in GitHub
-```
-
-- [ ] **9.6: After beta, fix any rc.1 issues, repeat for rc.2 if needed**
-
-If issues found: fix on a feature branch off `4.0`, merge to `4.0`, bump to `4.0.0-rc.2`, tag, beta again.
-
-- [ ] **9.7: Promote to 4.0.0**
-
-When stable:
+- [ ] **9.5: Smoke install + verify**
 
 ```bash
-git checkout 4.0 && git pull
-# Bump package.json to 4.0.0
-# Update CHANGELOG: rename [4.0.0-rc.1] section header to [4.0.0] - <today>, set today's date
-git add package.json CHANGELOG.md
-git commit -m "chore: release 4.0.0"
-git push origin 4.0
-
-git tag -a v4.0.0 -m "qkb 4.0.0: thin wrapper architecture"
-git push origin v4.0.0
-
-gh run watch
-npm view @agent-ops/qkb dist-tags
-# Expect: latest: 4.0.0
+npm install -g @agent-ops/qkb
+qkb --version  # 0.0.1
+qkb --help     # exits 0
 ```
 
-- [ ] **9.8: Merge `4.0` back to `main`**
+- [ ] **9.6: Iterate on 0.0.x for issues found in real use**
+
+No rc cycle for the first publish. Iterate via 0.0.2, 0.0.3, etc. Promote to 0.1.0 when the surface feels stable enough; promote to 1.0.0 when committed to a stable API.
+
+- [ ] **9.7: Merge `4.0` back to `main`**
 
 ```bash
 git checkout main && git pull
@@ -1585,9 +1562,9 @@ gh pr create --base main --head 4.0 --title "Merge 4.0 into main"
 # Approve and squash-merge
 ```
 
-- [ ] **9.9: Sunset announcement for 3.x**
+- [ ] **9.8: Note 3.x in README**
 
-Update README + post a GitHub release note: "3.x branch enters maintenance — critical bug fixes only. Will archive 3 months from 4.0.0 release."
+Add a short note that 3.x is the pre-thin-wrapper internal version (under `@danmestas/qkb`, never published) and is no longer maintained. The public history starts at 0.0.1.
 
 ---
 

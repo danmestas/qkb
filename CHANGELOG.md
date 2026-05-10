@@ -1,8 +1,10 @@
 # Changelog
 
-## [4.0.0-rc.1] - 2026-05-10
+## [0.0.1] - 2026-05-10
 
-**Architecture (RFC-0009): qkb is now a thin wrapper around `@tobilu/qmd`.**
+**First public release** of `@agent-ops/qkb` on npm. This codebase had a private internal version history under `@danmestas/qkb` (3.x) but was never published. `0.0.1` resets the published history honestly: pre-1.0 signals "API may change as we learn" without semver-breaking pressure as we iterate.
+
+**Architecture (RFC-0009): qkb is a thin wrapper around `@tobilu/qmd`.**
 
 The state engine — `Store`, BM25/vector indexing, hybrid search, rerank,
 query expansion — moved out of the qkb tree and into the `@tobilu/qmd` SDK

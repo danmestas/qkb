@@ -6,7 +6,7 @@ diffing.
 
 | Run | Date | recall@5 (hybrid-graph) | recall@10 (hybrid-graph) | Top-1 |
 |---|---|--:|--:|--:|
-| **4.0.0-rc.1 (active)** | 2026-05-10 | 52% | 61% | 30% |
+| **0.0.1 (active)** | 2026-05-10 | 52% | 61% | 30% |
 | 3.x baseline | 2026-05-09 | 52% | 61% | 30% |
 
 4.0 reproduces 3.x's recall scores exactly — the thin-wrapper architecture
@@ -188,7 +188,7 @@ graph-aware rerank path. Per RFC-0009 §"Beta cycle" the release gate is
 - `vault-query` (manual file-reading skill) is not benchmarked — it's procedural and not directly CLI-runnable.
 ---
 
-## 4.0.0-rc.1 (2026-05-10)
+## 0.0.1 (2026-05-10)
 
 
 **Run**: 2026-05-10T18:16:08.851Z
