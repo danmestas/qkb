@@ -95,6 +95,24 @@ These constraints shape the design but do not block it.
 - DB connection lifecycle, sqlite-vec extension load
 - All schema for `docs`, `chunks`, `vec_chunks`, `store_*` tables
 
+### qkb-owned utilities (`src/internals/`)
+
+Some module-level helpers used by qkb's CLI live in qmd's vendored source but are NOT exported through qmd's `.` SDK boundary (qmd's `package.json` `exports` is strictly root-only). Rather than file upstream PRs, qkb carves these helpers into `src/internals/*.ts` with a header comment marking them qkb-owned. They no longer track upstream qmd.
+
+The carved set lives in:
+
+- `src/internals/paths.ts` — cross-platform path helpers (`homedir`, `isAbsolutePath`, `normalizePathSeparators`, `getRelativePathFromPrefix`, `resolve`, `getPwd`, `getRealPath`)
+- `src/internals/virtual-paths.ts` — `qkb://` URL parsing (`VirtualPath` type, `normalizeVirtualPath`, `parseVirtualPath`, `buildVirtualPath`, `isVirtualPath`)
+- `src/internals/docids.ts` — short docid hashing (`getDocid`, `normalizeDocid`, `isDocid`)
+- `src/internals/handelize.ts` — token-friendly filename slugging (`handelize`, internal `emojiToHex`)
+- `src/internals/cache.ts` — LLM-cache key derivation (`getCacheKey`)
+- `src/internals/title.ts` — markdown / org title extraction (`extractTitle`)
+
+In PR-7b these were carved so they leave qmd's shadow; later PRs in the 7-series complete the rewire of CLI subcommands onto the qmd SDK and delete the remaining vendored modules. The principle in 4.0 is:
+
+- **qmd via SDK**: Store engine — BM25, vector, rerank, query expansion, indexing, collection/context CRUD, model lifecycle
+- **qkb internal**: CLI utilities — paths, docids, formatters, the things you'd reach for between SDK calls
+
 ## Internal surface dependencies
 
 qkb depends on a precise set of "advanced use" lever points that qmd exposes via `QMDStore.internal` and certain SDK options. Each is a contract that integration tests must exercise on every qmd version bump. If qmd removes or renames any of these, qkb breaks — but in a way our tests catch on the next push, not silently in production.
