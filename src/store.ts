@@ -347,190 +347,23 @@ export type ExpandedQuery = {
 };
 
 // =============================================================================
-// Path utilities
+// Path utilities — carved to src/internals/paths.ts (RFC-0009 PR-7b).
 // =============================================================================
 
-export function homedir(): string {
-  return HOME;
-}
-
-/**
- * Check if a path is absolute.
- * Supports:
- * - Unix paths: /path/to/file
- * - Windows native: C:\path or C:/path
- * - Git Bash: /c/path or /C/path (C-Z drives, excluding A/B floppy drives)
- * 
- * Note: /c without trailing slash is treated as Unix path (directory named "c"),
- * while /c/ or /c/path are treated as Git Bash paths (C: drive).
- */
-export function isAbsolutePath(path: string): boolean {
-  if (!path) return false;
-  
-  // Unix absolute path
-  if (path.startsWith('/')) {
-    // Check if it's a Git Bash style path like /c/ or /c/Users (C-Z only, not A or B)
-    // Requires path[2] === '/' to distinguish from Unix paths like /c or /cache
-    // Skipped on WSL where /c/ is a valid drvfs mount point, not a drive letter
-    if (!isWSL() && path.length >= 3 && path[2] === '/') {
-      const driveLetter = path[1];
-      if (driveLetter && /[c-zC-Z]/.test(driveLetter)) {
-        return true;
-      }
-    }
-    // Any other path starting with / is Unix absolute
-    return true;
-  }
-  
-  // Windows native path: C:\ or C:/ (any letter A-Z)
-  if (path.length >= 2 && /[a-zA-Z]/.test(path[0]!) && path[1] === ':') {
-    return true;
-  }
-  
-  return false;
-}
-
-/**
- * Normalize path separators to forward slashes.
- * Converts Windows backslashes to forward slashes.
- */
-export function normalizePathSeparators(path: string): string {
-  return path.replace(/\\/g, '/');
-}
-
-/**
- * Detect if running inside WSL (Windows Subsystem for Linux).
- * On WSL, paths like /c/work/... are valid drvfs mount points, not Git Bash paths.
- */
-function isWSL(): boolean {
-  return !!(process.env.WSL_DISTRO_NAME || process.env.WSL_INTEROP);
-}
-
-/**
- * Get the relative path from a prefix.
- * Returns null if path is not under prefix.
- * Returns empty string if path equals prefix.
- */
-export function getRelativePathFromPrefix(path: string, prefix: string): string | null {
-  // Empty prefix is invalid
-  if (!prefix) {
-    return null;
-  }
-  
-  const normalizedPath = normalizePathSeparators(path);
-  const normalizedPrefix = normalizePathSeparators(prefix);
-  
-  // Ensure prefix ends with / for proper matching
-  const prefixWithSlash = !normalizedPrefix.endsWith('/') 
-    ? normalizedPrefix + '/' 
-    : normalizedPrefix;
-  
-  // Exact match
-  if (normalizedPath === normalizedPrefix) {
-    return '';
-  }
-  
-  // Check if path starts with prefix
-  if (normalizedPath.startsWith(prefixWithSlash)) {
-    return normalizedPath.slice(prefixWithSlash.length);
-  }
-  
-  return null;
-}
-
-export function resolve(...paths: string[]): string {
-  if (paths.length === 0) {
-    throw new Error("resolve: at least one path segment is required");
-  }
-  
-  // Normalize all paths to use forward slashes
-  const normalizedPaths = paths.map(normalizePathSeparators);
-  
-  let result = '';
-  let windowsDrive = '';
-  
-  // Check if first path is absolute
-  const firstPath = normalizedPaths[0]!;
-  if (isAbsolutePath(firstPath)) {
-    result = firstPath;
-    
-    // Extract Windows drive letter if present
-    if (firstPath.length >= 2 && /[a-zA-Z]/.test(firstPath[0]!) && firstPath[1] === ':') {
-      windowsDrive = firstPath.slice(0, 2);
-      result = firstPath.slice(2);
-    } else if (!isWSL() && firstPath.startsWith('/') && firstPath.length >= 3 && firstPath[2] === '/') {
-      // Git Bash style: /c/ -> C: (C-Z drives only, not A or B)
-      // Skipped on WSL where /c/ is a valid drvfs mount point, not a drive letter
-      const driveLetter = firstPath[1];
-      if (driveLetter && /[c-zC-Z]/.test(driveLetter)) {
-        windowsDrive = driveLetter.toUpperCase() + ':';
-        result = firstPath.slice(2);
-      }
-    }
-  } else {
-    // Start with PWD or cwd, then append the first relative path
-    const pwd = normalizePathSeparators(process.env.PWD || process.cwd());
-    
-    // Extract Windows drive from PWD if present
-    if (pwd.length >= 2 && /[a-zA-Z]/.test(pwd[0]!) && pwd[1] === ':') {
-      windowsDrive = pwd.slice(0, 2);
-      result = pwd.slice(2) + '/' + firstPath;
-    } else {
-      result = pwd + '/' + firstPath;
-    }
-  }
-  
-  // Process remaining paths
-  for (let i = 1; i < normalizedPaths.length; i++) {
-    const p = normalizedPaths[i]!;
-    if (isAbsolutePath(p)) {
-      // Absolute path replaces everything
-      result = p;
-      
-      // Update Windows drive if present
-      if (p.length >= 2 && /[a-zA-Z]/.test(p[0]!) && p[1] === ':') {
-        windowsDrive = p.slice(0, 2);
-        result = p.slice(2);
-      } else if (!isWSL() && p.startsWith('/') && p.length >= 3 && p[2] === '/') {
-        // Git Bash style (C-Z drives only, not A or B)
-        // Skipped on WSL where /c/ is a valid drvfs mount point, not a drive letter
-        const driveLetter = p[1];
-        if (driveLetter && /[c-zC-Z]/.test(driveLetter)) {
-          windowsDrive = driveLetter.toUpperCase() + ':';
-          result = p.slice(2);
-        } else {
-          windowsDrive = '';
-        }
-      } else {
-        windowsDrive = '';
-      }
-    } else {
-      // Relative path - append
-      result = result + '/' + p;
-    }
-  }
-  
-  // Normalize . and .. components
-  const parts = result.split('/').filter(Boolean);
-  const normalized: string[] = [];
-  for (const part of parts) {
-    if (part === '..') {
-      normalized.pop();
-    } else if (part !== '.') {
-      normalized.push(part);
-    }
-  }
-  
-  // Build final path
-  const finalPath = '/' + normalized.join('/');
-  
-  // Prepend Windows drive if present
-  if (windowsDrive) {
-    return windowsDrive + finalPath;
-  }
-  
-  return finalPath;
-}
+import {
+  homedir,
+  resolve,
+  getRealPath,
+} from "./internals/paths.js";
+export {
+  homedir,
+  isAbsolutePath,
+  normalizePathSeparators,
+  getRelativePathFromPrefix,
+  resolve,
+  getPwd,
+  getRealPath,
+} from "./internals/paths.js";
 
 // Flag to indicate production mode (set by qkb.ts at startup)
 let _productionMode = false;
@@ -564,111 +397,22 @@ export function getDefaultDbPath(indexName: string = "index"): string {
   return resolve(qkbCacheDir, `${indexName}.sqlite`);
 }
 
-export function getPwd(): string {
-  return process.env.PWD || process.cwd();
-}
-
-export function getRealPath(path: string): string {
-  try {
-    return realpathSync(path);
-  } catch {
-    return resolve(path);
-  }
-}
-
 // =============================================================================
-// Virtual Path Utilities (qkb://)
+// Virtual Path Utilities (qkb://) — carved to src/internals/virtual-paths.ts.
 // =============================================================================
 
-export type VirtualPath = {
-  collectionName: string;
-  path: string;  // relative path within collection
-  indexName?: string;
-};
-
-/**
- * Normalize explicit virtual path formats to standard qkb:// format.
- * Only handles paths that are already explicitly virtual:
- * - qkb://collection/path.md (already normalized)
- * - qkb:////collection/path.md (extra slashes - normalize)
- * - //collection/path.md (missing qkb: prefix - add it)
- *
- * Does NOT handle:
- * - collection/path.md (bare paths - could be filesystem relative)
- * - :linenum suffix (should be parsed separately before calling this)
- */
-export function normalizeVirtualPath(input: string): string {
-  let path = input.trim();
-
-  // Handle qkb:// with extra slashes: qkb:////collection/path -> qkb://collection/path
-  if (path.startsWith('qkb:')) {
-    // Remove qkb: prefix and normalize slashes
-    path = path.slice(4);
-    // Remove leading slashes and re-add exactly two
-    path = path.replace(/^\/+/, '');
-    return `qkb://${path}`;
-  }
-
-  // Handle //collection/path (missing qkb: prefix)
-  if (path.startsWith('//')) {
-    path = path.replace(/^\/+/, '');
-    return `qkb://${path}`;
-  }
-
-  // Return as-is for other cases (filesystem paths, docids, bare collection/path, etc.)
-  return path;
-}
-
-/**
- * Parse a virtual path like "qkb://collection-name/path/to/file.md"
- * into its components.
- * Also supports collection root: "qkb://collection-name/" or "qkb://collection-name"
- */
-export function parseVirtualPath(virtualPath: string): VirtualPath | null {
-  // Normalize the path first
-  const normalized = normalizeVirtualPath(virtualPath);
-  const [pathPart = normalized, queryString = ""] = normalized.split("?");
-
-  // Match: qkb://collection-name[/optional-path]
-  // Allows: qkb://name, qkb://name/, qkb://name/path
-  const match = pathPart.match(/^qkb:\/\/([^\/]+)\/?(.*)$/);
-  if (!match?.[1]) return null;
-  const indexName = new URLSearchParams(queryString).get("index")?.trim() || undefined;
-  return {
-    collectionName: match[1],
-    path: match[2] ?? '',  // Empty string for collection root
-    ...(indexName ? { indexName } : {}),
-  };
-}
-
-/**
- * Build a virtual path from collection name and relative path.
- */
-export function buildVirtualPath(collectionName: string, path: string, indexName?: string): string {
-  const base = `qkb://${collectionName}/${path}`;
-  return indexName ? `${base}?index=${encodeURIComponent(indexName)}` : base;
-}
-
-/**
- * Check if a path is explicitly a virtual path.
- * Only recognizes explicit virtual path formats:
- * - qkb://collection/path.md
- * - //collection/path.md
- *
- * Does NOT consider bare collection/path.md as virtual - that should be
- * handled separately by checking if the first component is a collection name.
- */
-export function isVirtualPath(path: string): boolean {
-  const trimmed = path.trim();
-
-  // Explicit qkb:// prefix (with any number of slashes)
-  if (trimmed.startsWith('qkb:')) return true;
-
-  // //collection/path format (missing qkb: prefix)
-  if (trimmed.startsWith('//')) return true;
-
-  return false;
-}
+export type { VirtualPath } from "./internals/virtual-paths.js";
+export {
+  normalizeVirtualPath,
+  parseVirtualPath,
+  buildVirtualPath,
+  isVirtualPath,
+} from "./internals/virtual-paths.js";
+import {
+  parseVirtualPath,
+  buildVirtualPath,
+  isVirtualPath,
+} from "./internals/virtual-paths.js";
 
 /**
  * Resolve a virtual path to absolute filesystem path.
@@ -1985,82 +1729,11 @@ export type DocumentResult = {
   body?: string;              // Document body (optional, load with getDocumentBody)
 };
 
-/**
- * Extract short docid from a full hash (first 6 characters).
- */
-export function getDocid(hash: string): string {
-  return hash.slice(0, 6);
-}
-
-/**
- * Handelize a filename to be more token-friendly.
- * - Convert triple underscore `___` to `/` (folder separator)
- * - Replace sequences of non-word chars (except /) with single dash
- * - Remove leading/trailing dashes from path segments
- * - Preserve folder structure (a/b/c/d.md stays structured)
- * - Preserve file extension
- * - Preserve original case (important for case-sensitive filesystems)
- */
-/** Replace emoji/symbol codepoints with their hex representation (e.g. 🐘 → 1f418) */
-function emojiToHex(str: string): string {
-  return str.replace(/(?:\p{So}\p{Mn}?|\p{Sk})+/gu, (run) => {
-    // Split the run into individual emoji and convert each to hex, dash-separated
-    return [...run].filter(c => /\p{So}|\p{Sk}/u.test(c))
-      .map(c => c.codePointAt(0)!.toString(16)).join('-');
-  });
-}
-
-export function handelize(path: string): string {
-  if (!path || path.trim() === '') {
-    throw new Error('handelize: path cannot be empty');
-  }
-
-  // Allow route-style "$" filenames while still rejecting paths with no usable content.
-  // Emoji (\p{So}) counts as valid content — they get converted to hex codepoints below.
-  const segments = path.split('/').filter(Boolean);
-  const lastSegment = segments[segments.length - 1] || '';
-  const filenameWithoutExt = lastSegment.replace(/\.[^.]+$/, '');
-  const hasValidContent = /[\p{L}\p{N}\p{So}\p{Sk}$]/u.test(filenameWithoutExt);
-  if (!hasValidContent) {
-    throw new Error(`handelize: path "${path}" has no valid filename content`);
-  }
-
-  const result = path
-    .replace(/___/g, '/')       // Triple underscore becomes folder separator
-    .split('/')
-    .map((segment, idx, arr) => {
-      const isLastSegment = idx === arr.length - 1;
-
-      // Convert emoji to hex codepoints before cleaning
-      segment = emojiToHex(segment);
-
-      if (isLastSegment) {
-        // For the filename (last segment), preserve the extension
-        const extMatch = segment.match(/(\.[a-z0-9]+)$/i);
-        const ext = extMatch ? extMatch[1] : '';
-        const nameWithoutExt = ext ? segment.slice(0, -ext.length) : segment;
-
-        const cleanedName = nameWithoutExt
-          .replace(/[^\p{L}\p{N}$]+/gu, '-')  // Keep letters, numbers, "$"; dash-separate rest (including dots)
-          .replace(/^-+|-+$/g, ''); // Remove leading/trailing dashes
-
-        return cleanedName + ext;
-      } else {
-        // For directories, just clean normally
-        return segment
-          .replace(/[^\p{L}\p{N}$]+/gu, '-')
-          .replace(/^-+|-+$/g, '');
-      }
-    })
-    .filter(Boolean)
-    .join('/');
-
-  if (!result) {
-    throw new Error(`handelize: path "${path}" resulted in empty string after processing`);
-  }
-
-  return result;
-}
+// getDocid + handelize carved to src/internals/{docids,handelize}.ts (RFC-0009 PR-7b).
+export { getDocid } from "./internals/docids.js";
+import { getDocid } from "./internals/docids.js";
+export { handelize } from "./internals/handelize.js";
+import { handelize } from "./internals/handelize.js";
 
 /**
  * Search result extends DocumentResult with score and source info
@@ -2188,15 +1861,11 @@ export function getIndexHealth(db: Database): IndexHealthInfo {
 }
 
 // =============================================================================
-// Caching
+// Caching — getCacheKey carved to src/internals/cache.ts (RFC-0009 PR-7b).
 // =============================================================================
 
-export function getCacheKey(url: string, body: object): string {
-  const hash = createHash("sha256");
-  hash.update(url);
-  hash.update(JSON.stringify(body));
-  return hash.digest("hex");
-}
+export { getCacheKey } from "./internals/cache.js";
+import { getCacheKey } from "./internals/cache.js";
 
 export function getCachedResult(db: Database, cacheKey: string): string | null {
   const row = db.prepare(`SELECT result FROM llm_cache WHERE hash = ?`).get(cacheKey) as { result: string } | null;
@@ -2321,37 +1990,9 @@ export async function hashContent(content: string): Promise<string> {
   return hash.digest("hex");
 }
 
-const titleExtractors: Record<string, (content: string) => string | null> = {
-  '.md': (content) => {
-    const match = content.match(/^##?\s+(.+)$/m);
-    if (match) {
-      const title = (match[1] ?? "").trim();
-      if (title === "📝 Notes" || title === "Notes") {
-        const nextMatch = content.match(/^##\s+(.+)$/m);
-        if (nextMatch?.[1]) return nextMatch[1].trim();
-      }
-      return title;
-    }
-    return null;
-  },
-  '.org': (content) => {
-    const titleProp = content.match(/^#\+TITLE:\s*(.+)$/im);
-    if (titleProp?.[1]) return titleProp[1].trim();
-    const heading = content.match(/^\*+\s+(.+)$/m);
-    if (heading?.[1]) return heading[1].trim();
-    return null;
-  },
-};
-
-export function extractTitle(content: string, filename: string): string {
-  const ext = filename.slice(filename.lastIndexOf('.')).toLowerCase();
-  const extractor = titleExtractors[ext];
-  if (extractor) {
-    const title = extractor(content);
-    if (title) return title;
-  }
-  return filename.replace(/\.[^.]+$/, "").split("/").pop() || filename;
-}
+// extractTitle carved to src/internals/title.ts (RFC-0009 PR-7b).
+export { extractTitle } from "./internals/title.js";
+import { extractTitle } from "./internals/title.js";
 
 // =============================================================================
 // Document indexing operations
@@ -2670,38 +2311,9 @@ function levenshtein(a: string, b: string): number {
   return dp[m]![n]!;
 }
 
-/**
- * Normalize a docid input by stripping surrounding quotes and leading #.
- * Handles: "#abc123", 'abc123', "abc123", #abc123, abc123
- * Returns the bare hex string.
- */
-export function normalizeDocid(docid: string): string {
-  let normalized = docid.trim();
-
-  // Strip surrounding quotes (single or double)
-  if ((normalized.startsWith('"') && normalized.endsWith('"')) ||
-      (normalized.startsWith("'") && normalized.endsWith("'"))) {
-    normalized = normalized.slice(1, -1);
-  }
-
-  // Strip leading # if present
-  if (normalized.startsWith('#')) {
-    normalized = normalized.slice(1);
-  }
-
-  return normalized;
-}
-
-/**
- * Check if a string looks like a docid reference.
- * Accepts: #abc123, abc123, "#abc123", "abc123", '#abc123', 'abc123'
- * Returns true if the normalized form is a valid hex string of 6+ chars.
- */
-export function isDocid(input: string): boolean {
-  const normalized = normalizeDocid(input);
-  // Must be at least 6 hex characters
-  return normalized.length >= 6 && /^[a-f0-9]+$/i.test(normalized);
-}
+// normalizeDocid + isDocid carved to src/internals/docids.ts (RFC-0009 PR-7b).
+export { normalizeDocid, isDocid } from "./internals/docids.js";
+import { normalizeDocid, isDocid } from "./internals/docids.js";
 
 /**
  * Find a document by its short docid (first 6 characters of hash).

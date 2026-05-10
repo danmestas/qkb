@@ -4,6 +4,31 @@
 
 ### Changes
 
+- **qkb-owned utilities carved into `src/internals/` (RFC-0009 PR-7b).**
+  Six focused leaf modules now hold the helpers qkb's CLI uses but qmd's
+  SDK does not surface (qmd's `package.json` `exports` is `.`-only, so
+  sub-path imports are blocked). The carved set:
+  - `src/internals/paths.ts` — cross-platform `homedir`, `isAbsolutePath`,
+    `normalizePathSeparators`, `getRelativePathFromPrefix`, `resolve`,
+    `getPwd`, `getRealPath`.
+  - `src/internals/virtual-paths.ts` — `qkb://` URL parsing
+    (`VirtualPath`, `normalizeVirtualPath`, `parseVirtualPath`,
+    `buildVirtualPath`, `isVirtualPath`).
+  - `src/internals/docids.ts` — short docid hashing (`getDocid`,
+    `normalizeDocid`, `isDocid`).
+  - `src/internals/handelize.ts` — token-friendly filename slugging.
+  - `src/internals/cache.ts` — LLM-cache key derivation (`getCacheKey`).
+  - `src/internals/title.ts` — markdown / org `extractTitle`.
+
+  Each file has a header comment marking it qkb-owned and not tracking
+  upstream qmd. `src/store.ts` retains the same export surface (callers
+  unaffected) but now re-exports these from `src/internals/` instead of
+  defining them inline. The CLI imports them directly from
+  `src/internals/*` so the CLI no longer reaches into the vendored
+  `store.ts` for these symbols. Behavior unchanged; this is the
+  architectural-boundary step before the remaining store/llm/db
+  vendored modules can be deleted in a follow-up PR.
+
 - **`qkb mcp --http` foreground import path moved to `mcp/server-v4.js`
   (RFC-0009 PR-7 partial).** The CLI's HTTP-foreground branch now imports
   `startMcpHttpServer` from `src/mcp/server-v4.ts` (which currently

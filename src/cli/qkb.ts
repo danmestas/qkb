@@ -7,11 +7,21 @@ import { dirname, join as pathJoin, relative as relativePath } from "path";
 import { parseArgs } from "util";
 import { readFileSync, realpathSync, statSync, existsSync, unlinkSync, writeFileSync, openSync, closeSync, mkdirSync, lstatSync, rmSync, symlinkSync, readlinkSync } from "fs";
 import { createInterface } from "readline/promises";
+// qkb-owned utilities (RFC-0009 PR-7b carve) — paths, virtual paths, docids,
+// handelize, getCacheKey, extractTitle. Source of truth lives in src/internals/.
+import { getPwd, getRealPath, homedir, resolve } from "../internals/paths.js";
 import {
-  getPwd,
-  getRealPath,
-  homedir,
-  resolve,
+  parseVirtualPath,
+  buildVirtualPath,
+  isVirtualPath,
+} from "../internals/virtual-paths.js";
+import { isDocid } from "../internals/docids.js";
+import { handelize } from "../internals/handelize.js";
+import { getCacheKey } from "../internals/cache.js";
+import { extractTitle } from "../internals/title.js";
+
+// Vendored qmd-fork modules — to be replaced by qmd's SDK in PR-7c.
+import {
   enableProductionMode,
   searchFTS,
   extractSnippet,
@@ -22,24 +32,18 @@ import {
   renameCollection,
   findSimilarFiles,
   findDocumentByDocid,
-  isDocid,
   matchFilesByGlob,
   getHashesNeedingEmbedding,
   clearAllEmbeddings,
   insertEmbedding,
   getStatus,
   hashContent,
-  extractTitle,
   formatDocForEmbedding,
   chunkDocumentByTokens,
   clearCache,
-  getCacheKey,
   getCachedResult,
   setCachedResult,
   getIndexHealth,
-  parseVirtualPath,
-  buildVirtualPath,
-  isVirtualPath,
   resolveVirtualPath,
   toVirtualPath,
   insertContent,
@@ -57,7 +61,6 @@ import {
   vacuumDatabase,
   getCollectionsWithoutContext,
   getTopLevelPathsWithoutContext,
-  handelize,
   hybridQuery,
   vectorSearchQuery,
   structuredSearch,
