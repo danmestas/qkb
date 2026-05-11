@@ -39,11 +39,11 @@ jobs:
         run: npm install -g npm@latest
 
       - run: npm run build
-      - name: Publish to npm (via OIDC Trusted Publishing)
-        # Pure OIDC — no NODE_AUTH_TOKEN needed because a Trusted Publisher
-        # is configured for @agent-ops/qkb on npm, pointing at this workflow.
-        # See: https://docs.npmjs.com/trusted-publishers
-        # Same pattern as @agent-ops/suit.
+      - name: Publish to npm
+        # Dual-path: OIDC Trusted Publishing if npm matches the configured
+        # entry for @agent-ops/qkb, NODE_AUTH_TOKEN as fallback if not.
+        # The Trusted Publisher entry is intermittently not matching (see
+        # follow-up). Token path proven for 0.0.1.
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
           if [[ "$VERSION" == *-* ]]; then
@@ -55,6 +55,8 @@ jobs:
             echo "Publishing ${VERSION} as latest"
             npm publish --provenance --access public
           fi
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Smoke-install from registry
         run: |
