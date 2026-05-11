@@ -39,15 +39,14 @@ jobs:
         run: npm install -g npm@latest
 
       - run: npm run build
-      - name: Publish to npm (via OIDC Trusted Publishing)
-        # No NODE_AUTH_TOKEN — npm uses the workflow's id-token (OIDC) to
-        # authenticate with the registry's pre-configured Trusted Publisher
-        # for @agent-ops/qkb. See:
-        # https://docs.npmjs.com/trusted-publishers
+      - name: Publish to npm
+        # Two-path auth: if Trusted Publisher is configured for this
+        # package, npm uses the workflow's id-token (OIDC) automatically.
+        # NODE_AUTH_TOKEN serves as fallback when OIDC isn't available
+        # (e.g. before the per-package Trusted Publisher entry exists).
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
           if [[ "$VERSION" == *-* ]]; then
-            # Pre-release: route to a non-`latest` dist-tag matching the suffix family
             TAG="${VERSION#*-}"
             TAG="${TAG%%.*}"
             echo "Publishing pre-release ${VERSION} with --tag ${TAG}"
@@ -56,6 +55,8 @@ jobs:
             echo "Publishing ${VERSION} as latest"
             npm publish --provenance --access public
           fi
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Smoke-install from registry
         run: |
