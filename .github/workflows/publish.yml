@@ -50,10 +50,10 @@ jobs:
             TAG="${VERSION#*-}"
             TAG="${TAG%%.*}"
             echo "Publishing pre-release ${VERSION} with --tag ${TAG}"
-            npm publish --provenance --access public --tag "$TAG"
+            npm publish --access public --tag "$TAG"
           else
             echo "Publishing ${VERSION} as latest"
-            npm publish --provenance --access public
+            npm publish --access public
           fi
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
