@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.0.2] - 2026-05-11
+
+### Changed
+- README slimmed from 1051 → 91 lines. The previous published version inherited most of qmd's documentation; the new README focuses on what qkb actually adds (graph layer + CLI shape), how to use it from a Claude Code skill, and benchmarks vs raw vault-query. Heavy docs (MCP, indexing, embedding, score interpretation) deferred to [qmd's README](https://github.com/tobi/qmd#readme).
+- Publish workflow now uses OIDC Trusted Publishing exclusively. `NODE_AUTH_TOKEN` removed; npm authenticates via the workflow's `id-token`. NPM_TOKEN GitHub secret deleted.
+
 ## [0.0.1] - 2026-05-10
 
 **First public release** of `@agent-ops/qkb` on npm. This codebase had a private internal version history under `@danmestas/qkb` (3.x) but was never published. `0.0.1` resets the published history honestly: pre-1.0 signals "API may change as we learn" without semver-breaking pressure as we iterate.
