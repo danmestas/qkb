@@ -111,8 +111,16 @@ other skills.
 Sequence questions serially — running all N×K agents at once causes reranker
 contention that inflates wallclock unrealistically.
 
-**Capture the timing + answer text from each agent's response** — you'll need
-both for Phase 2 and the HTML report.
+**Capture three things from each agent's response:**
+
+1. **The structured report** (ELAPSED_SECONDS, QKB_COMMANDS_USED, FILES_READ, CITATIONS_COUNT, SELF_CONFIDENCE, GAPS, ANSWER) — emitted by the agent itself.
+2. **The full answer text** — needed for Phase 2 and for the HTML report's per-answer summaries.
+3. **`total_tokens`** — emitted by the harness in the `<usage>total_tokens: NNN</usage>` block at the end of each Agent tool result. This is the cloud-LLM cost the agent incurred (input + output across all its turns). Record one number per (question × skill). **Don't ask the agent to report this** — it doesn't have reliable access to its own token count. Extract from the tool result wrapper.
+
+Why token capture matters: latency tells you wallclock cost; tokens tell you
+API cost. They diverge — e.g. a fast skill that reads big files via `Read`
+can use more tokens than a slow skill that uses `qkb multi-get` to pull
+trimmed content. The bench should surface both.
 
 ---
 
@@ -192,14 +200,14 @@ widths). Required sections:
 
 1. **Header** — title, vault path, doc/vector/edge counts, run date
 2. **Legend** — color-code each skill, name + one-line description
-3. **Headline summary** — 4 stat cards: avg coverage, avg latency, hallucination count, wikilink resolution rate
-4. **Aggregate table** — per-skill: avg coverage, avg latency, avg tokens, wins, ≤50% questions
+3. **Headline summary** — 4 stat cards: avg coverage, avg latency, avg tokens, hallucination count
+4. **Aggregate table** — per-skill: avg coverage, avg latency, avg tokens, wins, ≤50% questions. Tokens are useful for spotting context-efficiency wins that latency obscures (e.g., `multi-get` pulls trimmed content vs `Read` pulling whole files).
 5. **TL;DR bullets** — 3–5 sentence findings, prepared for someone who won't read the per-question detail
 6. **Methodology** — 5 numbered steps explaining what was measured and how
 7. **Per-question blocks** (one each):
    - Question text + shape tag (proper-noun, vocab mismatch, etc.)
-   - Two charts side-by-side: coverage bars + latency bars
-   - Score table: per-skill coverage, citations, one-line notes
+   - Three charts (or two-chart row with tokens as a column in the table): coverage bars + latency bars + tokens bar
+   - Score table: per-skill coverage, citations, tokens, one-line notes
    - Collapsible `<details>` for the ground-truth fact list
    - Collapsible `<details>` for per-skill answer summaries
    - Verdict paragraph with explicit ranking
@@ -234,9 +242,9 @@ images). Self-contained file that opens directly in a browser, ≤100 KB.
 [ ] Pick 3–6 questions covering ≥3 of the 6 shape categories
 [ ] Identify the 2–4 canonical vault pages per question (these become Phase 2 ground truth)
 [ ] Dispatch Phase 1: N×K run-agents, batched per question, in parallel within batch
-[ ] Collect each agent's structured report (timing, files read, answer text)
+[ ] Collect each agent's structured report (timing, files read, answer text) AND `total_tokens` from the harness's usage wrapper
 [ ] Dispatch Phase 2: N eval-agents, fully parallel
-[ ] Compile HTML to bench/results/skill-bench-YYYY-MM-DD.html
+[ ] Compile HTML to bench/results/skill-bench-YYYY-MM-DD.html with coverage / latency / tokens columns
 [ ] Open the file in a browser to sanity-check rendering
 [ ] Surface action items: which skills need fixes? URI bugs? Skill descriptions?
 ```
