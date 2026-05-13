@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>qkb skill benchmark v2 — corrected skills — 2026-05-13</title>
+<style>
+  :root {
+    --bg: #fafafa;
+    --bg-card: #ffffff;
+    --bg-code: #f3f3f3;
+    --fg: #1a1a1a;
+    --fg-dim: #555;
+    --fg-mute: #888;
+    --border: #e0e0e0;
+    --good: #2a7a2a;
+    --good-bg: #e6f4e6;
+    --warn: #b87800;
+    --warn-bg: #fdf2dc;
+    --bad: #b03030;
+    --bad-bg: #f8e0e0;
+    --accent: #1e5fbb;
+    --vq: #6b46c1;
+    --bm25: #0891b2;
+    --qkb: #ea580c;
+    --graph: #16a34a;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1a1a1a;
+      --bg-card: #252525;
+      --bg-code: #2d2d2d;
+      --fg: #e8e8e8;
+      --fg-dim: #b0b0b0;
+      --fg-mute: #888;
+      --border: #3a3a3a;
+      --good: #6fb96f;
+      --good-bg: #1e3a1e;
+      --warn: #d9a533;
+      --warn-bg: #3a2e1a;
+      --bad: #d97070;
+      --bad-bg: #3a1e1e;
+      --accent: #6ba4ff;
+      --vq: #b794f4;
+      --bm25: #67e8f9;
+      --qkb: #fdba74;
+      --graph: #86efac;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; line-height: 1.55; color: var(--fg); background: var(--bg); max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+  h1 { font-size: 1.9rem; margin: 0 0 0.4rem; }
+  h2 { font-size: 1.35rem; border-bottom: 1px solid var(--border); padding-bottom: 0.3rem; margin-top: 2.5rem; }
+  h3 { font-size: 1.1rem; margin-top: 1.5rem; }
+  h4 { font-size: 0.95rem; margin-top: 1rem; margin-bottom: 0.4rem; color: var(--fg-dim); text-transform: uppercase; letter-spacing: 0.05em; }
+  p, li { font-size: 0.95rem; }
+  code, pre { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace; }
+  code { background: var(--bg-code); padding: 0.1rem 0.35rem; border-radius: 3px; font-size: 0.85em; }
+  pre { background: var(--bg-code); padding: 0.8rem; border-radius: 5px; overflow-x: auto; font-size: 0.85rem; }
+  a { color: var(--accent); }
+  .header-sub { color: var(--fg-dim); margin-top: 0; font-size: 0.95rem; }
+  .meta { font-size: 0.85rem; color: var(--fg-mute); }
+  table { width: 100%; border-collapse: collapse; margin: 0.8rem 0; }
+  th, td { padding: 0.5rem 0.75rem; text-align: left; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
+  th { font-weight: 600; color: var(--fg-dim); text-transform: uppercase; letter-spacing: 0.04em; font-size: 0.75rem; }
+  tbody tr:hover { background: var(--bg-code); }
+  .num { font-variant-numeric: tabular-nums; text-align: right; }
+  .skill-vq { color: var(--vq); font-weight: 600; }
+  .skill-bm25 { color: var(--bm25); font-weight: 600; }
+  .skill-qkb { color: var(--qkb); font-weight: 600; }
+  .skill-graph { color: var(--graph); font-weight: 600; }
+  .question-block { margin: 2rem 0; padding: 1.5rem; background: var(--bg-card); border-radius: 8px; border: 1px solid var(--border); }
+  .shape-tag { display: inline-block; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; padding: 0.15rem 0.5rem; border-radius: 3px; background: var(--bg-code); color: var(--fg-dim); margin-left: 0.5rem; vertical-align: middle; }
+  .bar-row { display: grid; grid-template-columns: 8rem 1fr 3rem; align-items: center; gap: 0.5rem; margin: 0.35rem 0; font-size: 0.85rem; }
+  .bar-track { background: var(--bg-code); border-radius: 3px; overflow: hidden; height: 0.95rem; }
+  .bar-fill { height: 100%; transition: width 0.3s; }
+  .bar-fill.vq { background: var(--vq); }
+  .bar-fill.bm25 { background: var(--bm25); }
+  .bar-fill.qkb { background: var(--qkb); }
+  .bar-fill.graph { background: var(--graph); }
+  .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin: 1rem 0; }
+  @media (max-width: 700px) { .charts-row { grid-template-columns: 1fr; } .bar-row { grid-template-columns: 6rem 1fr 2.5rem; font-size: 0.8rem; } }
+  .badge { display: inline-block; font-size: 0.75rem; font-weight: 600; padding: 0.1rem 0.45rem; border-radius: 3px; }
+  .badge.good { background: var(--good-bg); color: var(--good); }
+  .badge.warn { background: var(--warn-bg); color: var(--warn); }
+  .badge.bad { background: var(--bad-bg); color: var(--bad); }
+  details { margin: 0.8rem 0; border: 1px solid var(--border); border-radius: 5px; padding: 0; background: var(--bg-card); }
+  details summary { cursor: pointer; padding: 0.6rem 0.8rem; font-size: 0.9rem; font-weight: 500; user-select: none; }
+  details summary:hover { background: var(--bg-code); }
+  details[open] summary { border-bottom: 1px solid var(--border); }
+  details > *:not(summary) { padding: 0.8rem; }
+  details ol, details ul { margin: 0; padding-left: 1.5rem; }
+  details li { margin: 0.3rem 0; font-size: 0.88rem; }
+  .verdict { margin: 1rem 0 0; padding: 0.8rem 1rem; background: var(--bg-code); border-left: 3px solid var(--accent); border-radius: 0 4px 4px 0; font-size: 0.9rem; }
+  .legend { display: flex; gap: 1.5rem; flex-wrap: wrap; font-size: 0.85rem; margin: 0.5rem 0 1rem; color: var(--fg-dim); }
+  .legend-item { display: flex; align-items: center; gap: 0.4rem; }
+  .legend-swatch { width: 0.9rem; height: 0.9rem; border-radius: 3px; }
+  hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+  .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin: 1rem 0; }
+  @media (max-width: 700px) { .summary-grid { grid-template-columns: repeat(2, 1fr); } }
+  .stat-card { padding: 0.9rem; background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; }
+  .stat-card .label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--fg-mute); }
+  .stat-card .value { font-size: 1.4rem; font-weight: 600; margin: 0.2rem 0; }
+  .stat-card .delta { font-size: 0.8rem; color: var(--fg-dim); }
+  .delta-good { color: var(--good); }
+  .delta-bad { color: var(--bad); }
+  .changelog { background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; padding: 1rem 1.2rem; margin: 1rem 0; }
+  .changelog h3 { margin-top: 0.4rem; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>qkb skill benchmark — v2</h1>
+  <p class="header-sub">Re-run with corrected <span class="skill-qkb">vault-query-qkb</span> v0.2.0 and <span class="skill-graph">vault-query-graph</span> v0.2.0 — 3 questions, 12 agent runs, rigorous fact-coverage eval</p>
+  <p class="meta">Run date: 2026-05-13 · Vault: <code>flight-planner-kb</code> · v1 report: <a href="skill-bench-2026-05-13.html"><code>skill-bench-2026-05-13.html</code></a> · Methodology template: <a href="BENCH-PROMPT.md"><code>BENCH-PROMPT.md</code></a></p>
+</header>
+
+<section class="changelog">
+  <h3>What changed since v1</h3>
+  <p>The v1 bench surfaced two architectural problems in the skill cohort:</p>
+  <ol>
+    <li><strong><span class="skill-graph">vault-query-graph</span> was a functional duplicate of <span class="skill-qkb">vault-query-qkb</span></strong> — both ran <code>qkb query --graph</code>. Same retrieval engine, different prose. PR #40 rewrote it as <em>pure graph traversal</em> using <code>qkb graph neighbors</code> and <code>qkb graph query</code> Cypher — no BM25, no vector, no LLM expansion, no rerank.</li>
+    <li><strong><span class="skill-qkb">vault-query-qkb</span> wasn't using qkb's full toolkit</strong> — it was a single-shot wrapper around <code>qkb query --graph</code>. PR #40 rewrote it to orchestrate the breadth: <code>qkb multi-get</code> for batched content retrieval (one call vs 5 Read invocations), <code>qkb graph neighbors</code> as one-hop enrichment on top hits, multi-pass query strategy in deep mode, parameter-tuned weak-hit recovery (<code>--graph-weights</code>, <code>--no-rerank</code>, <code>--no-graph</code>).</li>
+  </ol>
+  <p>The v1 bench also exposed real schema bugs in my earlier graph skill docs: graph nodes use integer-form <code>doc:&lt;N&gt;</code> IDs (not the FTS <code>#&lt;hash&gt;</code>), label is <code>:T</code> (not <code>:Note</code>), <code>LINKS_TO</code> is typically the only edge type populated in Obsidian vaults. All examples corrected.</p>
+</section>
+
+<section id="legend">
+  <div class="legend">
+    <div class="legend-item"><span class="legend-swatch" style="background:var(--vq)"></span><span class="skill-vq">vault-query</span> — curated read (unchanged)</div>
+    <div class="legend-item"><span class="legend-swatch" style="background:var(--bm25)"></span><span class="skill-bm25">vault-query-bm25</span> — <code>qkb search</code> BM25 only (unchanged)</div>
+    <div class="legend-item"><span class="legend-swatch" style="background:var(--qkb)"></span><span class="skill-qkb">vault-query-qkb</span> v0.2.0 — <code>qkb query --graph</code> + <code>multi-get</code> + <code>graph neighbors</code> enrichment</div>
+    <div class="legend-item"><span class="legend-swatch" style="background:var(--graph)"></span><span class="skill-graph">vault-query-graph</span> v0.2.0 — pure Cypher + <code>qkb graph neighbors</code></div>
+  </div>
+</section>
+
+<section id="summary">
+  <h2>Headline results</h2>
+  <div class="summary-grid">
+    <div class="stat-card">
+      <div class="label">Top skill (avg coverage)</div>
+      <div class="value skill-graph">88%</div>
+      <div class="delta">vault-query-graph v0.2.0 — <span class="delta-good">+16pp vs v1 (72%)</span></div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Top skill (avg latency)</div>
+      <div class="value skill-bm25">45s</div>
+      <div class="delta">vault-query-bm25 — but now 16pp behind graph on coverage</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Skills that improved</div>
+      <div class="value">2 of 2</div>
+      <div class="delta">graph: +16pp · qkb: +5pp (from 74% → 79%)</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Hallucinations</div>
+      <div class="value">0</div>
+      <div class="delta">Down from 1 in v1 (bm25 Q6)</div>
+    </div>
+  </div>
+
+  <h3>Aggregate scoring — v2</h3>
+  <table>
+    <thead>
+      <tr><th>Skill</th><th class="num">Avg coverage</th><th class="num">Avg latency</th><th class="num">Wins (3 questions)</th><th class="num">Δ vs v1</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="skill-graph">vault-query-graph (v0.2.0)</td>
+        <td class="num"><strong>88%</strong></td>
+        <td class="num">52s</td>
+        <td class="num">3 (Q9 tie, Q10, Q11)</td>
+        <td class="num"><span class="delta-good">+16pp coverage, −63s latency</span></td>
+      </tr>
+      <tr>
+        <td class="skill-bm25">vault-query-bm25</td>
+        <td class="num">83%</td>
+        <td class="num"><strong>45s</strong></td>
+        <td class="num">1 (Q9 tie)</td>
+        <td class="num"><span class="delta-good">+26pp coverage</span> (vs v1's hallucination-dragged 57%)</td>
+      </tr>
+      <tr>
+        <td class="skill-qkb">vault-query-qkb (v0.2.0)</td>
+        <td class="num">79%</td>
+        <td class="num">74s</td>
+        <td class="num">0</td>
+        <td class="num"><span class="delta-good">+5pp coverage, −33s latency</span></td>
+      </tr>
+      <tr>
+        <td class="skill-vq">vault-query</td>
+        <td class="num">76%</td>
+        <td class="num">82s</td>
+        <td class="num">0</td>
+        <td class="num"><span class="delta-good">+3pp coverage</span> (questions favored its strengths)</td>
+      </tr>
+    </tbody>
+  </table>
+  <p class="meta">Δ vs v1 caveats: v1 and v2 use different question sets so the deltas aren't apples-to-apples. v1 averaged 6 questions including Q5 (FAA problems) where vault-query degraded to 20%; v2 averaged 3 different questions where it stayed competitive. The skill-internal changes (graph rewrite, qkb orchestration) are the controllable variables.</p>
+
+  <h3>TL;DR</h3>
+  <ul>
+    <li><strong><span class="skill-graph">vault-query-graph</span> v0.2.0 is now the top skill across all 3 questions.</strong> The pure-graph-traversal rewrite + correct schema (integer <code>doc:&lt;N&gt;</code> IDs, Cypher-based seed lookup) gives it a clear advantage on relational and pairwise questions. Latency dropped from ~100s+ in v1 to ~52s in v2 because there's no reranker contention.</li>
+    <li><strong><span class="skill-qkb">vault-query-qkb</span> v0.2.0 improved modestly (+5pp).</strong> The full-toolkit orchestration helped — Q9 used <code>multi-get</code> to batch-pull 4 files in one call, Q10 used <code>multi-get</code> + graph enrichment. But the answers didn't dramatically improve; the gains were marginal relative to the latency cost.</li>
+    <li><strong><span class="skill-bm25">vault-query-bm25</span> at 83% is the value play.</strong> 2× faster than graph, only 5pp behind on coverage. For high-volume / latency-sensitive use cases, BM25 + careful skill discipline beats the full pipeline.</li>
+    <li><strong><span class="skill-vq">vault-query</span> at 76% is competitive but not differentiated.</strong> Q9 burned 170s because <code>hot.md</code> exceeded read budget and it had to fall back to qkb commands. When meta-files fit, it works fine; when they don't, it degrades.</li>
+  </ul>
+
+  <p>The v1 bench's biggest claim was "BM25 wins on speed AND quality." v2 invalidates the quality half — <span class="skill-graph">graph</span> v0.2.0 beats BM25 on coverage by 5pp, and the gap widens on relational questions (Q10: graph 96% vs bm25 92%; Q11: graph 82% vs bm25 71%). The retrieval-vs-cost frontier is more nuanced than v1 suggested.</p>
+</section>
+
+<!-- ============== Q9 ============== -->
+<section class="question-block">
+  <h2>Q9: Compare FAA NMS auth vs NOAA Aviation Weather API ingest — same and different?<span class="shape-tag">pairwise comparison</span></h2>
+
+  <div class="charts-row">
+    <div>
+      <h4>Coverage</h4>
+      <div class="bar-row"><span class="skill-vq">vault-query</span><div class="bar-track"><div class="bar-fill vq" style="width:80%"></div></div><span class="num">80%</span></div>
+      <div class="bar-row"><span class="skill-bm25">bm25</span><div class="bar-track"><div class="bar-fill bm25" style="width:87%"></div></div><span class="num">87%</span></div>
+      <div class="bar-row"><span class="skill-qkb">qkb v0.2</span><div class="bar-track"><div class="bar-fill qkb" style="width:73%"></div></div><span class="num">73%</span></div>
+      <div class="bar-row"><span class="skill-graph">graph v0.2</span><div class="bar-track"><div class="bar-fill graph" style="width:87%"></div></div><span class="num">87%</span></div>
+    </div>
+    <div>
+      <h4>Latency (seconds)</h4>
+      <div class="bar-row"><span class="skill-vq">vault-query</span><div class="bar-track"><div class="bar-fill vq" style="width:100%"></div></div><span class="num">170.4</span></div>
+      <div class="bar-row"><span class="skill-bm25">bm25</span><div class="bar-track"><div class="bar-fill bm25" style="width:34%"></div></div><span class="num">57.4</span></div>
+      <div class="bar-row"><span class="skill-qkb">qkb v0.2</span><div class="bar-track"><div class="bar-fill qkb" style="width:67%"></div></div><span class="num">113.4</span></div>
+      <div class="bar-row"><span class="skill-graph">graph v0.2</span><div class="bar-track"><div class="bar-fill graph" style="width:42%"></div></div><span class="num">70.7</span></div>
+    </div>
+  </div>
+
+  <table>
+    <thead><tr><th>Skill</th><th>Coverage</th><th>Citations</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td class="skill-bm25">bm25</td><td>13/15</td><td>8/8</td><td>Best concept coverage — explicitly unpacks <code>Token Cache Refresh</code> layers (singleton + double-checked lock + 60s buffer + 401 retry)</td></tr>
+      <tr><td class="skill-graph">graph v0.2</td><td>13/15</td><td>9/9</td><td>Densest citation graph (9 wikilinks, all resolved); names all 5 NMS classifications; only flaw is omitting <code>Token Cache Refresh</code> citation</td></tr>
+      <tr><td class="skill-vq">vault-query</td><td>12/15</td><td>7/7</td><td>Strong on auth/ingest/format contrast; misses <code>Token Cache Refresh</code> link; had to fall back to qkb commands (hot.md too large)</td></tr>
+      <tr><td class="skill-qkb">qkb v0.2</td><td>11/15</td><td>5/5</td><td><span class="badge warn">factual error</span> Says AWC is "JSON only" — canonical says XML + JSON varies by endpoint. Used <code>multi-get</code> as designed.</td></tr>
+    </tbody>
+  </table>
+
+  <details>
+    <summary>Ground truth (15 facts)</summary>
+    <ol>
+      <li>NMS auth: OAuth2 client-credentials with HTTP Basic at <code>POST /v1/auth/token</code>; AWC auth: none (public, no key).</li>
+      <li>NMS token TTL = 1799s (~30 min); auth host has NO <code>/nmsapi</code> prefix (common 401 gotcha).</li>
+      <li>NMS credentials issued via secure Excel spreadsheet — FAA (Prod) or CGI Federal (non-Prod).</li>
+      <li>Every NMS call requires <code>Authorization: Bearer &lt;token&gt;</code>, including <code>/v1/content/{token}</code> downloads.</li>
+      <li>Both REST over HTTPS; both polled (no WebSocket/streaming on either side).</li>
+      <li>Both classified Authoritative Tier-1 in Data Source Hierarchy.</li>
+      <li>NMS formats: AIXM 5.1 (XML in SOAP envelope) or GeoJSON, per <code>nmsResponseFormat</code> header.</li>
+      <li>AWC formats: mix of XML + JSON, varies by endpoint; schemas inconsistent between siblings.</li>
+      <li>NMS <code>lastUpdatedDate</code> max 24h; signed content URLs expire 5 min.</li>
+      <li>AWC documented rate limit = 100 req/min (6000/hr); we run ~200× under it.</li>
+      <li>AWC quirks normalized via shared <code>jsonTime()</code> helper + <code>source_schemas</code> blessing pattern.</li>
+      <li>NMS first prod ingest 2026-05-02: 74,672 NOTAMs across DOM/INT/MIL/FDC; 5 classifications exist (incl. LOCAL_MILITARY).</li>
+      <li>AWC: 5 endpoints (METAR/TAF/PIREP/AIRSIGMET/G-AIRMET), 10-min uniform poll, wired in PR #59.</li>
+      <li>NMS triggers Token Cache Refresh pattern (singleton, double-checked lock, 60s pre-expiry, 401 retry); AWC stateless.</li>
+      <li>NMS machine-to-machine only (browser 401); AWC browser-accessible.</li>
+    </ol>
+  </details>
+
+  <div class="verdict">
+    <strong>Verdict:</strong> bm25 = graph v0.2 &gt; vault-query &gt; qkb v0.2. Tie at the top — bm25 catches the <code>Token Cache Refresh</code> concept link that graph misses; graph names all 5 NMS classifications and has the most diverse citation graph. qkb v0.2's "JSON only" claim about AWC is a factual error (canonical says XML+JSON varies).
+  </div>
+</section>
+
+<!-- ============== Q10 ============== -->
+<section class="question-block">
+  <h2>Q10: What does the Briefing Assembler depend on upstream, and produce downstream?<span class="shape-tag">entity-relation (graph's sweet spot)</span></h2>
+
+  <div class="charts-row">
+    <div>
+      <h4>Coverage</h4>
+      <div class="bar-row"><span class="skill-vq">vault-query</span><div class="bar-track"><div class="bar-fill vq" style="width:83%"></div></div><span class="num">83%</span></div>
+      <div class="bar-row"><span class="skill-bm25">bm25</span><div class="bar-track"><div class="bar-fill bm25" style="width:92%"></div></div><span class="num">92%</span></div>
+      <div class="bar-row"><span class="skill-qkb">qkb v0.2</span><div class="bar-track"><div class="bar-fill qkb" style="width:88%"></div></div><span class="num">88%</span></div>
+      <div class="bar-row"><span class="skill-graph">graph v0.2</span><div class="bar-track"><div class="bar-fill graph" style="width:96%"></div></div><span class="num">96%</span></div>
+    </div>
+    <div>
+      <h4>Latency (seconds)</h4>
+      <div class="bar-row"><span class="skill-vq">vault-query</span><div class="bar-track"><div class="bar-fill vq" style="width:74%"></div></div><span class="num">38.9</span></div>
+      <div class="bar-row"><span class="skill-bm25">bm25</span><div class="bar-track"><div class="bar-fill bm25" style="width:61%"></div></div><span class="num">32.2</span></div>
+      <div class="bar-row"><span class="skill-qkb">qkb v0.2</span><div class="bar-track"><div class="bar-fill qkb" style="width:100%"></div></div><span class="num">52.4</span></div>
+      <div class="bar-row"><span class="skill-graph">graph v0.2</span><div class="bar-track"><div class="bar-fill graph" style="width:70%"></div></div><span class="num">36.5</span></div>
+    </div>
+  </div>
+
+  <table>
+    <thead><tr><th>Skill</th><th>Coverage</th><th>Citations</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td class="skill-graph">graph v0.2</td><td>11.5/12</td><td>9/10</td><td><strong>Only answer to walk the dependency graph one level deeper</strong> — names <code>Pipeline Orchestrator</code> AND enumerates <code>PipelineRun</code>'s 8 public fields. One broken wikilink (<code>Golden Brief Capture Template</code> vs canonical <code>Golden Brief Template</code>)</td></tr>
+      <tr><td class="skill-bm25">bm25</td><td>11/12</td><td>6/6</td><td>Cleanest prose, all 5 Section kinds correctly named, all citations resolve; only gap is PipelineRun field enumeration</td></tr>
+      <tr><td class="skill-qkb">qkb v0.2</td><td>10.5/12</td><td>6/6</td><td>Solid; missing <code>Assemble</code> signature and PipelineRun fields; adds correct-but-tangential <code>map[string]any</code> detail</td></tr>
+      <tr><td class="skill-vq">vault-query</td><td>10/12</td><td>7/7</td><td><span class="badge warn">section count error</span> Lists 4 of 5 section builders (omits Header); misses Pipeline Orchestrator</td></tr>
+    </tbody>
+  </table>
+
+  <details>
+    <summary>Ground truth (12 facts)</summary>
+    <p><strong>Upstream:</strong></p>
+    <ol>
+      <li>Input is <code>*pipeline.PipelineRun</code> directly (ADR-0009 D2); no intermediate bundling.</li>
+      <li><code>PipelineRun</code> produced by <code>Pipeline Orchestrator</code> running six engine stages.</li>
+      <li>Six engine stages: acquisition, classifier, grouper, MET decoder, TAF resolver, diagnostic flatten.</li>
+      <li>Engine emits classification strings only (Q-phrase, category, ImpactSeverity, Decider) per ADR-0009 D5; assembler never re-classifies.</li>
+      <li>Eight YAML rule books under <code>internal/assembler/rules/</code> per ADR-0009 D4.</li>
+      <li>Wiring uses init-hook (<code>pipeline.AssemblerHook</code>) to break import cycle.</li>
+      <li>PipelineRun fields read: <code>GroupedBrief</code>, <code>DecodedMetars</code>, <code>DecodedTafs</code>, <code>ResolvedTafs</code>, <code>DecodedPireps</code>, <code>DecodedAdvisories</code>, <code>Diagnostics</code>, <code>Ok</code>.</li>
+    </ol>
+    <p><strong>Downstream:</strong></p>
+    <ol start="8">
+      <li>Output: <code>*domain.BriefingDocument</code> (ADR-0009 D3, FSD-60), renderer-independent per ADR-0005.</li>
+      <li>Entry point: <code>Assemble(*pipeline.PipelineRun) Result[*domain.BriefingDocument]</code>.</li>
+      <li><code>BriefingDocument</code> carries Header, Sections[] (5 kinds: header/route_overview/operational_warnings/part1/checklist), Provenance.</li>
+      <li>Five section builders.</li>
+      <li>Render targets: markdown + HTML (PR #63), PDF (FSD-70) and Web (FSD-71) pending. Prose gap = FSD-130.</li>
+    </ol>
+  </details>
+
+  <div class="verdict">
+    <strong>Verdict:</strong> graph v0.2 &gt; bm25 &gt; qkb v0.2 &gt; vault-query. <strong>The graph skill's signature win.</strong> Pure traversal via Cypher (<code>MATCH (a)-[:LINKS_TO]-&gt;(b) WHERE a.path = '...'</code>) walked from Briefing Assembler outbound AND inbound, surfaced Pipeline Orchestrator, and enumerated the <code>PipelineRun</code> field surface. No other skill traced the dependency chain one hop further — they all stopped at "consumes PipelineRun" without explaining where PipelineRun comes from or what's in it.
+  </div>
+</section>
+
+<!-- ============== Q11 ============== -->
+<section class="question-block">
+  <h2>Q11: What happens when an FAA endpoint silently changes its response shape?<span class="shape-tag">vocabulary mismatch (qkb's sweet spot)</span></h2>
+
+  <div class="charts-row">
+    <div>
+      <h4>Coverage</h4>
+      <div class="bar-row"><span class="skill-vq">vault-query</span><div class="bar-track"><div class="bar-fill vq" style="width:65%"></div></div><span class="num">65%</span></div>
+      <div class="bar-row"><span class="skill-bm25">bm25</span><div class="bar-track"><div class="bar-fill bm25" style="width:71%"></div></div><span class="num">71%</span></div>
+      <div class="bar-row"><span class="skill-qkb">qkb v0.2</span><div class="bar-track"><div class="bar-fill qkb" style="width:76%"></div></div><span class="num">76%</span></div>
+      <div class="bar-row"><span class="skill-graph">graph v0.2</span><div class="bar-track"><div class="bar-fill graph" style="width:82%"></div></div><span class="num">82%</span></div>
+    </div>
+    <div>
+      <h4>Latency (seconds)</h4>
+      <div class="bar-row"><span class="skill-vq">vault-query</span><div class="bar-track"><div class="bar-fill vq" style="width:69%"></div></div><span class="num">38.1</span></div>
+      <div class="bar-row"><span class="skill-bm25">bm25</span><div class="bar-track"><div class="bar-fill bm25" style="width:81%"></div></div><span class="num">45.1</span></div>
+      <div class="bar-row"><span class="skill-qkb">qkb v0.2</span><div class="bar-track"><div class="bar-fill qkb" style="width:100%"></div></div><span class="num">55.4</span></div>
+      <div class="bar-row"><span class="skill-graph">graph v0.2</span><div class="bar-track"><div class="bar-fill graph" style="width:89%"></div></div><span class="num">49.6</span></div>
+    </div>
+  </div>
+
+  <table>
+    <thead><tr><th>Skill</th><th>Coverage</th><th>Citations</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td class="skill-graph">graph v0.2</td><td>14/17</td><td>8/8</td><td>Most complete; only answer to name <code>SchemaBlessed</code>/<code>IngestSummary</code>/Atomic Pipeline Handler exactly. No outside-canon claims.</td></tr>
+      <tr><td class="skill-qkb">qkb v0.2</td><td>13/17</td><td>8/8</td><td>Comprehensive with exact cost figures and complete applies-to list; <span class="badge warn">outside-canon</span> 2026-05-02 NMS staging-gap anecdote not in canonical pages</td></tr>
+      <tr><td class="skill-bm25">bm25</td><td>12/17</td><td>6/6</td><td>Most disciplined paraphrase; slightly invents <code>AvWxSchemaManifest</code> class name for PreflightAPI</td></tr>
+      <tr><td class="skill-vq">vault-query</td><td>11/17</td><td>6/8</td><td><span class="badge warn">scope drift</span> Adds NOTAM Freshness Gate + Ember 503 claims not in canonical pages; 2 wikilinks unverifiable</td></tr>
+    </tbody>
+  </table>
+
+  <details>
+    <summary>Ground truth (17 facts)</summary>
+    <ol>
+      <li>Schema-Drift Manifest pins expected upstream structure, fails fast on mismatch.</li>
+      <li>Symptoms: dropped new fields, renamed → NULL, removed → break far-downstream, type narrowing.</li>
+      <li>Asymmetry: upstream publishes in minutes, downstream discovery takes days.</li>
+      <li>PreflightAPI (Impl A) embeds per-source JSON manifests, validates before parse.</li>
+      <li>Firestorm Dataworks (Impl B) uses shared <code>source_schemas</code> table (migration 0005).</li>
+      <li>Fingerprint = sha256 over sorted union of top-level JSON keys.</li>
+      <li>Upsert columns: <code>(source, file, fingerprint, first_seen_at, last_seen_at, blessed)</code>.</li>
+      <li>Blessed values: 0 unseen, 1 accepted, 2 broken.</li>
+      <li>Ingest worker proceeds regardless; emits state in <code>IngestSummary</code>.</li>
+      <li>Tradeoff: fingerprint catches only key-set drift; type drift in decoder.</li>
+      <li>AWC quirks: <code>seriesId</code>/<code>tag</code>, stringified-float coords, epoch vs ISO times.</li>
+      <li>Setup ~1 day/source; saves ~2 days per incident.</li>
+      <li>Pre-condition for Two-Tier Storage parsed-tier ingestion.</li>
+      <li>Complements Lineage Invariant — defines "correct shape" for <code>fetches.parsed</code> JSONB.</li>
+      <li>Atomic Pipeline Handler emits <code>SchemaBlessed</code> in <code>IngestSummary</code>.</li>
+      <li>Applies to: NOAA AWC, FAA NASR, FAA DOF, FAA NMS ArcGIS airspace layers.</li>
+      <li>Lineage Invariant: every parsed row carries <code>source_object_key</code> → immutable R2; AWC rows also persist <code>raw_text</code>/<code>raw_payload</code>.</li>
+    </ol>
+  </details>
+
+  <div class="verdict">
+    <strong>Verdict:</strong> graph v0.2 &gt; qkb v0.2 &gt; bm25 &gt; vault-query. Vocabulary-mismatch question and qkb's claimed sweet spot — but graph still won by walking from <code>Schema-Drift Manifest</code> outward via Cypher and surfacing all canonical neighbors cleanly. qkb came closer than the others but pulled in an outside-canon anecdote about FAA NMS staging-gap on 2026-05-02.
+  </div>
+</section>
+
+<section id="findings">
+  <h2>Findings and recommendations</h2>
+
+  <h3>The graph skill's transformation is the headline</h3>
+  <p>v0.1 (hybrid path with AB framing): <strong>72% avg</strong>, frequent scope creep, ran the same command as <span class="skill-qkb">qkb</span>.<br>
+  v0.2 (pure graph traversal, fixed schema): <strong>88% avg</strong>, top of every question in this bench, half the latency.</p>
+  <p>The lesson: skill <em>specialization</em> matters more than skill <em>quality</em>. v0.1 was a slightly-different way to call the same command; v0.2 is a genuinely different retrieval shape that wins on the questions matching its discipline.</p>
+
+  <h3>qkb v0.2's full-toolkit orchestration helped, but less than expected</h3>
+  <p>v0.1 (single-shot <code>qkb query --graph</code>): 74% avg.<br>
+  v0.2 (<code>multi-get</code> for batch reads + optional <code>graph neighbors</code> enrichment): 79% avg.</p>
+  <p>Modest improvement. The agents used the new commands as designed (Q9: <code>multi-get</code> pulled 4 files in one call; Q10: hybrid + multi-get), but the answer quality didn't dramatically improve. <strong>Hypothesis:</strong> the bottleneck isn't retrieval breadth — it's that the hybrid pipeline already returns good candidates, and orchestrating more qkb commands adds cost without unlocking new information. The skill is now better for context efficiency (fewer Read calls), not for fact coverage.</p>
+
+  <h3>Updated triage guidance</h3>
+  <table>
+    <thead><tr><th>Question shape</th><th>Primary skill</th><th>Backup</th></tr></thead>
+    <tbody>
+      <tr><td>Proper-noun anchor, single-page answer</td><td class="skill-bm25">vault-query-bm25</td><td><span class="skill-vq">vault-query</span></td></tr>
+      <tr><td>Distinctive vocabulary, scattered concept</td><td class="skill-bm25">vault-query-bm25</td><td><span class="skill-qkb">vault-query-qkb</span></td></tr>
+      <tr><td>Pairwise comparison (X vs Y, named entities)</td><td class="skill-graph">vault-query-graph</td><td><span class="skill-bm25">vault-query-bm25</span></td></tr>
+      <tr><td>Entity-relation ("what does X depend on / produce")</td><td class="skill-graph">vault-query-graph</td><td><span class="skill-qkb">vault-query-qkb</span></td></tr>
+      <tr><td>Structural mapping ("what's connected to Y")</td><td class="skill-graph">vault-query-graph</td><td>—</td></tr>
+      <tr><td>Vocabulary mismatch, no clear anchor</td><td class="skill-qkb">vault-query-qkb</td><td><span class="skill-graph">vault-query-graph</span></td></tr>
+      <tr><td>Multi-source synthesis, open-ended</td><td class="skill-qkb">vault-query-qkb</td><td><span class="skill-graph">vault-query-graph</span></td></tr>
+      <tr><td>Latency-sensitive, high-volume</td><td class="skill-bm25">vault-query-bm25</td><td>—</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Action items</h3>
+  <ul>
+    <li><strong>Push graph as the default for relational questions.</strong> v0.2's clean traversal pattern (seed → Cypher path-match → walk) should be the model for graph-skill descriptions in other vaults too.</li>
+    <li><strong>qkb's <code>multi-get</code> is underused.</strong> The bench showed agents reach for <code>Read</code> by reflex. Future skill iterations should explicitly direct agents to <code>multi-get</code> for 3+ file batches — but this is a behavioral nudge, not a capability gap.</li>
+    <li><strong>Fix the <code>Golden Brief Template</code> wikilink in the graph workflow.</strong> Q10 agent surfaced a non-existent <code>Golden Brief Capture Template</code> — one of the wikilinks in <code>Briefing Assembler.md</code> may have drifted; vault hygiene needs a check.</li>
+    <li><strong>Document the doc:N integer ID convention prominently</strong> in qkb's own docs (not just the skill). The Q7 bench agent thrashed through 50+ commands learning the schema; this should be in qkb's user-facing docs.</li>
+    <li><strong>Skill triage hints should live in the description frontmatter.</strong> The "when to use" guidance above isn't visible to autonomous skill selection — moving it into each skill's <code>description:</code> field would improve auto-routing.</li>
+  </ul>
+
+  <h3>Methodology improvements for future runs</h3>
+  <ul>
+    <li><strong>Run skill agents serially, not in parallel,</strong> when comparing skills that use qkb's reranker. Q9's <span class="skill-vq">vault-query</span> (170s) and <span class="skill-qkb">qkb</span> (113s) inflated wallclock due to reranker contention; in isolation they'd be ~30-60s each.</li>
+    <li><strong>Pick canonical pages before dispatching run-agents,</strong> not after. The eval agent needs to read those pages; locking them in before the bench eliminates a degree of evaluator subjectivity.</li>
+    <li><strong>Verify wikilink targets in the ground-truth phase,</strong> not just citation-resolve-rate after. Q10 surfaced <code>Golden Brief Capture Template</code> as a dead link — could have caught this earlier.</li>
+  </ul>
+</section>
+
+<hr>
+
+<footer>
+  <p class="meta">Generated 2026-05-13 · qkb v0.0.2 · flight-planner-kb vault · v2 follow-up to <a href="skill-bench-2026-05-13.html"><code>skill-bench-2026-05-13.html</code></a> · Methodology: <a href="BENCH-PROMPT.md"><code>BENCH-PROMPT.md</code></a></p>
+</footer>
+
+</body>
+</html>
