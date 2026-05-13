@@ -43,7 +43,7 @@ jobs:
             --json > soak-results.json
         timeout-minutes: 360
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: soak-results-${{ github.run_id }}
