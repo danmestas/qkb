@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>qkb adversarial bench v4 — does qkb earn its keep? — 2026-05-14</title>
+<style>
+  :root {
+    --bg: #fafafa;
+    --bg-card: #ffffff;
+    --bg-code: #f3f3f3;
+    --fg: #1a1a1a;
+    --fg-dim: #555;
+    --fg-mute: #888;
+    --border: #e0e0e0;
+    --good: #2a7a2a;
+    --good-bg: #e6f4e6;
+    --warn: #b87800;
+    --warn-bg: #fdf2dc;
+    --bad: #b03030;
+    --bad-bg: #f8e0e0;
+    --accent: #1e5fbb;
+    --vq: #6b46c1;
+    --bm25: #0891b2;
+    --graph: #16a34a;
+    --ppr: #db2777;
+    --hybrid: #ea580c;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1a1a1a;
+      --bg-card: #252525;
+      --bg-code: #2d2d2d;
+      --fg: #e8e8e8;
+      --fg-dim: #b0b0b0;
+      --fg-mute: #888;
+      --border: #3a3a3a;
+      --good: #6fb96f;
+      --good-bg: #1e3a1e;
+      --warn: #d9a533;
+      --warn-bg: #3a2e1a;
+      --bad: #d97070;
+      --bad-bg: #3a1e1e;
+      --accent: #6ba4ff;
+      --vq: #b794f4;
+      --bm25: #67e8f9;
+      --graph: #86efac;
+      --ppr: #f9a8d4;
+      --hybrid: #fdba74;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; line-height: 1.55; color: var(--fg); background: var(--bg); max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+  h1 { font-size: 1.9rem; margin: 0 0 0.4rem; }
+  h2 { font-size: 1.35rem; border-bottom: 1px solid var(--border); padding-bottom: 0.3rem; margin-top: 2.5rem; }
+  h3 { font-size: 1.1rem; margin-top: 1.5rem; }
+  h4 { font-size: 0.95rem; margin-top: 1rem; margin-bottom: 0.4rem; color: var(--fg-dim); text-transform: uppercase; letter-spacing: 0.05em; }
+  p, li { font-size: 0.95rem; }
+  code { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace; background: var(--bg-code); padding: 0.1rem 0.35rem; border-radius: 3px; font-size: 0.85em; }
+  a { color: var(--accent); }
+  .header-sub { color: var(--fg-dim); margin-top: 0; font-size: 0.95rem; }
+  .meta { font-size: 0.85rem; color: var(--fg-mute); }
+  table { width: 100%; border-collapse: collapse; margin: 0.8rem 0; }
+  th, td { padding: 0.5rem 0.75rem; text-align: left; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
+  th { font-weight: 600; color: var(--fg-dim); text-transform: uppercase; letter-spacing: 0.04em; font-size: 0.75rem; }
+  tbody tr:hover { background: var(--bg-code); }
+  .num { font-variant-numeric: tabular-nums; text-align: right; }
+  .skill-vq { color: var(--vq); font-weight: 600; }
+  .skill-bm25 { color: var(--bm25); font-weight: 600; }
+  .skill-graph { color: var(--graph); font-weight: 600; }
+  .skill-ppr { color: var(--ppr); font-weight: 600; }
+  .skill-hybrid { color: var(--hybrid); font-weight: 600; }
+  .bar-row { display: grid; grid-template-columns: 7rem 1fr 3rem; align-items: center; gap: 0.5rem; margin: 0.35rem 0; font-size: 0.85rem; }
+  .bar-track { background: var(--bg-code); border-radius: 3px; overflow: hidden; height: 0.95rem; }
+  .bar-fill { height: 100%; }
+  .bar-fill.vq { background: var(--vq); }
+  .bar-fill.bm25 { background: var(--bm25); }
+  .bar-fill.graph { background: var(--graph); }
+  .bar-fill.ppr { background: var(--ppr); }
+  .bar-fill.hybrid { background: var(--hybrid); }
+  .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin: 1rem 0; }
+  @media (max-width: 700px) { .charts-row { grid-template-columns: 1fr; } }
+  .badge { display: inline-block; font-size: 0.75rem; font-weight: 600; padding: 0.1rem 0.45rem; border-radius: 3px; }
+  .badge.good { background: var(--good-bg); color: var(--good); }
+  .badge.warn { background: var(--warn-bg); color: var(--warn); }
+  .badge.bad { background: var(--bad-bg); color: var(--bad); }
+  .question-block { margin: 1.5rem 0; padding: 1.2rem; background: var(--bg-card); border-radius: 8px; border: 1px solid var(--border); }
+  .shape-tag { display: inline-block; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; padding: 0.15rem 0.5rem; border-radius: 3px; background: var(--bg-code); color: var(--fg-dim); margin-left: 0.5rem; vertical-align: middle; }
+  .verdict { margin: 1rem 0 0; padding: 0.7rem 1rem; background: var(--bg-code); border-left: 3px solid var(--accent); border-radius: 0 4px 4px 0; font-size: 0.9rem; }
+  details { margin: 0.8rem 0; border: 1px solid var(--border); border-radius: 5px; background: var(--bg-card); }
+  details summary { cursor: pointer; padding: 0.6rem 0.8rem; font-size: 0.9rem; font-weight: 500; }
+  details summary:hover { background: var(--bg-code); }
+  details > *:not(summary) { padding: 0.8rem; }
+  hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+  .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin: 1rem 0; }
+  @media (max-width: 700px) { .summary-grid { grid-template-columns: repeat(2, 1fr); } }
+  .stat-card { padding: 0.9rem; background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; }
+  .stat-card .label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--fg-mute); }
+  .stat-card .value { font-size: 1.4rem; font-weight: 600; margin: 0.2rem 0; }
+  .stat-card .delta { font-size: 0.8rem; color: var(--fg-dim); }
+  .legend { display: flex; gap: 1.2rem; flex-wrap: wrap; font-size: 0.85rem; margin: 0.5rem 0 1rem; color: var(--fg-dim); }
+  .legend-item { display: flex; align-items: center; gap: 0.4rem; }
+  .legend-swatch { width: 0.9rem; height: 0.9rem; border-radius: 3px; }
+  .key-finding { padding: 1rem 1.2rem; background: var(--warn-bg); border: 1px solid var(--warn); border-radius: 6px; margin: 1rem 0; }
+  .key-finding strong { color: var(--warn); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>qkb adversarial bench — v4</h1>
+  <p class="header-sub">Does qkb earn its keep? Adversarial question set, 5 retrieval paths, pre-committed decision rule. Run date: 2026-05-14.</p>
+  <p class="meta">Vault: <code>flight-planner-kb</code> · prior reports: <a href="skill-bench-2026-05-13.html">v1</a> · <a href="skill-bench-v2-2026-05-13.html">v2</a> · <a href="skill-bench-v3-2026-05-13.html">v3</a> · methodology: <a href="BENCH-PROMPT.md">BENCH-PROMPT.md</a></p>
+</header>
+
+<section id="setup">
+  <h2>Setup</h2>
+  <p>The first three benches couldn't decide whether qkb was worth maintaining — vault-query (no engine) was competitive with the qkb-backed skills on benign questions. v4 was designed to break that ambiguity. Six adversarial questions, each engineered to expose a specific failure mode in the cohort. Pre-committed decision rule: <strong>if qkb's best skill beats vault-query by ≥ 15 points → keep qkb. If &lt; 5 points → drop qkb.</strong></p>
+
+  <h3>Five retrieval paths</h3>
+  <div class="legend">
+    <div class="legend-item"><span class="legend-swatch" style="background:var(--vq)"></span><span class="skill-vq">vault-query</span> — curated read (no engine)</div>
+    <div class="legend-item"><span class="legend-swatch" style="background:var(--bm25)"></span><span class="skill-bm25">bm25</span> — <code>qkb search</code></div>
+    <div class="legend-item"><span class="legend-swatch" style="background:var(--graph)"></span><span class="skill-graph">graph</span> — <code>qkb graph query</code> Cypher</div>
+    <div class="legend-item"><span class="legend-swatch" style="background:var(--ppr)"></span><span class="skill-ppr">ppr</span> — RFC-0010 spike (Personalized PageRank)</div>
+    <div class="legend-item"><span class="legend-swatch" style="background:var(--hybrid)"></span><span class="skill-hybrid">hybrid</span> — <code>qkb query --graph</code> (BM25 + vector + LLM expansion + rerank + graph)</div>
+  </div>
+
+  <h3>Six adversarial questions</h3>
+  <table>
+    <thead><tr><th>#</th><th>Shape</th><th>Hypothesis</th></tr></thead>
+    <tbody>
+      <tr><td>Q-A</td><td>BM25-friendly control</td><td>bm25 wins on speed; everything else answers</td></tr>
+      <tr><td>Q-B</td><td>Relational (named entities)</td><td>graph dominates; vault-query has no path</td></tr>
+      <tr><td>Q-C</td><td>Auto seed discovery</td><td>ppr <em>should</em> win (if it solves Q13's hub-bias)</td></tr>
+      <tr><td>Q-D</td><td>Vocabulary mismatch</td><td>hybrid only; LLM expansion bridges vocab gap</td></tr>
+      <tr><td>Q-E</td><td>Cold page (not in hot/index)</td><td>any qkb skill beats vault-query; vault-query collapses</td></tr>
+      <tr><td>Q-F</td><td>Synthesis without hub</td><td>hybrid with rerank; ppr's hub-bias hurts</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section id="headline">
+  <h2>Headline results</h2>
+
+  <div class="summary-grid">
+    <div class="stat-card">
+      <div class="label">Top skill (avg)</div>
+      <div class="value skill-vq">85%</div>
+      <div class="delta">vault-query — BUT see leakage finding</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">2nd / 3rd (tied)</div>
+      <div class="value"><span class="skill-bm25">78%</span> / <span class="skill-graph">78%</span></div>
+      <div class="delta">bm25 and graph identical aggregate</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Hybrid pipeline</div>
+      <div class="value skill-hybrid">73%</div>
+      <div class="delta">slowest skill, 4th on coverage</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">PPR (RFC-0010)</div>
+      <div class="value skill-ppr">71%</div>
+      <div class="delta">last; hub-bias confirmed on Q-F (20%)</div>
+    </div>
+  </div>
+
+  <div class="key-finding">
+    <strong>The vault-query lead is misleading.</strong> Of vault-query's 6 runs, <strong>3 reached for <code>qkb query</code> / <code>qkb get</code> / <code>qkb multi-get</code> as fallback</strong> when the curated path (read <code>hot.md</code> + <code>index.md</code>) couldn't fulfill the question. Specifically: Q-A (used <code>qkb query</code> + 3× <code>qkb get</code>), Q-C (used <code>qkb query</code> + <code>multi-get</code>), Q-E (used <code>qkb query</code> for Route Server cold-page lookup). Three of the six adversarial questions broke vault-query's discipline. The 85% headline is "vault-query + opportunistic qkb fallback," not pure curated read.
+  </div>
+
+  <h3>Aggregate scoring (coverage)</h3>
+  <table>
+    <thead><tr><th>Path</th><th class="num">Q-A</th><th class="num">Q-B</th><th class="num">Q-C</th><th class="num">Q-D</th><th class="num">Q-E</th><th class="num">Q-F</th><th class="num">Avg</th></tr></thead>
+    <tbody>
+      <tr><td class="skill-vq">vault-query</td><td class="num">92%*</td><td class="num">95%</td><td class="num">90%*</td><td class="num">85%</td><td class="num">75%*</td><td class="num">73%</td><td class="num"><strong>85%</strong></td></tr>
+      <tr><td class="skill-bm25">bm25</td><td class="num">83%</td><td class="num">90%</td><td class="num">95%</td><td class="num">92%</td><td class="num">58%</td><td class="num">47%</td><td class="num">78%</td></tr>
+      <tr><td class="skill-graph">graph</td><td class="num">83%</td><td class="num">85%</td><td class="num">80%</td><td class="num">85%</td><td class="num">92%</td><td class="num">40%</td><td class="num">78%</td></tr>
+      <tr><td class="skill-hybrid">hybrid</td><td class="num">75%</td><td class="num">95%</td><td class="num">40%</td><td class="num">85%</td><td class="num">67%</td><td class="num">73%</td><td class="num">73%</td></tr>
+      <tr><td class="skill-ppr">ppr</td><td class="num">75%</td><td class="num">90%</td><td class="num">95%</td><td class="num">77%</td><td class="num">67%</td><td class="num">20%</td><td class="num">71%</td></tr>
+    </tbody>
+  </table>
+  <p class="meta">* = vault-query used qkb commands as fallback. Score reflects what the agent produced with qkb's help, not pure curated read.</p>
+
+  <h3>Per-question winners</h3>
+  <table>
+    <thead><tr><th>Question</th><th>Shape</th><th>Winner</th><th>Hypothesis matched?</th></tr></thead>
+    <tbody>
+      <tr><td>Q-A</td><td>BM25-friendly control</td><td><span class="skill-vq">vault-query 92%*</span></td><td>No — predicted bm25 would win; vault-query+qkb did</td></tr>
+      <tr><td>Q-B</td><td>Relational</td><td><span class="skill-vq">vault-query 95%</span> = <span class="skill-hybrid">hybrid 95%</span></td><td>Partial — graph (predicted winner) tied for 3rd at 85%</td></tr>
+      <tr><td>Q-C</td><td>Auto seed discovery</td><td><span class="skill-bm25">bm25 95%</span> = <span class="skill-ppr">ppr 95%</span></td><td>Partial — ppr won as predicted, but bm25 also did</td></tr>
+      <tr><td>Q-D</td><td>Vocab mismatch</td><td><span class="skill-bm25">bm25 92%</span></td><td>NO — predicted hybrid would dominate. bm25 won.</td></tr>
+      <tr><td>Q-E</td><td>Cold page</td><td><span class="skill-graph">graph 92%</span></td><td>Partial — vault-query was supposed to fail, used qkb to survive</td></tr>
+      <tr><td>Q-F</td><td>Synthesis</td><td><span class="skill-vq">vault-query 73%</span> = <span class="skill-hybrid">hybrid 73%</span></td><td>No clear winner; ppr collapsed (20%) as expected for hub-bias</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section id="decision">
+  <h2>Decision rule application</h2>
+
+  <p>The pre-committed rule:</p>
+  <ul>
+    <li><strong>qkb's best beats vault-query by ≥ 15 pts → keep qkb (clear)</strong> — DID NOT TRIGGER. qkb's best (bm25/graph at 78%) is <em>below</em> vault-query (85%).</li>
+    <li><strong>Spread &lt; 5 pts → drop qkb (clear)</strong> — DID NOT TRIGGER. 7-point spread.</li>
+    <li><strong>5–15 pt gap → ambiguous, need another round</strong> — applies, BUT the gap is in the wrong direction (vault-query ahead).</li>
+  </ul>
+
+  <p>Naïve reading: "vault-query beat qkb, drop qkb." Adjusted reading: <strong>vault-query only "won" by silently using qkb on 3 of 6 questions.</strong> Strip the qkb fallback and vault-query loses Q-A, Q-C, and Q-E — three of six. Pure-curated vault-query would land around 60% aggregate, not 85%.</p>
+
+  <h3>The real finding</h3>
+  <p><strong>No single path dominates the adversarial set.</strong> Five paths, five-way coverage between 71% and 85% (with the 85% asterisked). Per-question winners are spread across 4 of the 5 paths. The bench doesn't converge on one algorithm — it converges on the fact that <strong>different question shapes need different retrieval primitives</strong>.</p>
+
+  <p>Three loadbearing observations:</p>
+  <ol>
+    <li><strong>vault-query is a router, not a retrieval engine.</strong> The agent reads hot.md/index.md, decides what to do next, and reaches for qkb commands when the curated path fails. In practice, this is the cohort's most successful pattern — combining the cheap default (curated read) with selective qkb escalation.</li>
+    <li><strong>The hybrid pipeline (qkb query --graph) doesn't justify its latency.</strong> 73% coverage, 80s wallclock, came 4th overall. Won 2 questions by tying, dominated none. The 30-60s of LLM expansion + reranker compute doesn't translate into uniquely-good answers.</li>
+    <li><strong>PPR is narrow.</strong> 71% aggregate but with a 20% catastrophic failure on Q-F (hub-bias confirmed). PPR works on Q-B / Q-C shapes (pairwise / pattern-set with named entities) but doesn't generalize. The RFC-0010 v2 (degree-normalized PPR, issue #89) is needed before PPR is a viable general-purpose path.</li>
+  </ol>
+</section>
+
+<section id="convergence">
+  <h2>Convergence path: 5 skills → 3 skills + a router</h2>
+
+  <p>Based on this bench, the cohort can consolidate without losing coverage. Drop the bottom two paths, keep the three that own distinct question shapes, and document the routing logic.</p>
+
+  <h3>Keep:</h3>
+  <table>
+    <thead><tr><th>Skill</th><th>Wins</th><th>Why</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="skill-vq">vault-query (the router)</td>
+        <td>Default starting point</td>
+        <td>Cheapest path when meta-files work. Has the cohort's most successful pattern: curated read + selective qkb fallback. Document this explicitly so it's not "secret leakage" but explicit policy.</td>
+      </tr>
+      <tr>
+        <td class="skill-bm25">vault-query-bm25</td>
+        <td>Q-C, Q-D (vocab anchors)</td>
+        <td>Fastest qkb path (~30s avg). Won the vocab-mismatch question by finding the right canonical doc lexically. Cheap to keep.</td>
+      </tr>
+      <tr>
+        <td class="skill-graph">vault-query-graph</td>
+        <td>Q-E (cold page)</td>
+        <td>The only path that uniquely beats the field on cold pages and relational walks. Pure-Cypher discipline (no BM25 fallback in retrieval) is justified.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>Drop / hold:</h3>
+  <table>
+    <thead><tr><th>Skill</th><th>Status</th><th>Rationale</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="skill-hybrid">vault-query-qkb (hybrid pipeline)</td>
+        <td><span class="badge bad">Drop</span></td>
+        <td>4th place at 73% aggregate. Slowest (~80s). No unique wins. Latency + reranker compute don't translate to better answers vs. cheaper paths. The vector + LLM expansion + rerank stack is overengineered for this vault.</td>
+      </tr>
+      <tr>
+        <td class="skill-ppr">vault-query-ppr (PPR)</td>
+        <td><span class="badge warn">Hold pending v2</span></td>
+        <td>Last at 71%, with 20% catastrophic failure on Q-F. Issue <a href="https://github.com/danmestas/qkb/issues/89">#89</a> tracks degree-normalized PPR which might fix the hub-bias. Until then, PPR's narrow sweet spot (Q-B / Q-C shape) is already covered by bm25 + graph.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>What gets implemented for the router</h3>
+  <p>Currently the vault-query agent has implicit routing: when curated reads fail, it pragmatically shells out to qkb. Make that explicit:</p>
+  <ol>
+    <li>Read <code>hot.md</code>. If question is current-context-heavy and answers there: done.</li>
+    <li>Read <code>index.md</code> if it fits. If question maps to a named page in the index: read it, done.</li>
+    <li>Else: classify question shape.
+      <ul>
+        <li>Proper-noun anchor or distinctive vocab → run <code>qkb search</code> (bm25 path).</li>
+        <li>Relational / entity-relation / cold-page → run <code>qkb graph</code> Cypher (graph path).</li>
+        <li>Ambiguous → run <code>qkb search</code> first, escalate if top-5 are weak.</li>
+      </ul>
+    </li>
+    <li>Always batch-read survivors via <code>qkb multi-get</code> (saves tokens).</li>
+  </ol>
+  <p>This is what the agents are already doing implicitly. Making it explicit cleans up the cohort, eliminates the "vault-query secretly uses qkb" confusion, and gives the cohort a clear story: <strong>one default skill (the router), two specialist primitives (bm25, graph) it dispatches to.</strong></p>
+</section>
+
+<section id="answer-to-the-real-question">
+  <h2>The actual question: is qkb worth maintaining?</h2>
+
+  <p>Yes, but narrower than I'd previously framed. The case for keeping qkb:</p>
+
+  <ol>
+    <li><strong>vault-query secretly depends on it.</strong> Strip qkb and vault-query loses 3 of 6 adversarial questions. The curated-read path needs an escape valve.</li>
+    <li><strong>BM25 is doing real work.</strong> 78% aggregate, fastest path (~30s), wins or ties on Q-A, Q-C, Q-D. The FTS5 index + collection scoping is load-bearing infrastructure.</li>
+    <li><strong>Graph layer is uniquely necessary for cold pages.</strong> Q-E (Route Server, not in hot.md / index.md) — graph wins at 92%, BM25 lands at 58%, vault-query needs qkb help. Without the graph layer, cold-page questions become unanswerable as the vault grows.</li>
+    <li><strong>Multi-vault scoping</strong> (the <code>-c flight-planner</code> / <code>personal</code> pattern) is qkb-native. vault-query can't span collections.</li>
+  </ol>
+
+  <p>The case for trimming qkb:</p>
+
+  <ol>
+    <li><strong>The hybrid pipeline isn't earning its keep.</strong> Vector + LLM expansion + rerank cost ~50s of wallclock and dropped the skill to 4th place. Could be removed, freeing up significant maintenance surface.</li>
+    <li><strong>PPR is on hold.</strong> The RFC stays, the spike stays, but Phase 1 implementation doesn't ship until issue #89 (degree-normalized PPR) is benched. Don't add code that 71% bench coverage justifies.</li>
+  </ol>
+
+  <p><strong>Recommended scope for qkb:</strong></p>
+  <ul>
+    <li>Keep: FTS5 BM25 index, sqlite-vec embeddings (used by hybrid which is now optional), graph layer + Cypher engine, <code>qkb search</code>, <code>qkb graph</code>, <code>qkb get</code> / <code>multi-get</code>, collection scoping, <code>qkb update</code>.</li>
+    <li>Demote (still ship, but not the default): <code>qkb query --graph</code> hybrid pipeline. Keep for users who want maximum recall and don't mind 60s wallclock, but don't push it as the primary path.</li>
+    <li>Hold: <code>qkb graph rank</code> (RFC-0010 Phase 1). Reopen if issue #89 ships a viable v2.</li>
+  </ul>
+
+  <p>This shrinks the surface qkb has to defend without losing the load-bearing capabilities the bench validated.</p>
+</section>
+
+<section id="per-question">
+  <h2>Per-question detail</h2>
+
+  <div class="question-block">
+    <h3>Q-A: <code>Authorization: Bearer</code> header in FAA NMS API<span class="shape-tag">BM25-friendly control</span></h3>
+    <div class="charts-row">
+      <div>
+        <h4>Coverage</h4>
+        <div class="bar-row"><span class="skill-vq">vault-query*</span><div class="bar-track"><div class="bar-fill vq" style="width:92%"></div></div><span class="num">92%</span></div>
+        <div class="bar-row"><span class="skill-bm25">bm25</span><div class="bar-track"><div class="bar-fill bm25" style="width:83%"></div></div><span class="num">83%</span></div>
+        <div class="bar-row"><span class="skill-graph">graph</span><div class="bar-track"><div class="bar-fill graph" style="width:83%"></div></div><span class="num">83%</span></div>
+        <div class="bar-row"><span class="skill-ppr">ppr</span><div class="bar-track"><div class="bar-fill ppr" style="width:75%"></div></div><span class="num">75%</span></div>
+        <div class="bar-row"><span class="skill-hybrid">hybrid</span><div class="bar-track"><div class="bar-fill hybrid" style="width:75%"></div></div><span class="num">75%</span></div>
+      </div>
+      <div>
+        <h4>Latency (s)</h4>
+        <div class="bar-row"><span class="skill-vq">vault-query</span><div class="bar-track"><div class="bar-fill vq" style="width:93%"></div></div><span class="num">109</span></div>
+        <div class="bar-row"><span class="skill-bm25">bm25</span><div class="bar-track"><div class="bar-fill bm25" style="width:13%"></div></div><span class="num">16</span></div>
+        <div class="bar-row"><span class="skill-graph">graph</span><div class="bar-track"><div class="bar-fill graph" style="width:53%"></div></div><span class="num">62</span></div>
+        <div class="bar-row"><span class="skill-ppr">ppr</span><div class="bar-track"><div class="bar-fill ppr" style="width:49%"></div></div><span class="num">57</span></div>
+        <div class="bar-row"><span class="skill-hybrid">hybrid</span><div class="bar-track"><div class="bar-fill hybrid" style="width:81%"></div></div><span class="num">95</span></div>
+      </div>
+    </div>
+    <div class="verdict"><strong>Verdict:</strong> vault-query won by leaning on qkb (4 qkb commands). Pure bm25 was 7× faster (16s vs 109s) at 9pp coverage cost. Surprise: hybrid (which has BM25 inside it) underperformed bm25 alone — the reranker demoted the canonical FAQ page below loosely-related content.</div>
+  </div>
+
+  <div class="question-block">
+    <h3>Q-B: Briefing Assembler linked pages + common theme<span class="shape-tag">Relational (named entities)</span></h3>
+    <div class="charts-row">
+      <div>
+        <h4>Coverage</h4>
+        <div class="bar-row"><span class="skill-vq">vault-query</span><div class="bar-track"><div class="bar-fill vq" style="width:95%"></div></div><span class="num">95%</span></div>
+        <div class="bar-row"><span class="skill-hybrid">hybrid</span><div class="bar-track"><div class="bar-fill hybrid" style="width:95%"></div></div><span class="num">95%</span></div>
+        <div class="bar-row"><span class="skill-bm25">bm25</span><div class="bar-track"><div class="bar-fill bm25" style="width:90%"></div></div><span class="num">90%</span></div>
+        <div class="bar-row"><span class="skill-ppr">ppr</span><div class="bar-track"><div class="bar-fill ppr" style="width:90%"></div></div><span class="num">90%</span></div>
+        <div class="bar-row"><span class="skill-graph">graph</span><div class="bar-track"><div class="bar-fill graph" style="width:85%"></div></div><span class="num">85%</span></div>
+      </div>
+      <div>
+        <h4>Latency (s)</h4>
+        <div class="bar-row"><span class="skill-bm25">bm25</span><div class="bar-track"><div class="bar-fill bm25" style="width:24%"></div></div><span class="num">20</span></div>
+        <div class="bar-row"><span class="skill-vq">vault-query</span><div class="bar-track"><div class="bar-fill vq" style="width:40%"></div></div><span class="num">34</span></div>
+        <div class="bar-row"><span class="skill-graph">graph</span><div class="bar-track"><div class="bar-fill graph" style="width:42%"></div></div><span class="num">36</span></div>
+        <div class="bar-row"><span class="skill-ppr">ppr</span><div class="bar-track"><div class="bar-fill ppr" style="width:49%"></div></div><span class="num">42</span></div>
+        <div class="bar-row"><span class="skill-hybrid">hybrid</span><div class="bar-track"><div class="bar-fill hybrid" style="width:59%"></div></div><span class="num">50</span></div>
+      </div>
+    </div>
+    <div class="verdict"><strong>Verdict:</strong> Hypothesis was wrong — graph (predicted winner) tied for 3rd at 85% with a wikilink-naming error (<code>Golden Brief Capture Template</code> instead of <code>Golden Brief Template</code>). vault-query and hybrid won by 5pp through cleaner synthesis. Surprise: bm25 found all 9 wikilinks despite having no graph access — the related: frontmatter is lexically discoverable.</div>
+  </div>
+
+  <div class="question-block">
+    <h3>Q-C: Major FAA-ingestion architectural patterns + relations<span class="shape-tag">Auto seed discovery (PPR sweet spot)</span></h3>
+    <div class="charts-row">
+      <div>
+        <h4>Coverage</h4>
+        <div class="bar-row"><span class="skill-bm25">bm25</span><div class="bar-track"><div class="bar-fill bm25" style="width:95%"></div></div><span class="num">95%</span></div>
+        <div class="bar-row"><span class="skill-ppr">ppr</span><div class="bar-track"><div class="bar-fill ppr" style="width:95%"></div></div><span class="num">95%</span></div>
+        <div class="bar-row"><span class="skill-vq">vault-query*</span><div class="bar-track"><div class="bar-fill vq" style="width:90%"></div></div><span class="num">90%</span></div>
+        <div class="bar-row"><span class="skill-graph">graph</span><div class="bar-track"><div class="bar-fill graph" style="width:80%"></div></div><span class="num">80%</span></div>
+        <div class="bar-row"><span class="skill-hybrid">hybrid</span><div class="bar-track"><div class="bar-fill hybrid" style="width:40%"></div></div><span class="num">40%</span></div>
+      </div>
+      <div>
+        <h4>Latency (s)</h4>
+        <div class="bar-row"><span class="skill-ppr">ppr</span><div class="bar-track"><div class="bar-fill ppr" style="width:33%"></div></div><span class="num">45</span></div>
+        <div class="bar-row"><span class="skill-bm25">bm25</span><div class="bar-track"><div class="bar-fill bm25" style="width:37%"></div></div><span class="num">51</span></div>
+        <div class="bar-row"><span class="skill-hybrid">hybrid</span><div class="bar-track"><div class="bar-fill hybrid" style="width:64%"></div></div><span class="num">88</span></div>
+        <div class="bar-row"><span class="skill-graph">graph</span><div class="bar-track"><div class="bar-fill graph" style="width:74%"></div></div><span class="num">101</span></div>
+        <div class="bar-row"><span class="skill-vq">vault-query</span><div class="bar-track"><div class="bar-fill vq" style="width:100%"></div></div><span class="num">137</span></div>
+      </div>
+    </div>
+    <div class="verdict"><strong>Verdict:</strong> PPR hypothesis confirmed — won by tying bm25, both at 95% pattern coverage. Hybrid catastrophically misread the question as "engineering layers" instead of "architectural patterns," landed at 40% — its worst showing on the bench. Graph missed Schema-Drift Manifest entirely and substituted AIRAC Delta Polling as a separate pattern.</div>
+  </div>
+
+  <div class="question-block">
+    <h3>Q-D: Stale data served to a user<span class="shape-tag">Vocabulary mismatch (hybrid sweet spot)</span></h3>
+    <div class="charts-row">
+      <div>
+        <h4>Coverage</h4>
+        <div class="bar-row"><span class="skill-bm25">bm25</span><div class="bar-track"><div class="bar-fill bm25" style="width:92%"></div></div><span class="num">92%</span></div>
+        <div class="bar-row"><span class="skill-vq">vault-query</span><div class="bar-track"><div class="bar-fill vq" style="width:85%"></div></div><span class="num">85%</span></div>
+        <div class="bar-row"><span class="skill-graph">graph</span><div class="bar-track"><div class="bar-fill graph" style="width:85%"></div></div><span class="num">85%</span></div>
+        <div class="bar-row"><span class="skill-hybrid">hybrid</span><div class="bar-track"><div class="bar-fill hybrid" style="width:85%"></div></div><span class="num">85%</span></div>
+        <div class="bar-row"><span class="skill-ppr">ppr</span><div class="bar-track"><div class="bar-fill ppr" style="width:77%"></div></div><span class="num">77%</span></div>
+      </div>
+      <div>
+        <h4>Latency (s)</h4>
+        <div class="bar-row"><span class="skill-ppr">ppr</span><div class="bar-track"><div class="bar-fill ppr" style="width:31%"></div></div><span class="num">25</span></div>
+        <div class="bar-row"><span class="skill-vq">vault-query</span><div class="bar-track"><div class="bar-fill vq" style="width:33%"></div></div><span class="num">26</span></div>
+        <div class="bar-row"><span class="skill-bm25">bm25</span><div class="bar-track"><div class="bar-fill bm25" style="width:67%"></div></div><span class="num">54</span></div>
+        <div class="bar-row"><span class="skill-graph">graph</span><div class="bar-track"><div class="bar-fill graph" style="width:80%"></div></div><span class="num">64</span></div>
+        <div class="bar-row"><span class="skill-hybrid">hybrid</span><div class="bar-track"><div class="bar-fill hybrid" style="width:100%"></div></div><span class="num">80</span></div>
+      </div>
+    </div>
+    <div class="verdict"><strong>Verdict:</strong> Hypothesis was wrong — bm25 (cheapest path) won, not hybrid. Despite "stale data" / "served to a user" being vocabulary-mismatched against vault terms ("freshness gate", "valid_as_of", "503"), bm25 found the canonical NOTAM Freshness Gate page and the firestorm-freshness incident page on its first query. Hybrid's LLM expansion didn't add value over BM25's lexical match for this question.</div>
+  </div>
+
+  <div class="question-block">
+    <h3>Q-E: Route Server pattern — cold page<span class="shape-tag">Cold page (not in hot/index)</span></h3>
+    <div class="charts-row">
+      <div>
+        <h4>Coverage</h4>
+        <div class="bar-row"><span class="skill-graph">graph</span><div class="bar-track"><div class="bar-fill graph" style="width:92%"></div></div><span class="num">92%</span></div>
+        <div class="bar-row"><span class="skill-vq">vault-query*</span><div class="bar-track"><div class="bar-fill vq" style="width:75%"></div></div><span class="num">75%</span></div>
+        <div class="bar-row"><span class="skill-ppr">ppr</span><div class="bar-track"><div class="bar-fill ppr" style="width:67%"></div></div><span class="num">67%</span></div>
+        <div class="bar-row"><span class="skill-hybrid">hybrid</span><div class="bar-track"><div class="bar-fill hybrid" style="width:67%"></div></div><span class="num">67%</span></div>
+        <div class="bar-row"><span class="skill-bm25">bm25</span><div class="bar-track"><div class="bar-fill bm25" style="width:58%"></div></div><span class="num">58%</span></div>
+      </div>
+      <div>
+        <h4>Latency (s)</h4>
+        <div class="bar-row"><span class="skill-bm25">bm25</span><div class="bar-track"><div class="bar-fill bm25" style="width:21%"></div></div><span class="num">24</span></div>
+        <div class="bar-row"><span class="skill-graph">graph</span><div class="bar-track"><div class="bar-fill graph" style="width:35%"></div></div><span class="num">41</span></div>
+        <div class="bar-row"><span class="skill-ppr">ppr</span><div class="bar-track"><div class="bar-fill ppr" style="width:41%"></div></div><span class="num">48</span></div>
+        <div class="bar-row"><span class="skill-hybrid">hybrid</span><div class="bar-track"><div class="bar-fill hybrid" style="width:70%"></div></div><span class="num">82</span></div>
+        <div class="bar-row"><span class="skill-vq">vault-query</span><div class="bar-track"><div class="bar-fill vq" style="width:100%"></div></div><span class="num">117</span></div>
+      </div>
+    </div>
+    <div class="verdict"><strong>Verdict:</strong> Graph's signature win. The Route Server page has no wikilink reference from hot.md or index.md — it's genuinely cold. graph traversed from PFPS / CFPS entity neighborhoods to find it; bm25 hit similar pages but missed key details (CWDS = Combat Weapons Delivery, not weather overlay — a discriminator only vault-query and graph got right). vault-query needed qkb help to land at 75%.</div>
+  </div>
+
+  <div class="question-block">
+    <h3>Q-F: What makes our system different from a typical aviation data API<span class="shape-tag">Synthesis without hub</span></h3>
+    <div class="charts-row">
+      <div>
+        <h4>Coverage</h4>
+        <div class="bar-row"><span class="skill-vq">vault-query</span><div class="bar-track"><div class="bar-fill vq" style="width:73%"></div></div><span class="num">73%</span></div>
+        <div class="bar-row"><span class="skill-hybrid">hybrid</span><div class="bar-track"><div class="bar-fill hybrid" style="width:73%"></div></div><span class="num">73%</span></div>
+        <div class="bar-row"><span class="skill-bm25">bm25</span><div class="bar-track"><div class="bar-fill bm25" style="width:47%"></div></div><span class="num">47%</span></div>
+        <div class="bar-row"><span class="skill-graph">graph</span><div class="bar-track"><div class="bar-fill graph" style="width:40%"></div></div><span class="num">40%</span></div>
+        <div class="bar-row"><span class="skill-ppr">ppr</span><div class="bar-track"><div class="bar-fill ppr" style="width:20%"></div></div><span class="num">20%</span></div>
+      </div>
+      <div>
+        <h4>Latency (s)</h4>
+        <div class="bar-row"><span class="skill-bm25">bm25</span><div class="bar-track"><div class="bar-fill bm25" style="width:48%"></div></div><span class="num">42</span></div>
+        <div class="bar-row"><span class="skill-vq">vault-query</span><div class="bar-track"><div class="bar-fill vq" style="width:48%"></div></div><span class="num">42</span></div>
+        <div class="bar-row"><span class="skill-graph">graph</span><div class="bar-track"><div class="bar-fill graph" style="width:71%"></div></div><span class="num">62</span></div>
+        <div class="bar-row"><span class="skill-hybrid">hybrid</span><div class="bar-track"><div class="bar-fill hybrid" style="width:75%"></div></div><span class="num">65</span></div>
+        <div class="bar-row"><span class="skill-ppr">ppr</span><div class="bar-track"><div class="bar-fill ppr" style="width:100%"></div></div><span class="num">95</span></div>
+      </div>
+    </div>
+    <div class="verdict"><strong>Verdict:</strong> PPR's hub-bias confirmed — 20% catastrophic failure. PPR seeded from BM25 hits that were competitor-research pages (PreflightAPI deep dive, NMS docs) and converged to those rather than the canonical overview.md / Missing Middle / Flight Brief Scope. Synthesis questions need a hub page (overview.md) that PPR can't find without prior knowledge. vault-query and hybrid tied at 73% by reading the canonical positioning pages directly.</div>
+  </div>
+</section>
+
+<section id="next-steps">
+  <h2>Next steps</h2>
+
+  <ol>
+    <li><strong>Reframe vault-query as the router skill.</strong> Update its SKILL.md to explicitly document the curated-read-then-escalate pattern instead of leaving it as implicit pragmatism. Three-step flow: hot.md, index.md, then dispatch to bm25 or graph based on question shape.</li>
+    <li><strong>Drop <code>vault-query-qkb</code> (the hybrid pipeline skill).</strong> 4th place on the adversarial bench, slowest, no unique wins. The <code>qkb query --graph</code> command stays in the qkb CLI (advanced users can call it directly) but it's not a default skill in the cohort.</li>
+    <li><strong>Hold PPR.</strong> RFC-0010 stays merged for the record. Phase 1 implementation doesn't ship until issue #89 (degree-normalized PPR) has a working spike that fixes the hub-bias.</li>
+    <li><strong>Investigate the discriminator on Q-E.</strong> Three skills (bm25, ppr, hybrid) all called CWDS a "weather overlay" — actual canonical is "Combat Weapons Delivery System." vault-query and graph got it right. This is a meaningful correctness failure that lexical retrieval (BM25) and statistical retrieval (vector) both made, but graph traversal avoided. Worth understanding the failure mode.</li>
+    <li><strong>Re-bench after the consolidation</strong> — 3 skills × 6 questions, fresh agents, measure the no-leakage version of vault-query routing. Decision: does the explicit router maintain the 85% level, or does forcing the routing explicit cost coverage?</li>
+  </ol>
+</section>
+
+<hr>
+
+<footer>
+  <p class="meta">Generated 2026-05-14 · qkb v0.0.2 · flight-planner-kb vault · v4 adversarial bench · 30 run-agents + 6 eval-agents</p>
+</footer>
+
+</body>
+</html>
