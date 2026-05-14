@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>qkb skill benchmark — flight-planner-kb vault — 2026-05-13</title>
+<style>
+  :root {
+    --bg: #fafafa;
+    --bg-card: #ffffff;
+    --bg-code: #f3f3f3;
+    --fg: #1a1a1a;
+    --fg-dim: #555;
+    --fg-mute: #888;
+    --border: #e0e0e0;
+    --border-strong: #999;
+    --good: #2a7a2a;
+    --good-bg: #e6f4e6;
+    --warn: #b87800;
+    --warn-bg: #fdf2dc;
+    --bad: #b03030;
+    --bad-bg: #f8e0e0;
+    --accent: #1e5fbb;
+    --vq: #6b46c1;
+    --bm25: #0891b2;
+    --qkb: #ea580c;
+    --graph: #16a34a;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1a1a1a;
+      --bg-card: #252525;
+      --bg-code: #2d2d2d;
+      --fg: #e8e8e8;
+      --fg-dim: #b0b0b0;
+      --fg-mute: #888;
+      --border: #3a3a3a;
+      --border-strong: #555;
+      --good: #6fb96f;
+      --good-bg: #1e3a1e;
+      --warn: #d9a533;
+      --warn-bg: #3a2e1a;
+      --bad: #d97070;
+      --bad-bg: #3a1e1e;
+      --accent: #6ba4ff;
+      --vq: #b794f4;
+      --bm25: #67e8f9;
+      --qkb: #fdba74;
+      --graph: #86efac;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    line-height: 1.55;
+    color: var(--fg);
+    background: var(--bg);
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem 4rem;
+  }
+  h1 { font-size: 1.9rem; margin: 0 0 0.4rem; }
+  h2 { font-size: 1.35rem; border-bottom: 1px solid var(--border); padding-bottom: 0.3rem; margin-top: 2.5rem; }
+  h3 { font-size: 1.1rem; margin-top: 1.5rem; }
+  h4 { font-size: 0.95rem; margin-top: 1rem; margin-bottom: 0.4rem; color: var(--fg-dim); text-transform: uppercase; letter-spacing: 0.05em; }
+  p, li { font-size: 0.95rem; }
+  code, pre, .mono { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace; }
+  code { background: var(--bg-code); padding: 0.1rem 0.35rem; border-radius: 3px; font-size: 0.85em; }
+  pre { background: var(--bg-code); padding: 0.8rem; border-radius: 5px; overflow-x: auto; font-size: 0.85rem; }
+  .header-sub { color: var(--fg-dim); margin-top: 0; font-size: 0.95rem; }
+  .meta { font-size: 0.85rem; color: var(--fg-mute); }
+  table { width: 100%; border-collapse: collapse; margin: 0.8rem 0; }
+  th, td { padding: 0.5rem 0.75rem; text-align: left; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
+  th { font-weight: 600; color: var(--fg-dim); text-transform: uppercase; letter-spacing: 0.04em; font-size: 0.75rem; }
+  tbody tr:hover { background: var(--bg-code); }
+  .num { font-variant-numeric: tabular-nums; text-align: right; }
+  .skill-vq { color: var(--vq); font-weight: 600; }
+  .skill-bm25 { color: var(--bm25); font-weight: 600; }
+  .skill-qkb { color: var(--qkb); font-weight: 600; }
+  .skill-graph { color: var(--graph); font-weight: 600; }
+  .question-block {
+    margin: 2rem 0;
+    padding: 1.5rem;
+    background: var(--bg-card);
+    border-radius: 8px;
+    border: 1px solid var(--border);
+  }
+  .shape-tag {
+    display: inline-block;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 0.15rem 0.5rem;
+    border-radius: 3px;
+    background: var(--bg-code);
+    color: var(--fg-dim);
+    margin-left: 0.5rem;
+    vertical-align: middle;
+  }
+  .bar-row {
+    display: grid;
+    grid-template-columns: 8rem 1fr 3rem;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0.35rem 0;
+    font-size: 0.85rem;
+  }
+  .bar-track {
+    background: var(--bg-code);
+    border-radius: 3px;
+    overflow: hidden;
+    height: 0.95rem;
+  }
+  .bar-fill {
+    height: 100%;
+    transition: width 0.3s;
+  }
+  .bar-fill.vq { background: var(--vq); }
+  .bar-fill.bm25 { background: var(--bm25); }
+  .bar-fill.qkb { background: var(--qkb); }
+  .bar-fill.graph { background: var(--graph); }
+  .bar-row .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .charts-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    margin: 1rem 0;
+  }
+  @media (max-width: 700px) {
+    .charts-row { grid-template-columns: 1fr; }
+    .bar-row { grid-template-columns: 6rem 1fr 2.5rem; font-size: 0.8rem; }
+  }
+  .badge {
+    display: inline-block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.1rem 0.45rem;
+    border-radius: 3px;
+  }
+  .badge.good { background: var(--good-bg); color: var(--good); }
+  .badge.warn { background: var(--warn-bg); color: var(--warn); }
+  .badge.bad { background: var(--bad-bg); color: var(--bad); }
+  details {
+    margin: 0.8rem 0;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 0;
+    background: var(--bg-card);
+  }
+  details summary {
+    cursor: pointer;
+    padding: 0.6rem 0.8rem;
+    font-size: 0.9rem;
+    font-weight: 500;
+    user-select: none;
+  }
+  details summary:hover { background: var(--bg-code); }
+  details[open] summary { border-bottom: 1px solid var(--border); }
+  details > *:not(summary) { padding: 0.8rem; }
+  details ol, details ul { margin: 0; padding-left: 1.5rem; }
+  details li { margin: 0.3rem 0; font-size: 0.88rem; }
+  .verdict {
+    margin: 1rem 0 0;
+    padding: 0.8rem 1rem;
+    background: var(--bg-code);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 4px 4px 0;
+    font-size: 0.9rem;
+  }
+  .answer-card {
+    margin: 0.6rem 0;
+    padding: 0.8rem;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+  }
+  .answer-card .skill-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 0.4rem;
+  }
+  .answer-card .answer-text {
+    font-size: 0.85rem;
+    color: var(--fg-dim);
+    line-height: 1.55;
+  }
+  .legend {
+    display: flex;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+    font-size: 0.85rem;
+    margin: 0.5rem 0 1rem;
+    color: var(--fg-dim);
+  }
+  .legend-item { display: flex; align-items: center; gap: 0.4rem; }
+  .legend-swatch { width: 0.9rem; height: 0.9rem; border-radius: 3px; }
+  .recommend-table th { font-size: 0.8rem; }
+  .recommend-table td:first-child { font-weight: 600; }
+  .footnote { font-size: 0.8rem; color: var(--fg-mute); margin-top: 0.6rem; }
+  hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+    margin: 1rem 0;
+  }
+  @media (max-width: 700px) { .summary-grid { grid-template-columns: repeat(2, 1fr); } }
+  .stat-card {
+    padding: 0.9rem;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+  }
+  .stat-card .label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--fg-mute); }
+  .stat-card .value { font-size: 1.4rem; font-weight: 600; margin: 0.2rem 0; }
+  .stat-card .delta { font-size: 0.8rem; color: var(--fg-dim); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>qkb skill benchmark</h1>
+  <p class="header-sub">4 retrieval skills × 6 questions on the flight-planner-kb vault (1330 docs, 4491 vectors, 14273 graph edges)</p>
+  <p class="meta">Run date: 2026-05-13 · Vault: <code>flight-planner-kb</code> · Index: <code>~/.cache/qkb/index.sqlite</code></p>
+</header>
+
+<section id="legend">
+  <div class="legend">
+    <div class="legend-item"><span class="legend-swatch" style="background:var(--vq)"></span><span class="skill-vq">vault-query</span> — curated read (no retrieval engine)</div>
+    <div class="legend-item"><span class="legend-swatch" style="background:var(--bm25)"></span><span class="skill-bm25">vault-query-bm25</span> — <code>qkb search</code> (BM25 only)</div>
+    <div class="legend-item"><span class="legend-swatch" style="background:var(--qkb)"></span><span class="skill-qkb">vault-query-qkb</span> — <code>qkb query --graph</code> (full pipeline)</div>
+    <div class="legend-item"><span class="legend-swatch" style="background:var(--graph)"></span><span class="skill-graph">vault-query-graph</span> — <code>qkb query --graph</code> (graph-emphasis discipline)</div>
+  </div>
+</section>
+
+<section id="summary">
+  <h2>Headline results</h2>
+  <div class="summary-grid">
+    <div class="stat-card">
+      <div class="label">Avg coverage</div>
+      <div class="value">73%</div>
+      <div class="delta"><span class="skill-vq">vault-query</span> &amp; <span class="skill-qkb">qkb</span> tie</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Avg latency</div>
+      <div class="value">54s</div>
+      <div class="delta"><span class="skill-bm25">bm25</span> is 2× faster than the rest</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Hallucinations</div>
+      <div class="value">1</div>
+      <div class="delta"><span class="skill-bm25">bm25</span> Q6 — 7% coverage, fabricated table/schemas</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Wikilink resolution</div>
+      <div class="value">~96%</div>
+      <div class="delta">all skills, except <span class="skill-bm25">bm25</span> Q6 (0/3)</div>
+    </div>
+  </div>
+
+  <h3>Aggregate scoring</h3>
+  <table>
+    <thead>
+      <tr><th>Skill</th><th class="num">Avg coverage</th><th class="num">Avg latency</th><th class="num">Avg tokens</th><th class="num">Wins</th><th class="num">≤50% questions</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="skill-qkb">vault-query-qkb</td>
+        <td class="num">74%</td>
+        <td class="num">108s</td>
+        <td class="num">~60k</td>
+        <td class="num">1 (Q3)</td>
+        <td class="num">1 (Q5)</td>
+      </tr>
+      <tr>
+        <td class="skill-vq">vault-query</td>
+        <td class="num">73%</td>
+        <td class="num">107s</td>
+        <td class="num">~62k</td>
+        <td class="num">3 (Q1, Q2, Q6 tie)</td>
+        <td class="num">1 (Q5)</td>
+      </tr>
+      <tr>
+        <td class="skill-graph">vault-query-graph</td>
+        <td class="num">72%</td>
+        <td class="num">115s</td>
+        <td class="num">~54k</td>
+        <td class="num">1 (Q6)</td>
+        <td class="num">0</td>
+      </tr>
+      <tr>
+        <td class="skill-bm25">vault-query-bm25</td>
+        <td class="num">57%</td>
+        <td class="num">54s</td>
+        <td class="num">~55k</td>
+        <td class="num">1 (Q5)</td>
+        <td class="num">2 (Q1, Q6)</td>
+      </tr>
+    </tbody>
+  </table>
+  <p class="footnote">Coverage = fraction of ground-truth facts mentioned in the answer, paraphrasing accepted. Ground truth = 10–15 facts extracted from canonical vault pages per question.</p>
+
+  <h3>TL;DR</h3>
+  <ul>
+    <li><strong>The first bench was wrong about BM25.</strong> Rigorous fact-coverage scoring shows <span class="skill-bm25">bm25</span> trails the other three by ~16 points and has accuracy failures (Q6 hallucination, Q4 broken wikilink, Q1 misframed update mechanism).</li>
+    <li><strong>vault-query and qkb are statistical ties</strong> on the questions where vault-query can actually do its job. But vault-query degraded badly on Q5 (20% coverage) and Q4 (64%) — questions where the answer is scattered across many pages.</li>
+    <li><strong>vault-query-graph is reliable but prone to scope creep.</strong> Best on Q6 (freshness comparison), but on Q4 it dragged in EUROCONTROL Digital NOTAM coverage that didn't answer the U.S.-NMS-loss question, and inverted Notamify's NMS-dependency from a risk into a strength.</li>
+    <li><strong>vault-query-qkb is the most balanced.</strong> Never sub-71% except on Q5, never hallucinates, citations always resolve. It earns its 2× latency on hard questions but has no edge on easy ones.</li>
+  </ul>
+</section>
+
+<section id="methodology">
+  <h2>Methodology</h2>
+  <ol>
+    <li><strong>Question selection</strong> — 6 questions covering 4 shapes: proper-noun anchor (Q1), distinctive-vocabulary (Q2), vocabulary mismatch (Q3, Q5), multi-hop comparison (Q4, Q6).</li>
+    <li><strong>Execution</strong> — Each question dispatched to 4 subagents in parallel, one per skill. Each agent read its <code>SKILL.md</code>, followed the documented flow end-to-end, timed itself between first retrieval action and final synthesis. No vault edits, no <code>qkb update</code>/<code>embed</code>.</li>
+    <li><strong>Ground truth</strong> — After all 24 answers were collected, a separate evaluation agent per question read the canonical 2–4 vault pages and extracted 10–15 specific, verifiable facts that a correct, complete answer should mention.</li>
+    <li><strong>Scoring</strong> — Each answer was scored against the fact list (paraphrasing accepted) and its wikilink citations were verified against the actual file tree (<code>find wiki/ -iname '...'</code>).</li>
+    <li><strong>Caveats</strong> — Per-question batches ran in parallel, so the two <code>qkb query --graph</code> agents contended on the reranker model (inflating wallclock for Q2/Q5 by ~2×). Quality scoring is at fact-coverage granularity; one fact-list item is one binary checkbox, so subjectivity in fact-list construction is the main source of noise.</li>
+  </ol>
+</section>
+
+<!-- ============== Q1 ============== -->
+<section class="question-block">
+  <h2>Q1: How does FAA NMS handle NOTAM updates?<span class="shape-tag">proper-noun anchor</span></h2>
+
+  <div class="charts-row">
+    <div>
+      <h4>Coverage</h4>
+      <div class="bar-row"><span class="skill-vq">vault-query</span><div class="bar-track"><div class="bar-fill vq" style="width:93%"></div></div><span class="num">93%</span></div>
+      <div class="bar-row"><span class="skill-bm25">bm25</span><div class="bar-track"><div class="bar-fill bm25" style="width:60%"></div></div><span class="num">60%</span></div>
+      <div class="bar-row"><span class="skill-qkb">qkb</span><div class="bar-track"><div class="bar-fill qkb" style="width:87%"></div></div><span class="num">87%</span></div>
+      <div class="bar-row"><span class="skill-graph">graph</span><div class="bar-track"><div class="bar-fill graph" style="width:87%"></div></div><span class="num">87%</span></div>
+    </div>
+    <div>
+      <h4>Latency (seconds)</h4>
+      <div class="bar-row"><span class="skill-vq">vault-query</span><div class="bar-track"><div class="bar-fill vq" style="width:73%"></div></div><span class="num">29.2</span></div>
+      <div class="bar-row"><span class="skill-bm25">bm25</span><div class="bar-track"><div class="bar-fill bm25" style="width:57%"></div></div><span class="num">22.9</span></div>
+      <div class="bar-row"><span class="skill-qkb">qkb</span><div class="bar-track"><div class="bar-fill qkb" style="width:94%"></div></div><span class="num">37.6</span></div>
+      <div class="bar-row"><span class="skill-graph">graph</span><div class="bar-track"><div class="bar-fill graph" style="width:73%"></div></div><span class="num">29.2</span></div>
+    </div>
+  </div>
+
+  <table>
+    <thead><tr><th>Skill</th><th>Coverage</th><th>Citations</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td class="skill-vq">vault-query</td><td>14/15</td><td>8/8</td><td>Most complete — both-phase pattern, content-URL proxy, classifications, features, SWIM follow-on, scale verification</td></tr>
+      <tr><td class="skill-bm25">bm25</td><td>9/15</td><td>4/4</td><td><span class="badge bad">misframed</span> Update mechanism described as "checklist-diff reconciliation" — not the canonical lastUpdatedDate-polling pattern</td></tr>
+      <tr><td class="skill-qkb">qkb</td><td>13/15</td><td>5/5</td><td>Clean two-phase summary with 5-min content URL expiry; lighter on filter constraints</td></tr>
+      <tr><td class="skill-graph">graph</td><td>13/15</td><td>7/7</td><td>Strongest on query constraints (radius ≤100 nm, notamNumber companion requirement); missed <code>/v1/locationseries</code></td></tr>
+    </tbody>
+  </table>
+
+  <details>
+    <summary>Ground truth (15 facts)</summary>
+    <ol>
+      <li>NMS is FAA's cloud-based NOTAM Management Service; cut over April 18, 2026, replacing legacy USNS/FNS.</li>
+      <li>Built/operated by CGI Federal on GCP; base <code>https://api-nms.aim.faa.gov/nmsapi</code>.</li>
+      <li>REST API with OpenAPI 3.0.4 spec v1.0.17; machine-to-machine only (browser → 401).</li>
+      <li>Auth: OAuth2 client-credentials via <code>POST /v1/auth/token</code>; bearer-token TTL ~30 min; no <code>/nmsapi/</code> prefix on auth.</li>
+      <li>Two-phase ingestion: Initial Load on each new 28-day AIRAC cycle, then continuous Delta Polling.</li>
+      <li>Initial Load via <code>GET /v1/notams/il</code> — full corpus as AIXM 5.1 in SOAP envelope.</li>
+      <li>Large payloads via GCP signed URLs proxied through <code>/v1/content/{token}</code>; URLs expire after 5 minutes; bearer required.</li>
+      <li>Delta Polling via <code>GET /v1/notams</code> filtered by <code>lastUpdatedDate</code>, hard 24-hour max lookback.</li>
+      <li>Response format selected per-request by <code>nmsResponseFormat</code> header (AIXM | GEOJSON); GeoJSON preferred for deltas.</li>
+      <li>Five classifications: DOMESTIC, INTERNATIONAL, MILITARY, LOCAL_MILITARY, FDC.</li>
+      <li>Twenty filterable features; <code>/v1/notams</code> takes 12 query params, requires ≥1 filter.</li>
+      <li>Geospatial filter: lat+lon+radius together; radius ≤100 nm.</li>
+      <li><code>/v1/locationseries</code> provides location-code mapping with ≤5-day lookback.</li>
+      <li>NMS will publish NMS-NPS feed back into FAA SWIM as a follow-on.</li>
+      <li>Verified at scale 2026-05-02: 74,672 NOTAMs across 4 classifications.</li>
+    </ol>
+  </details>
+
+  <details>
+    <summary>Per-skill answer summaries</summary>
+    <div class="answer-card"><div class="skill-head"><span class="skill-vq">vault-query</span><span class="meta">29.2s · 4 files · 11 citations</span></div><div class="answer-text">Most complete — both phases, auth, content proxy, all 5 classifications, 20 features, locationseries, SWIM follow-on, scale verification.</div></div>
+    <div class="answer-card"><div class="skill-head"><span class="skill-bm25">bm25</span><span class="meta">22.9s · 4 files · 7 citations</span></div><div class="answer-text">Framed updates as checklist-diff reconciliation via <code>/v1/notams/checklist</code> — plausible alternative pattern but not the canonical AIRAC delta-poll mechanism; missed AIRAC cycle trigger entirely.</div></div>
+    <div class="answer-card"><div class="skill-head"><span class="skill-qkb">qkb</span><span class="meta">37.6s · 3 files · 8 citations</span></div><div class="answer-text">Tight two-phase summary nailing IL/delta + auth + 5-min token expiry; lighter on filter constraints; omits SWIM/NMS-NPS follow-on.</div></div>
+    <div class="answer-card"><div class="skill-head"><span class="skill-graph">graph</span><span class="meta">29.2s · 3 files · 6 citations</span></div><div class="answer-text">Strong on query constraints (radius ≤100 nm, notamNumber companion requirement), auth, content URL expiry, and scale verification; omits <code>/v1/locationseries</code>.</div></div>
+  </details>
+
+  <div class="verdict">
+    <strong>Verdict:</strong> vault-query &gt; graph ≈ qkb &gt; bm25. bm25's "checklist-diff" framing materially misrepresents how NMS delivers updates. The high-vocabulary-anchor question where I expected bm25 to win turned into its biggest framing error.
+  </div>
+</section>
+
+<!-- ============== Q2 ============== -->
+<section class="question-block">
+  <h2>Q2: What are the guardrails around schema drift in our aviation data sources?<span class="shape-tag">distinctive vocabulary</span></h2>
+
+  <div class="charts-row">
+    <div>
+      <h4>Coverage</h4>
+      <div class="bar-row"><span class="skill-vq">vault-query</span><div class="bar-track"><div class="bar-fill vq" style="width:87%"></div></div><span class="num">87%</span></div>
+      <div class="bar-row"><span class="skill-bm25">bm25</span><div class="bar-track"><div class="bar-fill bm25" style="width:67%"></div></div><span class="num">67%</span></div>
+      <div class="bar-row"><span class="skill-qkb">qkb</span><div class="bar-track"><div class="bar-fill qkb" style="width:80%"></div></div><span class="num">80%</span></div>
+      <div class="bar-row"><span class="skill-graph">graph</span><div class="bar-track"><div class="bar-fill graph" style="width:80%"></div></div><span class="num">80%</span></div>
+    </div>
+    <div>
+      <h4>Latency (seconds)</h4>
+      <div class="bar-row"><span class="skill-vq">vault-query</span><div class="bar-track"><div class="bar-fill vq" style="width:77%"></div></div><span class="num">119.1</span></div>
+      <div class="bar-row"><span class="skill-bm25">bm25</span><div class="bar-track"><div class="bar-fill bm25" style="width:29%"></div></div><span class="num">44.2</span></div>
+      <div class="bar-row"><span class="skill-qkb">qkb</span><div class="bar-track"><div class="bar-fill qkb" style="width:84%"></div></div><span class="num">128.8</span></div>
+      <div class="bar-row"><span class="skill-graph">graph</span><div class="bar-track"><div class="bar-fill graph" style="width:100%"></div></div><span class="num">153.6</span></div>
+    </div>
+  </div>
+
+  <table>
+    <thead><tr><th>Skill</th><th>Coverage</th><th>Citations</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td class="skill-vq">vault-query</td><td>13/15</td><td>11/11</td><td>Only answer to name <code>raw_text</code>/<code>raw_payload</code> as a third lineage layer enabling in-place reparse — a load-bearing detail</td></tr>
+      <tr><td class="skill-bm25">bm25</td><td>10/15</td><td>8/8</td><td>Deepest on Firestorm fingerprint mechanics but completely omits the Lineage Invariant — halves the guardrail story</td></tr>
+      <tr><td class="skill-qkb">qkb</td><td>12/15</td><td>8/8</td><td>Solid two-invariant coverage; slight overreach naming five pipelines specifically</td></tr>
+      <tr><td class="skill-graph">graph</td><td>12/15</td><td>9/9</td><td>Best architectural framing (adds Cycle-Aware as static-side companion); misses <code>raw_text</code>/<code>raw_payload</code></td></tr>
+    </tbody>
+  </table>
+
+  <details>
+    <summary>Ground truth (15 facts)</summary>
+    <ol>
+      <li>Schema-Drift Manifest pattern: pins expected upstream structure, fails fast on mismatch.</li>
+      <li>Pattern originates from PreflightAPI's defense against aviationweather.gov changes.</li>
+      <li>Pain is asymmetric: upstream changes publish in minutes, downstream discovery takes days.</li>
+      <li>Implementation A: PreflightAPI per-source JSON manifests for METAR/TAF/PIREP/SIGMET/G-AIRMET.</li>
+      <li>Implementation B: Firestorm shared <code>source_schemas</code> table (migration 0005), reused across NMS-API, NASR, OurAirports, AWC.</li>
+      <li>Fingerprint = sha256 over sorted union of top-level JSON keys.</li>
+      <li>Row schema: <code>(source, file, fingerprint, first_seen_at, last_seen_at, blessed)</code>; blessed: 0=unseen, 1=accepted, 2=broken.</li>
+      <li>Ingest proceeds regardless of blessed state; emits via <code>IngestSummary</code> for observability.</li>
+      <li>Fingerprint catches key-set drift only; type drift (<code>visibility_sm</code> REAL → "6+") needs decoder validation.</li>
+      <li>Atomic Pipeline Handler emits <code>SchemaBlessed</code> per upsert.</li>
+      <li>Lineage Invariant: every parsed row carries <code>source_object_key</code> NOT NULL → R2 archive.</li>
+      <li>AWC tables also persist <code>raw_text</code> and <code>raw_payload</code> (NOT NULL) for in-place re-parse.</li>
+      <li>Lineage enables schema-drift diagnosis: byte-level diff of original R2 bytes; reparse with bumped <code>parser_version</code>.</li>
+      <li>Transient sources (NOTAM, Wx) have stricter freshness SLOs; stale transient = operationally unsafe.</li>
+      <li>Schema-Drift Manifest + Lineage Invariant cover both static and transient sources.</li>
+    </ol>
+  </details>
+
+  <details>
+    <summary>Per-skill answer summaries</summary>
+    <div class="answer-card"><div class="skill-head"><span class="skill-vq">vault-query</span><span class="meta">119.1s · 3 files · 9 citations</span></div><div class="answer-text">Most complete — both invariants, blessed states, <code>raw_text</code>/<code>raw_payload</code>, IngestSummary, and the transient-SLO link.</div></div>
+    <div class="answer-card"><div class="skill-head"><span class="skill-bm25">bm25</span><span class="meta">44.2s · 3 files · 8 citations</span></div><div class="answer-text">Deepest on Firestorm fingerprint mechanics; completely omits Lineage Invariant — halves the guardrail story.</div></div>
+    <div class="answer-card"><div class="skill-head"><span class="skill-qkb">qkb</span><span class="meta">128.8s · 4 files · 7 citations</span></div><div class="answer-text">Solid two-invariant coverage with explicit Source: citations; slight overreach naming five pipelines.</div></div>
+    <div class="answer-card"><div class="skill-head"><span class="skill-graph">graph</span><span class="meta">153.6s · 4 files · 8 citations</span></div><div class="answer-text">Best architectural framing — adds Cycle-Aware Publication Refresh as static-side companion; misses <code>raw_text</code>/<code>raw_payload</code>.</div></div>
+  </details>
+
+  <div class="verdict">
+    <strong>Verdict:</strong> vault-query &gt; qkb ≈ graph &gt; bm25. All four are accurate; differences are in completeness. bm25's omission of the Lineage Invariant entirely is the biggest miss.
+  </div>
+</section>
+
+<!-- ============== Q3 ============== -->
+<section class="question-block">
+  <h2>Q3: How do we prevent the operational warnings list from getting too long?<span class="shape-tag">vocabulary mismatch (cap/tier/limit)</span></h2>
+
+  <div class="charts-row">
+    <div>
+      <h4>Coverage</h4>
+      <div class="bar-row"><span class="skill-vq">vault-query</span><div class="bar-track"><div class="bar-fill vq" style="width:87%"></div></div><span class="num">87%</span></div>
+      <div class="bar-row"><span class="skill-bm25">bm25</span><div class="bar-track"><div class="bar-fill bm25" style="width:87%"></div></div><span class="num">87%</span></div>
+      <div class="bar-row"><span class="skill-qkb">qkb</span><div class="bar-track"><div class="bar-fill qkb" style="width:93%"></div></div><span class="num">93%</span></div>
+      <div class="bar-row"><span class="skill-graph">graph</span><div class="bar-track"><div class="bar-fill graph" style="width:73%"></div></div><span class="num">73%</span></div>
+    </div>
+    <div>
+      <h4>Latency (seconds)</h4>
+      <div class="bar-row"><span class="skill-vq">vault-query</span><div class="bar-track"><div class="bar-fill vq" style="width:63%"></div></div><span class="num">57.3</span></div>
+      <div class="bar-row"><span class="skill-bm25">bm25</span><div class="bar-track"><div class="bar-fill bm25" style="width:39%"></div></div><span class="num">35.0</span></div>
+      <div class="bar-row"><span class="skill-qkb">qkb</span><div class="bar-track"><div class="bar-fill qkb" style="width:89%"></div></div><span class="num">80.4</span></div>
+      <div class="bar-row"><span class="skill-graph">graph</span><div class="bar-track"><div class="bar-fill graph" style="width:100%"></div></div><span class="num">90.7</span></div>
+    </div>
+  </div>
+
+  <table>
+    <thead><tr><th>Skill</th><th>Coverage</th><th>Citations</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td class="skill-qkb">qkb</td><td>14/15</td><td>6/6</td><td>Cleanest synthesis — only one spanning both Operational Warnings and upstream criticality scoring</td></tr>
+      <tr><td class="skill-vq">vault-query</td><td>13/15</td><td>5/5</td><td>Strong on cap mechanics, dedup, weather stub, Q2-open; misses upstream criticality</td></tr>
+      <tr><td class="skill-bm25">bm25</td><td>13/15</td><td>6/6</td><td>Essentially tied with vault-query; same fact set, slightly less elegant structure</td></tr>
+      <tr><td class="skill-graph">graph</td><td>11/15</td><td>5/5</td><td>Strongest on upstream criticality + architectural framing, but drops dedup, weather stub, and Lou's open question</td></tr>
+    </tbody>
+  </table>
+
+  <details>
+    <summary>Ground truth (15 facts)</summary>
+    <ol>
+      <li>Operational Warnings is a view, not a parallel pipeline — filter+sort over flags already produced.</li>
+      <li>Severity tiers come from <code>Classification.ImpactSeverity</code>.</li>
+      <li><code>critical</code> and <code>high</code> always surface.</li>
+      <li><code>medium</code> surfaces only when <code>Decider == true</code>.</li>
+      <li>Plain <code>medium</code> (without decider) is excluded.</li>
+      <li><code>low</code> is always excluded.</li>
+      <li>Engine pre-caps <code>RankedNotams</code> at 10 in <code>buildRankedNotams</code>.</li>
+      <li>Assembler re-caps via <code>operational-warnings.yaml</code> <code>cap.max_items: 10</code>.</li>
+      <li>YAML-tunable per operator without code deploy.</li>
+      <li>Dedup by <code>notam_number</code> at the grouper.</li>
+      <li>Link-back-to-source: each entry links to home subsection.</li>
+      <li>Weather flags (LIFR, stale METAR >110min, missing TAF); <code>weatherWarnings</code> stubbed in v0.1.</li>
+      <li>Cap density (=10) is open Lou question (FSD-60 Q2).</li>
+      <li>Upstream context-aware criticality (NOTAM × flight × aircraft × policy × time/geo) resolves most NOTAMs before they reach OW.</li>
+      <li>If critical+high+medium-with-decider > 10, lowest-priority items dropped from OW.</li>
+    </ol>
+  </details>
+
+  <details>
+    <summary>Per-skill answer summaries</summary>
+    <div class="answer-card"><div class="skill-head"><span class="skill-vq">vault-query</span><span class="meta">57.3s · 5 files · 7 citations</span></div><div class="answer-text">Strong on cap mechanics, dedup, weather stub, Q2-open; misses upstream criticality scoring (the "filter before the filter").</div></div>
+    <div class="answer-card"><div class="skill-head"><span class="skill-bm25">bm25</span><span class="meta">35.0s · 2 files · 5 citations</span></div><div class="answer-text">Same fact set as vault-query; needed 2 search attempts to compensate for vocabulary mismatch.</div></div>
+    <div class="answer-card"><div class="skill-head"><span class="skill-qkb">qkb</span><span class="meta">80.4s · 4 files · 7 citations</span></div><div class="answer-text">Only answer to include upstream criticality scoring as a length-control mechanism, plus all the standard ones.</div></div>
+    <div class="answer-card"><div class="skill-head"><span class="skill-graph">graph</span><span class="meta">90.7s · 3 files · 6 citations</span></div><div class="answer-text">Strong on architectural framing; drops dedup, weather stub, FSD-60 Q2 — meaningful misses for a "length control" question.</div></div>
+  </details>
+
+  <div class="verdict">
+    <strong>Verdict:</strong> qkb &gt; vault-query ≈ bm25 &gt; graph. qkb wins by uniquely surfacing upstream criticality as a length-control mechanism. Graph's architectural framing came at the cost of mechanical detail.
+  </div>
+</section>
+
+<!-- ============== Q4 ============== -->
+<section class="question-block">
+  <h2>Q4: If we lost the FAA NMS contract entirely, what would our fallback NOTAM strategy look like?<span class="shape-tag">multi-hop synthesis</span></h2>
+
+  <div class="charts-row">
+    <div>
+      <h4>Coverage</h4>
+      <div class="bar-row"><span class="skill-vq">vault-query</span><div class="bar-track"><div class="bar-fill vq" style="width:64%"></div></div><span class="num">64%</span></div>
+      <div class="bar-row"><span class="skill-bm25">bm25</span><div class="bar-track"><div class="bar-fill bm25" style="width:68%"></div></div><span class="num">68%</span></div>
+      <div class="bar-row"><span class="skill-qkb">qkb</span><div class="bar-track"><div class="bar-fill qkb" style="width:71%"></div></div><span class="num">71%</span></div>
+      <div class="bar-row"><span class="skill-graph">graph</span><div class="bar-track"><div class="bar-fill graph" style="width:54%"></div></div><span class="num">54%</span></div>
+    </div>
+    <div>
+      <h4>Latency (seconds)</h4>
+      <div class="bar-row"><span class="skill-vq">vault-query</span><div class="bar-track"><div class="bar-fill vq" style="width:100%"></div></div><span class="num">202.6</span></div>
+      <div class="bar-row"><span class="skill-bm25">bm25</span><div class="bar-track"><div class="bar-fill bm25" style="width:30%"></div></div><span class="num">60.4</span></div>
+      <div class="bar-row"><span class="skill-qkb">qkb</span><div class="bar-track"><div class="bar-fill qkb" style="width:70%"></div></div><span class="num">141.9</span></div>
+      <div class="bar-row"><span class="skill-graph">graph</span><div class="bar-track"><div class="bar-fill graph" style="width:77%"></div></div><span class="num">156.1</span></div>
+    </div>
+  </div>
+
+  <table>
+    <thead><tr><th>Skill</th><th>Coverage</th><th>Citations</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td class="skill-qkb">qkb</td><td>10/14</td><td>5/5</td><td>Only answer to explicitly name NMS-NPS cross-validation route AND the build-own LLM cost band</td></tr>
+      <tr><td class="skill-bm25">bm25</td><td>9.5/14</td><td>6/7</td><td><span class="badge warn">broken wikilink</span> <code>[[NASA NOTAM API]]</code> doesn't exist as a page; cleanest phased build order</td></tr>
+      <tr><td class="skill-vq">vault-query</td><td>9/14</td><td>5/5</td><td>Solid ladder; cites the Notamify-NMS contradiction; misses NMS-NPS cross-validation rail</td></tr>
+      <tr><td class="skill-graph">graph</td><td>7.5/14</td><td>7/7</td><td><span class="badge bad">scope drift</span> Pulled in EUROCONTROL/AIXM 5.1.1 (not relevant to U.S.-NMS-loss); <span class="badge bad">inverted risk</span> framed Notamify's NMS dependency as a positive rather than a contradiction</td></tr>
+    </tbody>
+  </table>
+
+  <details>
+    <summary>Ground truth (14 facts)</summary>
+    <ol>
+      <li>NASA NOTAM API (dip.amesaero.nasa.gov) — free, REST/JSON, registration only, U.S.-only.</li>
+      <li>NASA redistributes FAA SWIM feed with geospatial + temporal pre-extracted.</li>
+      <li>NASA usability A, reliability B (redistribution latency).</li>
+      <li>Notamify V2 costs $24.90/mo + $0.199–0.30/credit (~$0.60/brief).</li>
+      <li>Notamify offers 42-category taxonomy, RRULE scheduling, atomic elements, plain-English interpretations.</li>
+      <li>Python/JS SDKs, 99.9% SLA, Watcher API 3-min delivery, 2-year archive.</li>
+      <li>Notamify "100% FAA NMS integrated" — flagged as contradiction; NMS outage degrades them too.</li>
+      <li>FAA SWIM/FNS authoritative, free, real-time JMS (Solace); FnsRestApi wrapper available.</li>
+      <li>SWIM usability C; 2–6 month onboarding via SWIFT Portal.</li>
+      <li>NMS-NPS republish into SWIM (SCDS Portal) named as cross-validation route during rollout.</li>
+      <li>Build Our Own LLM Parser: NASA input + Lou-calibrated LLM, ~$0.02–0.10/brief inference.</li>
+      <li>NOTAM-Evolve (AAAI 2026): 30%+ accuracy gain via domain-knowledge augmentation.</li>
+      <li>Build order: NASA baseline → own LLM → Notamify benchmark → SWIM endgame.</li>
+      <li>ICAO format transition planned 2027–28.</li>
+    </ol>
+  </details>
+
+  <details>
+    <summary>Per-skill answer summaries</summary>
+    <div class="answer-card"><div class="skill-head"><span class="skill-vq">vault-query</span><span class="meta">202.6s · 3 files · 7 citations</span></div><div class="answer-text">Coherent fallback ladder. Cites Notamify-NMS contradiction. Misses NMS-NPS cross-validation rail and NOTAM-Evolve.</div></div>
+    <div class="answer-card"><div class="skill-head"><span class="skill-bm25">bm25</span><span class="meta">60.4s · 4 files · 7 citations</span></div><div class="answer-text">Best phased build order. Broken <code>[[NASA NOTAM API]]</code> wikilink — the entity has no dedicated page; only discussed inside NOTAM Sources.</div></div>
+    <div class="answer-card"><div class="skill-head"><span class="skill-qkb">qkb</span><span class="meta">141.9s · 5 files · 7 citations</span></div><div class="answer-text">Best coverage. Uniquely catches NMS-NPS republish-into-SWIM as the cross-validation rail AND the build-own LLM cost band.</div></div>
+    <div class="answer-card"><div class="skill-head"><span class="skill-graph">graph</span><span class="meta">156.1s · 5 files · 9 citations</span></div><div class="answer-text">Only answer to cite NOTAM-Evolve 30.4% accuracy gain — but misses Notamify pricing entirely, inverts Notamify's NMS dependency from a risk into a strength, and drifts into EUROCONTROL Digital NOTAM which doesn't answer the U.S.-NMS-loss question.</div></div>
+  </details>
+
+  <div class="verdict">
+    <strong>Verdict:</strong> qkb &gt; bm25 &gt; vault-query &gt; graph. Earlier framing celebrated graph's EUROCONTROL surfacing as a "multi-hop win" — rigorous eval shows it was off-topic scope-creep that pushed out facts that actually answered the question.
+  </div>
+</section>
+
+<!-- ============== Q5 ============== -->
+<section class="question-block">
+  <h2>Q5: What recurring problems show up when we integrate with FAA data sources?<span class="shape-tag">cross-source pattern + vocab mismatch</span></h2>
+
+  <div class="charts-row">
+    <div>
+      <h4>Coverage</h4>
+      <div class="bar-row"><span class="skill-vq">vault-query</span><div class="bar-track"><div class="bar-fill vq" style="width:20%"></div></div><span class="num">20%</span></div>
+      <div class="bar-row"><span class="skill-bm25">bm25</span><div class="bar-track"><div class="bar-fill bm25" style="width:53%"></div></div><span class="num">53%</span></div>
+      <div class="bar-row"><span class="skill-qkb">qkb</span><div class="bar-track"><div class="bar-fill qkb" style="width:33%"></div></div><span class="num">33%</span></div>
+      <div class="bar-row"><span class="skill-graph">graph</span><div class="bar-track"><div class="bar-fill graph" style="width:47%"></div></div><span class="num">47%</span></div>
+    </div>
+    <div>
+      <h4>Latency (seconds)</h4>
+      <div class="bar-row"><span class="skill-vq">vault-query</span><div class="bar-track"><div class="bar-fill vq" style="width:100%"></div></div><span class="num">176.2</span></div>
+      <div class="bar-row"><span class="skill-bm25">bm25</span><div class="bar-track"><div class="bar-fill bm25" style="width:67%"></div></div><span class="num">118.6</span></div>
+      <div class="bar-row"><span class="skill-qkb">qkb</span><div class="bar-track"><div class="bar-fill qkb" style="width:84%"></div></div><span class="num">148.5</span></div>
+      <div class="bar-row"><span class="skill-graph">graph</span><div class="bar-track"><div class="bar-fill graph" style="width:83%"></div></div><span class="num">146.8</span></div>
+    </div>
+  </div>
+
+  <table>
+    <thead><tr><th>Skill</th><th>Coverage</th><th>Citations</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td class="skill-bm25">bm25</td><td>8/15</td><td>4/4</td><td>Strongest fact density on canonical material — auth URL prefix, Content-Type, TLS revocation, Staging gap. Misses cycle math + schema drift.</td></tr>
+      <tr><td class="skill-graph">graph</td><td>7/15</td><td>9/10</td><td>Broadest spread across all four canonical pages — credentials, schema drift, cycle math, dual-format. Misses specific NMS auth gotchas.</td></tr>
+      <tr><td class="skill-qkb">qkb</td><td>5/15</td><td>11/12</td><td>Best on non-NMS canonical pages (SWIM onboarding, Schema-Drift, cycle math); missed every specific NMS-API operational gotcha</td></tr>
+      <tr><td class="skill-vq">vault-query</td><td>3/15</td><td>7/9</td><td><span class="badge warn">off-canonical</span> Pivoted to NOTAM-side (DOM-INTL dedupe, freshness gate, cancellation leakage) — vault-real but not in canonical pages</td></tr>
+    </tbody>
+  </table>
+
+  <details>
+    <summary>Ground truth (15 facts)</summary>
+    <ol>
+      <li>SWIM onboarding takes 2–6 months gated by NAS Data Release Group approval.</li>
+      <li>NMS-API auth URL must NOT include <code>/nmsapi/</code> prefix.</li>
+      <li><code>Content-Type</code> header breaks <code>grant_type</code> on auth POST.</li>
+      <li>TLS revocation-function errors; bandaid is <code>curl --ssl-revoke-best-effort</code>.</li>
+      <li>30-min bearer-token TTL (<code>expires_in: 1799</code>) requires refresh + 401 retry.</li>
+      <li>Signed content URLs expire after 5 minutes; need bearer re-auth via proxy.</li>
+      <li>Staging-vs-Prod gap: <code>/v1/notams/detail</code> &amp; <code>/search</code> return Apigee 404 on Staging.</li>
+      <li>NMS-API not browser-accessible; 401 for any non-bearer request.</li>
+      <li>Dual format: AIXM 5.1 SOAP-wrapped vs GeoJSON per <code>nmsResponseFormat</code> header.</li>
+      <li>Credentials issued via Excel spreadsheet (Prod=FAA, non-Prod=CGI Federal).</li>
+      <li>Silent schema drift on upstream FAA/NOAA XML/JSON/CSV — fields renamed/dropped/retyped.</li>
+      <li>Publication-cycle off-by-ones: AIRAC 28-day + 56-day cycles cause week-long bugs.</li>
+      <li>Mid-cycle corruption + bandwidth waste from fixed-cron pulls.</li>
+      <li>SWIM still Solace JMS only — no public REST API yet.</li>
+      <li>SWIFT Portal migration: <code>scds.faa.gov</code> → <code>portal.swim.faa.gov</code>.</li>
+    </ol>
+  </details>
+
+  <details>
+    <summary>Per-skill answer summaries</summary>
+    <div class="answer-card"><div class="skill-head"><span class="skill-vq">vault-query</span><span class="meta">176.2s · 4 files · 9 citations</span></div><div class="answer-text">Pivoted to NOTAM-side pain (DOM-INTL dedupe, cancellation leakage, lock-storm/freshness gate) which is vault-real but outside the canonical FAA-integration-problems pages. 30+ minute lag and 140 missed NOTAMs numbers aren't in canonical pages.</div></div>
+    <div class="answer-card"><div class="skill-head"><span class="skill-bm25">bm25</span><span class="meta">118.6s · 4 files · 5 citations</span></div><div class="answer-text">Best coverage of canonical NMS gotchas: auth prefix, TLS, Content-Type, Staging gap, dual-format. Misses schema drift and cycle math entirely.</div></div>
+    <div class="answer-card"><div class="skill-head"><span class="skill-qkb">qkb</span><span class="meta">148.5s · 5 files · 13 citations</span></div><div class="answer-text">Most architectural — onboarding, schema drift, cycle off-by-ones, transient/static split, OAuth token cache, OOM upserts. But missed every specific NMS-API gotcha that dominates the canonical pages.</div></div>
+    <div class="answer-card"><div class="skill-head"><span class="skill-graph">graph</span><span class="meta">146.8s · 5 files · 8 citations</span></div><div class="answer-text">Broadest balance — credentialing, env parity, schema drift, cycle math, ingestion patterns, dual-format. Misses specific auth URL prefix and Content-Type gotchas.</div></div>
+  </details>
+
+  <div class="verdict">
+    <strong>Verdict:</strong> bm25 &gt; graph &gt; qkb &gt; vault-query. Reversal of my vibes scoring (which favored qkb/graph for "synthesis"). The canonical pages document SPECIFIC integration gotchas, and bm25's vocabulary anchors on "URL prefix / Content-Type / TLS / Staging" caught them. The "patterns" my earlier eval praised were partially imports from outside the canonical scope.
+  </div>
+</section>
+
+<!-- ============== Q6 ============== -->
+<section class="question-block">
+  <h2>Q6: Compare NOTAM freshness vs weather data freshness — what's the same and what's different?<span class="shape-tag">pairwise synthesis</span></h2>
+
+  <div class="charts-row">
+    <div>
+      <h4>Coverage</h4>
+      <div class="bar-row"><span class="skill-vq">vault-query</span><div class="bar-track"><div class="bar-fill vq" style="width:87%"></div></div><span class="num">87%</span></div>
+      <div class="bar-row"><span class="skill-bm25">bm25</span><div class="bar-track"><div class="bar-fill bm25" style="width:7%"></div></div><span class="num">7%</span></div>
+      <div class="bar-row"><span class="skill-qkb">qkb</span><div class="bar-track"><div class="bar-fill qkb" style="width:80%"></div></div><span class="num">80%</span></div>
+      <div class="bar-row"><span class="skill-graph">graph</span><div class="bar-track"><div class="bar-fill graph" style="width:93%"></div></div><span class="num">93%</span></div>
+    </div>
+    <div>
+      <h4>Latency (seconds)</h4>
+      <div class="bar-row"><span class="skill-vq">vault-query</span><div class="bar-track"><div class="bar-fill vq" style="width:48%"></div></div><span class="num">55.4</span></div>
+      <div class="bar-row"><span class="skill-bm25">bm25</span><div class="bar-track"><div class="bar-fill bm25" style="width:39%"></div></div><span class="num">44.4</span></div>
+      <div class="bar-row"><span class="skill-qkb">qkb</span><div class="bar-track"><div class="bar-fill qkb" style="width:95%"></div></div><span class="num">108.1</span></div>
+      <div class="bar-row"><span class="skill-graph">graph</span><div class="bar-track"><div class="bar-fill graph" style="width:100%"></div></div><span class="num">113.6</span></div>
+    </div>
+  </div>
+
+  <table>
+    <thead><tr><th>Skill</th><th>Coverage</th><th>Citations</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td class="skill-graph">graph</td><td>14/15</td><td>5/5</td><td>Most complete — per-classification scope, valid_as_of, Sentry tagging, aging middle band, time-state vocab. Honest about Weather Assessment Heuristics gap</td></tr>
+      <tr><td class="skill-vq">vault-query</td><td>13/15</td><td>6/7</td><td>Matches graph on enforcement layer + thresholds + Fixture-6 maturity gap; missed time-state vocab and per-classification scope</td></tr>
+      <tr><td class="skill-qkb">qkb</td><td>12/15</td><td>6/6</td><td>Solid but misses extensibility note, valid_as_of on success, and the stubbed weatherWarnings maturity gap</td></tr>
+      <tr><td class="skill-bm25">bm25</td><td>1/15</td><td>0/3</td><td><span class="badge bad">hallucination</span> Cited pages that don't exist (Data Pipeline Service Design Spec, MCP Server Interface Design Spec). Numerical facts WRONG — claimed NOTAMs use 15-min TTL when canonical says 60-min SLO; claimed 4-bucket envelope that doesn't exist</td></tr>
+    </tbody>
+  </table>
+
+  <details>
+    <summary>Ground truth (15 facts)</summary>
+    <p><strong>SAME (5 facts):</strong></p>
+    <ol>
+      <li>Both use FAA/regulatory grounding (14 CFR §91.103 for NOTAM, FAA AIM 7-1-26 for weather).</li>
+      <li>Both share the same three time-states: <code>active_in_window</code> / <code>upcoming_in_window</code> / <code>background</code>.</li>
+      <li>Both YAML-tunable / operator-configurable.</li>
+      <li>Both surface staleness explicitly rather than silently dropping.</li>
+      <li>Both extend to other safety-critical feeds (NOTAM page says weather/SIGMET/TFR each gets its own freshness oracle).</li>
+    </ol>
+    <p><strong>DIFFERENT (10 facts):</strong></p>
+    <ol start="6">
+      <li>Enforcement layer: NOTAM gate at firestorm-api boundary; weather rules in Briefing Assembler at render time.</li>
+      <li>NOTAM single 60-min SLO vs weather 3-bucket gradient (fresh ≤55 / aging 55–110 / stale >110).</li>
+      <li>Threshold rationale: NOTAM 60-min is "looser end of defensible band"; weather buckets are 2× and 4× 30-min METAR cadence.</li>
+      <li>NOTAM stale → <code>HTTP 503 + Retry-After: 60</code>; weather stale → red timestamp + "STALE" marker + medium-severity OW flag.</li>
+      <li>NOTAM refuses to serve; weather still ships brief annotated.</li>
+      <li>NOTAM is per-classification (FDC stale doesn't block DOMESTIC); weather is per-station/per-product.</li>
+      <li>NOTAM trips fire Sentry tagged <code>data_loss_risk: true</code>; weather goes to Operational Warnings.</li>
+      <li>NOTAM 200 carries <code>valid_as_of</code> timestamp.</li>
+      <li>NOTAM gate wired (PR #112, ADR-0010); weather <code>weatherWarnings</code> stubbed (Fixture 6 documents gap).</li>
+      <li>Weather has aging middle band (55–110, italic); NOTAMs have no middle band — just fresh/stale.</li>
+    </ol>
+  </details>
+
+  <details>
+    <summary>Per-skill answer summaries</summary>
+    <div class="answer-card"><div class="skill-head"><span class="skill-vq">vault-query</span><span class="meta">55.4s · 4 files · 9 citations</span></div><div class="answer-text">Found both concept pages via index.md grep. Strong same/different structure. Misses time-state vocab and per-classification scope.</div></div>
+    <div class="answer-card"><div class="skill-head"><span class="skill-bm25">bm25</span><span class="meta">44.4s · 4 specs · 3 citations</span></div><div class="answer-text"><strong>Major hallucination.</strong> Cited specs that don't exist as separate vault pages (Data Pipeline Service Design Spec, MCP Server Interface Design Spec, Flight Planner Technical Architecture Design). Made up numerical facts: claimed NOTAMs use 15-min TTL when canonical says 60-min SLO; claimed METARs use 60-min TTL when canonical says 55/110 buckets. Claimed a 4-bucket <code>freshness_status</code> that doesn't exist in canonical pages.</div></div>
+    <div class="answer-card"><div class="skill-head"><span class="skill-qkb">qkb</span><span class="meta">108.1s · 4 files · 8 citations</span></div><div class="answer-text">Solid coverage. Misses extensibility note ("each gets its own freshness oracle"), valid_as_of on success, and Fixture-6 maturity gap.</div></div>
+    <div class="answer-card"><div class="skill-head"><span class="skill-graph">graph</span><span class="meta">113.6s · 4 files · 7 citations</span></div><div class="answer-text">Most complete — per-classification scope, valid_as_of, Sentry tagging, aging middle band, time-state vocab. Honest about Weather Assessment Heuristics gap rather than papering over.</div></div>
+  </details>
+
+  <div class="verdict">
+    <strong>Verdict:</strong> graph &gt; vault-query &gt; qkb &gt;&gt; bm25. The bm25 result is the bench's biggest red flag — vocabulary-mismatch question caused BM25 to ground in unrelated design-spec documents from older planning, hallucinated coherent-sounding but wrong numerical facts, and cited pages that don't exist as vault files. This is the failure mode that justifies the qkb pipeline.
+  </div>
+</section>
+
+<!-- ============== Recommendations ============== -->
+<section id="recommendations">
+  <h2>Triage guidance — which skill for which question</h2>
+
+  <table class="recommend-table">
+    <thead><tr><th>Question shape</th><th>Primary skill</th><th>Why</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>Proper-noun anchor, single canonical page</td>
+        <td class="skill-bm25">vault-query-bm25</td>
+        <td>50× faster, ties quality when answer fits one page. Verify citations resolve.</td>
+      </tr>
+      <tr>
+        <td>Distinctive vocabulary, single domain</td>
+        <td class="skill-vq">vault-query</td>
+        <td>If <code>hot.md</code>/<code>index.md</code> aren't oversized, the curated path wins on simplicity.</td>
+      </tr>
+      <tr>
+        <td>Cap/limit/mechanism question</td>
+        <td class="skill-qkb">vault-query-qkb</td>
+        <td>LLM expansion bridges vocabulary; rerank picks the right mechanism page.</td>
+      </tr>
+      <tr>
+        <td>Multi-hop hypothetical, comparison across entities</td>
+        <td class="skill-qkb">vault-query-qkb</td>
+        <td>Best balance of coverage and scope discipline. <span class="skill-graph">graph</span> tends to scope-creep on these.</td>
+      </tr>
+      <tr>
+        <td>Cross-source pattern with concrete examples needed</td>
+        <td class="skill-bm25">vault-query-bm25</td>
+        <td>Concrete gotchas anchor on distinctive terms; <span class="skill-qkb">qkb</span> over-abstracts.</td>
+      </tr>
+      <tr>
+        <td>Pairwise synthesis (X vs Y)</td>
+        <td class="skill-graph">vault-query-graph</td>
+        <td>Graph expansion reliably surfaces both sides of the comparison.</td>
+      </tr>
+      <tr>
+        <td>Vague/vocabulary-mismatched query</td>
+        <td class="skill-qkb">vault-query-qkb or vault-query-graph</td>
+        <td>BM25's hallucination risk on Q6 (7% coverage, fabricated facts) makes it unsafe here.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>Action items for the skill cohort</h3>
+  <ul>
+    <li><strong>BM25 needs a hallucination guardrail.</strong> When top-K hits come back with weak scores or non-wiki paths (specs/, archive/), the skill should refuse synthesis and escalate to qkb rather than ground in stale content. The Q6 failure mode is the safety case.</li>
+    <li><strong>Drop the "AB test" framing on vault-query-graph.</strong> It's a working production retrieval skill — not an experiment. Keep both qkb and graph since they specialize: qkb for synthesis, graph for pairwise comparison.</li>
+    <li><strong>Skill descriptions should bake in triage hints.</strong> The "when to use" advice above is currently invisible to the skill-selection layer; move it into each skill's description frontmatter.</li>
+    <li><strong>URI emission: hyphenated vs space-preserving.</strong> 3 of 4 graph/qkb agents hit URI-to-path friction (qkb emits <code>Schema-Drift-Manifest.md</code> but actual file is <code>Schema-Drift Manifest.md</code>). Either preserve spaces or document the conversion in the skills.</li>
+    <li><strong>vault-query needs a scale-aware fallback path.</strong> On Q4 and Q5 it ran for 200+ seconds and still degraded to 20-64% coverage because <code>hot.md</code>/<code>index.md</code> exceed read budget. Add an explicit "delegate to qkb if meta-files don't fit" branch.</li>
+  </ul>
+</section>
+
+<hr>
+
+<footer>
+  <p class="meta">Generated 2026-05-13 · qkb v0.0.2 · flight-planner-kb vault · Methodology: subagent dispatch → ground-truth fact extraction → coverage scoring. Source data: <code>/Users/dmestas/projects/qkb/bench/results/skill-bench-2026-05-13.html</code></p>
+</footer>
+
+</body>
+</html>

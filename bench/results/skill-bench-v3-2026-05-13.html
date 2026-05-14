@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>qkb skill benchmark v3 — with token capture — 2026-05-13</title>
+<style>
+  :root {
+    --bg: #fafafa;
+    --bg-card: #ffffff;
+    --bg-code: #f3f3f3;
+    --fg: #1a1a1a;
+    --fg-dim: #555;
+    --fg-mute: #888;
+    --border: #e0e0e0;
+    --good: #2a7a2a;
+    --good-bg: #e6f4e6;
+    --warn: #b87800;
+    --warn-bg: #fdf2dc;
+    --bad: #b03030;
+    --bad-bg: #f8e0e0;
+    --accent: #1e5fbb;
+    --vq: #6b46c1;
+    --bm25: #0891b2;
+    --qkb: #ea580c;
+    --graph: #16a34a;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1a1a1a;
+      --bg-card: #252525;
+      --bg-code: #2d2d2d;
+      --fg: #e8e8e8;
+      --fg-dim: #b0b0b0;
+      --fg-mute: #888;
+      --border: #3a3a3a;
+      --good: #6fb96f;
+      --good-bg: #1e3a1e;
+      --warn: #d9a533;
+      --warn-bg: #3a2e1a;
+      --bad: #d97070;
+      --bad-bg: #3a1e1e;
+      --accent: #6ba4ff;
+      --vq: #b794f4;
+      --bm25: #67e8f9;
+      --qkb: #fdba74;
+      --graph: #86efac;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; line-height: 1.55; color: var(--fg); background: var(--bg); max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+  h1 { font-size: 1.9rem; margin: 0 0 0.4rem; }
+  h2 { font-size: 1.35rem; border-bottom: 1px solid var(--border); padding-bottom: 0.3rem; margin-top: 2.5rem; }
+  h3 { font-size: 1.1rem; margin-top: 1.5rem; }
+  h4 { font-size: 0.95rem; margin-top: 1rem; margin-bottom: 0.4rem; color: var(--fg-dim); text-transform: uppercase; letter-spacing: 0.05em; }
+  p, li { font-size: 0.95rem; }
+  code, pre { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace; }
+  code { background: var(--bg-code); padding: 0.1rem 0.35rem; border-radius: 3px; font-size: 0.85em; }
+  pre { background: var(--bg-code); padding: 0.8rem; border-radius: 5px; overflow-x: auto; font-size: 0.85rem; }
+  a { color: var(--accent); }
+  .header-sub { color: var(--fg-dim); margin-top: 0; font-size: 0.95rem; }
+  .meta { font-size: 0.85rem; color: var(--fg-mute); }
+  table { width: 100%; border-collapse: collapse; margin: 0.8rem 0; }
+  th, td { padding: 0.5rem 0.75rem; text-align: left; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
+  th { font-weight: 600; color: var(--fg-dim); text-transform: uppercase; letter-spacing: 0.04em; font-size: 0.75rem; }
+  tbody tr:hover { background: var(--bg-code); }
+  .num { font-variant-numeric: tabular-nums; text-align: right; }
+  .skill-vq { color: var(--vq); font-weight: 600; }
+  .skill-bm25 { color: var(--bm25); font-weight: 600; }
+  .skill-qkb { color: var(--qkb); font-weight: 600; }
+  .skill-graph { color: var(--graph); font-weight: 600; }
+  .question-block { margin: 2rem 0; padding: 1.5rem; background: var(--bg-card); border-radius: 8px; border: 1px solid var(--border); }
+  .shape-tag { display: inline-block; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; padding: 0.15rem 0.5rem; border-radius: 3px; background: var(--bg-code); color: var(--fg-dim); margin-left: 0.5rem; vertical-align: middle; }
+  .bar-row { display: grid; grid-template-columns: 8rem 1fr 3rem; align-items: center; gap: 0.5rem; margin: 0.35rem 0; font-size: 0.85rem; }
+  .bar-track { background: var(--bg-code); border-radius: 3px; overflow: hidden; height: 0.95rem; }
+  .bar-fill { height: 100%; transition: width 0.3s; }
+  .bar-fill.vq { background: var(--vq); }
+  .bar-fill.bm25 { background: var(--bm25); }
+  .bar-fill.qkb { background: var(--qkb); }
+  .bar-fill.graph { background: var(--graph); }
+  .charts-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin: 1rem 0; }
+  @media (max-width: 900px) { .charts-row { grid-template-columns: 1fr; } .bar-row { grid-template-columns: 6rem 1fr 2.5rem; font-size: 0.8rem; } }
+  .badge { display: inline-block; font-size: 0.75rem; font-weight: 600; padding: 0.1rem 0.45rem; border-radius: 3px; }
+  .badge.good { background: var(--good-bg); color: var(--good); }
+  .badge.warn { background: var(--warn-bg); color: var(--warn); }
+  .badge.bad { background: var(--bad-bg); color: var(--bad); }
+  details { margin: 0.8rem 0; border: 1px solid var(--border); border-radius: 5px; padding: 0; background: var(--bg-card); }
+  details summary { cursor: pointer; padding: 0.6rem 0.8rem; font-size: 0.9rem; font-weight: 500; user-select: none; }
+  details summary:hover { background: var(--bg-code); }
+  details[open] summary { border-bottom: 1px solid var(--border); }
+  details > *:not(summary) { padding: 0.8rem; }
+  details ol, details ul { margin: 0; padding-left: 1.5rem; }
+  details li { margin: 0.3rem 0; font-size: 0.88rem; }
+  .verdict { margin: 1rem 0 0; padding: 0.8rem 1rem; background: var(--bg-code); border-left: 3px solid var(--accent); border-radius: 0 4px 4px 0; font-size: 0.9rem; }
+  .legend { display: flex; gap: 1.5rem; flex-wrap: wrap; font-size: 0.85rem; margin: 0.5rem 0 1rem; color: var(--fg-dim); }
+  .legend-item { display: flex; align-items: center; gap: 0.4rem; }
+  .legend-swatch { width: 0.9rem; height: 0.9rem; border-radius: 3px; }
+  hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+  .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin: 1rem 0; }
+  @media (max-width: 700px) { .summary-grid { grid-template-columns: repeat(2, 1fr); } }
+  .stat-card { padding: 0.9rem; background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; }
+  .stat-card .label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--fg-mute); }
+  .stat-card .value { font-size: 1.4rem; font-weight: 600; margin: 0.2rem 0; }
+  .stat-card .delta { font-size: 0.8rem; color: var(--fg-dim); }
+  .delta-good { color: var(--good); }
+  .delta-bad { color: var(--bad); }
+  .changelog { background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; padding: 1rem 1.2rem; margin: 1rem 0; }
+  .changelog h3 { margin-top: 0.4rem; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>qkb skill benchmark — v3</h1>
+  <p class="header-sub">Token-capture protocol validation · 2 questions × 4 skills · all 4 skills at current versions</p>
+  <p class="meta">Run date: 2026-05-13 · Vault: <code>flight-planner-kb</code> · Prior reports: <a href="skill-bench-2026-05-13.html">v1</a>, <a href="skill-bench-v2-2026-05-13.html">v2</a> · Template: <a href="BENCH-PROMPT.md">BENCH-PROMPT.md</a></p>
+</header>
+
+<section class="changelog">
+  <h3>What changed since v2</h3>
+  <p>Protocol upgrade: <strong>capture <code>total_tokens</code> per agent run</strong>, alongside coverage and wallclock latency. The harness already exposes this in each agent's <code>&lt;usage&gt;</code> wrapper — the v3 protocol formalizes extracting it and surfacing in the report.</p>
+  <p>Token capture matters because <em>tokens ≠ latency</em>: a fast skill that reads big files via <code>Read</code> may use more tokens than a slow skill that uses <code>qkb multi-get</code> to pull trimmed content. The v2 bench had this data implicitly; v3 makes it explicit.</p>
+  <p>Question count reduced to 2 (vs 3 in v2) because this is a protocol-validation run, not a fresh capability sweep. The two questions stress different skill strengths:</p>
+  <ul>
+    <li><strong>Q12</strong> — pairwise comparison of two named patterns (graph's sweet spot)</li>
+    <li><strong>Q13</strong> — multi-pattern synthesis: "what existing patterns should I follow for a new pipeline" (general-purpose, no obvious primary skill)</li>
+  </ul>
+</section>
+
+<section id="legend">
+  <div class="legend">
+    <div class="legend-item"><span class="legend-swatch" style="background:var(--vq)"></span><span class="skill-vq">vault-query</span> — curated read</div>
+    <div class="legend-item"><span class="legend-swatch" style="background:var(--bm25)"></span><span class="skill-bm25">vault-query-bm25</span> — <code>qkb search</code> BM25 only</div>
+    <div class="legend-item"><span class="legend-swatch" style="background:var(--qkb)"></span><span class="skill-qkb">vault-query-qkb</span> v0.2.0 — full toolkit</div>
+    <div class="legend-item"><span class="legend-swatch" style="background:var(--graph)"></span><span class="skill-graph">vault-query-graph</span> v0.2.0 — pure graph traversal</div>
+  </div>
+</section>
+
+<section id="summary">
+  <h2>Headline results</h2>
+
+  <div class="summary-grid">
+    <div class="stat-card">
+      <div class="label">Top skill (coverage)</div>
+      <div class="value skill-graph">77%</div>
+      <div class="delta">vault-query-graph wins Q12; loses Q13 → close margin</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Fastest skill</div>
+      <div class="value skill-vq">25s</div>
+      <div class="delta">vault-query, when meta-files fit budget</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Cheapest skill (tokens)</div>
+      <div class="value skill-qkb">52.7k</div>
+      <div class="delta">qkb v0.2 — <code>multi-get</code> earns its keep here</div>
+    </div>
+    <div class="stat-card">
+      <div class="label">Hallucinations</div>
+      <div class="value">0</div>
+      <div class="delta">all four skills factual on this set</div>
+    </div>
+  </div>
+
+  <h3>Aggregate scoring — v3</h3>
+  <table>
+    <thead>
+      <tr><th>Skill</th><th class="num">Avg coverage</th><th class="num">Avg latency</th><th class="num">Avg tokens</th><th class="num">Wins (2 Qs)</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="skill-graph">vault-query-graph (v0.2.0)</td>
+        <td class="num"><strong>77%</strong></td>
+        <td class="num">56s</td>
+        <td class="num">58.0k</td>
+        <td class="num">1 (Q12)</td>
+      </tr>
+      <tr>
+        <td class="skill-vq">vault-query</td>
+        <td class="num">76%</td>
+        <td class="num"><strong>25s</strong></td>
+        <td class="num">52.9k</td>
+        <td class="num">1 (Q13)</td>
+      </tr>
+      <tr>
+        <td class="skill-qkb">vault-query-qkb (v0.2.0)</td>
+        <td class="num">73%</td>
+        <td class="num">62s</td>
+        <td class="num"><strong>52.7k</strong></td>
+        <td class="num">0</td>
+      </tr>
+      <tr>
+        <td class="skill-bm25">vault-query-bm25</td>
+        <td class="num">64%</td>
+        <td class="num">28s</td>
+        <td class="num">58.1k</td>
+        <td class="num">0</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>The token finding</h3>
+  <p>v1/v2 didn't surface this: <strong><span class="skill-qkb">qkb v0.2</span>'s <code>multi-get</code> orchestration actually saves tokens.</strong> Despite running more qkb commands than the other skills, it consumes the fewest cloud-LLM tokens (52.7k avg) because <code>multi-get</code> returns batched, line-budgeted content in one call — cheaper than 3–5 separate <code>Read</code> invocations.</p>
+  <p><span class="skill-vq">vault-query</span> is also cheap (52.9k) because grep-slicing meta-files keeps content out of context. <span class="skill-bm25">bm25</span> reads more files (often 4–5) for context, accumulating tokens. <span class="skill-graph">graph</span> burns tokens on Cypher exploration loops to find seed nodes.</p>
+  <p>So the cost picture is more nuanced than v1/v2 suggested:</p>
+  <ul>
+    <li><strong>Latency winners</strong> (vault-query, bm25): cheap wallclock when the question fits their model</li>
+    <li><strong>Token winners</strong> (qkb v0.2, vault-query): cheap API cost via batched/grep'd content access</li>
+    <li><strong>Coverage winner</strong> (graph): best quality on relational shape, mid on cost</li>
+  </ul>
+  <p>The three axes (coverage, latency, tokens) don't fully correlate. A reasonable production routing strategy might be: bm25 for proper-noun lookups (fast + cheap-ish), qkb v0.2 for synthesis (cheapest tokens, mid latency), graph for relational (best coverage, worst latency + tokens), vault-query as the fallback when meta-files are small.</p>
+</section>
+
+<!-- ============== Q12 ============== -->
+<section class="question-block">
+  <h2>Q12: Cycle-Aware Publication Refresh vs AIRAC Delta Polling — when use each?<span class="shape-tag">pairwise comparison</span></h2>
+
+  <div class="charts-row">
+    <div>
+      <h4>Coverage</h4>
+      <div class="bar-row"><span class="skill-vq">vault-query</span><div class="bar-track"><div class="bar-fill vq" style="width:73%"></div></div><span class="num">73%</span></div>
+      <div class="bar-row"><span class="skill-bm25">bm25</span><div class="bar-track"><div class="bar-fill bm25" style="width:67%"></div></div><span class="num">67%</span></div>
+      <div class="bar-row"><span class="skill-qkb">qkb v0.2</span><div class="bar-track"><div class="bar-fill qkb" style="width:73%"></div></div><span class="num">73%</span></div>
+      <div class="bar-row"><span class="skill-graph">graph v0.2</span><div class="bar-track"><div class="bar-fill graph" style="width:87%"></div></div><span class="num">87%</span></div>
+    </div>
+    <div>
+      <h4>Latency (s)</h4>
+      <div class="bar-row"><span class="skill-vq">vault-query</span><div class="bar-track"><div class="bar-fill vq" style="width:39%"></div></div><span class="num">25.5</span></div>
+      <div class="bar-row"><span class="skill-bm25">bm25</span><div class="bar-track"><div class="bar-fill bm25" style="width:42%"></div></div><span class="num">27.3</span></div>
+      <div class="bar-row"><span class="skill-qkb">qkb v0.2</span><div class="bar-track"><div class="bar-fill qkb" style="width:80%"></div></div><span class="num">52.4</span></div>
+      <div class="bar-row"><span class="skill-graph">graph v0.2</span><div class="bar-track"><div class="bar-fill graph" style="width:100%"></div></div><span class="num">65.4</span></div>
+    </div>
+    <div>
+      <h4>Tokens (k)</h4>
+      <div class="bar-row"><span class="skill-vq">vault-query</span><div class="bar-track"><div class="bar-fill vq" style="width:87%"></div></div><span class="num">47.3</span></div>
+      <div class="bar-row"><span class="skill-bm25">bm25</span><div class="bar-track"><div class="bar-fill bm25" style="width:93%"></div></div><span class="num">50.5</span></div>
+      <div class="bar-row"><span class="skill-qkb">qkb v0.2</span><div class="bar-track"><div class="bar-fill qkb" style="width:90%"></div></div><span class="num">48.7</span></div>
+      <div class="bar-row"><span class="skill-graph">graph v0.2</span><div class="bar-track"><div class="bar-fill graph" style="width:100%"></div></div><span class="num">54.2</span></div>
+    </div>
+  </div>
+
+  <table>
+    <thead><tr><th>Skill</th><th>Coverage</th><th>Citations</th><th class="num">Tokens</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td class="skill-graph">graph v0.2</td><td>13/15</td><td>8/8</td><td class="num">54.2k</td><td>Only answer to quote the canonical page verbatim and name the reference-implementation file (<code>FaaPublicationCycleService.cs</code>) — most evidence-anchored</td></tr>
+      <tr><td class="skill-vq">vault-query</td><td>11/15</td><td>8/8</td><td class="num">47.3k</td><td>Sharpest "IL phase <em>is</em> the cycle-aware step" framing; cheapest run; one speculative "future TFRs" claim</td></tr>
+      <tr><td class="skill-qkb">qkb v0.2</td><td>11/15</td><td>6/6</td><td class="num">48.7k</td><td>Faithful structural mirror; correct format/cadence; omits scale (74K) and reference-implementation files</td></tr>
+      <tr><td class="skill-bm25">bm25</td><td>10/15</td><td>6/6</td><td class="num">50.5k</td><td>Cleanest "same cycle math, different freshness SLO" formulation; light on implementation specifics</td></tr>
+    </tbody>
+  </table>
+
+  <details>
+    <summary>Ground truth (15 facts)</summary>
+    <ol>
+      <li>Cycle-Aware Publication Refresh governs FAA sources publishing on calendar cycles (28-day AIRAC, 56-day, real-time).</li>
+      <li>Pattern rule: download new data only when the cycle has advanced, not on fixed cadence.</li>
+      <li>Goals: prevent wasted bandwidth, prevent mid-cycle corruption, make data version diagnosable.</li>
+      <li>Sources governed: FAA NASR (28d), d-TPP (28d), Chart Supplements (56d), FAA DOF (56d+daily patches), ArcGIS airspace (56d).</li>
+      <li>AIRAC is ICAO-standard 28-day cycle; FAA aligns with it.</li>
+      <li>Implementation: compute current cycle, persist <code>last_ingested_cycle</code> per source in <code>FaaPublicationCycle</code> table.</li>
+      <li>Reference: PreflightAPI's <code>FaaPublicationCycleService.cs</code>, <code>FaaPublicationDateUtils.cs</code>.</li>
+      <li>AIRAC Delta Polling: two-phase FAA NMS NOTAM ingestion in Firestorm Dataworks.</li>
+      <li>Phase 1 IL: full corpus on each new AIRAC via <code>/v1/notams/il</code>, AIXM 5.1 + SOAP, signed GCP URL.</li>
+      <li>Phase 2 Delta: <code>/v1/notams</code> filtered by <code>lastUpdatedDate</code> (max 24h), GeoJSON preferred, sub-hourly.</li>
+      <li>Scale 2026-05-02: 74,672 NOTAMs world across INT/DOM/MIL/FDC.</li>
+      <li>Relation: Delta Polling = Cycle-Aware Refresh + delta-poll layer (NASR cycle-only, NMS IL + deltas).</li>
+      <li>AIRAC cycles fixed decades in advance, internationally synchronized.</li>
+      <li>Blocked endpoints (Staging 2026-05-02): <code>/v1/notams/detail</code> &amp; <code>/search</code> return Apigee 404.</li>
+      <li>Both patterns feed Lineage Invariant and Two-Tier Storage Architecture downstream.</li>
+    </ol>
+  </details>
+
+  <div class="verdict">
+    <strong>Verdict:</strong> graph &gt; vault-query = qkb &gt; bm25. graph wins on coverage (87%) but pays in latency (65s) and tokens (54k). vault-query and qkb are tied for cheapest tokens (~48k); vault-query is fastest (25s) when it can grep meta-files. bm25 lost ground here because Cycle-Aware Publication Refresh + AIRAC Delta Polling are well-linked concept pages that benefit from graph topology.
+  </div>
+</section>
+
+<!-- ============== Q13 ============== -->
+<section class="question-block">
+  <h2>Q13: New FAA ingestion pipeline — what existing patterns should I follow?<span class="shape-tag">multi-pattern synthesis</span></h2>
+
+  <div class="charts-row">
+    <div>
+      <h4>Coverage</h4>
+      <div class="bar-row"><span class="skill-vq">vault-query</span><div class="bar-track"><div class="bar-fill vq" style="width:78%"></div></div><span class="num">78%</span></div>
+      <div class="bar-row"><span class="skill-bm25">bm25</span><div class="bar-track"><div class="bar-fill bm25" style="width:61%"></div></div><span class="num">61%</span></div>
+      <div class="bar-row"><span class="skill-qkb">qkb v0.2</span><div class="bar-track"><div class="bar-fill qkb" style="width:72%"></div></div><span class="num">72%</span></div>
+      <div class="bar-row"><span class="skill-graph">graph v0.2</span><div class="bar-track"><div class="bar-fill graph" style="width:67%"></div></div><span class="num">67%</span></div>
+    </div>
+    <div>
+      <h4>Latency (s)</h4>
+      <div class="bar-row"><span class="skill-vq">vault-query</span><div class="bar-track"><div class="bar-fill vq" style="width:33%"></div></div><span class="num">23.4</span></div>
+      <div class="bar-row"><span class="skill-bm25">bm25</span><div class="bar-track"><div class="bar-fill bm25" style="width:40%"></div></div><span class="num">28.5</span></div>
+      <div class="bar-row"><span class="skill-qkb">qkb v0.2</span><div class="bar-track"><div class="bar-fill qkb" style="width:100%"></div></div><span class="num">71.7</span></div>
+      <div class="bar-row"><span class="skill-graph">graph v0.2</span><div class="bar-track"><div class="bar-fill graph" style="width:64%"></div></div><span class="num">46.1</span></div>
+    </div>
+    <div>
+      <h4>Tokens (k)</h4>
+      <div class="bar-row"><span class="skill-vq">vault-query</span><div class="bar-track"><div class="bar-fill vq" style="width:89%"></div></div><span class="num">58.5</span></div>
+      <div class="bar-row"><span class="skill-bm25">bm25</span><div class="bar-track"><div class="bar-fill bm25" style="width:100%"></div></div><span class="num">65.7</span></div>
+      <div class="bar-row"><span class="skill-qkb">qkb v0.2</span><div class="bar-track"><div class="bar-fill qkb" style="width:86%"></div></div><span class="num">56.8</span></div>
+      <div class="bar-row"><span class="skill-graph">graph v0.2</span><div class="bar-track"><div class="bar-fill graph" style="width:94%"></div></div><span class="num">61.8</span></div>
+    </div>
+  </div>
+
+  <table>
+    <thead><tr><th>Skill</th><th>Coverage</th><th>Citations</th><th class="num">Tokens</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td class="skill-vq">vault-query</td><td>14/18</td><td>11/11</td><td class="num">58.5k</td><td>Best breadth — all 5 canonical patterns covered. Adds <code>SQLite-First Dedupe</code> + ADR/PR claims not in canonical-5 (mild overreach but plausible)</td></tr>
+      <tr><td class="skill-qkb">qkb v0.2</td><td>13/18</td><td>8/8</td><td class="num">56.8k</td><td>Strong cycle coverage; <span class="badge warn">internal contradiction</span> recommends both <code>source_fetch_id</code> ULID join AND <code>source_object_key</code> carry-forward — those are the two implementations</td></tr>
+      <tr><td class="skill-graph">graph v0.2</td><td>12/18</td><td>8/8</td><td class="num">61.8k</td><td>Highest fidelity on Atomic Pipeline Handler details and Lineage Invariant Impl-A→Impl-B convergence. <span class="badge bad">Missing Cycle-Aware Publication Refresh</span> entirely — structural gap for an FAA-cycle question</td></tr>
+      <tr><td class="skill-bm25">bm25</td><td>11/18</td><td>6/6</td><td class="num">65.7k</td><td><span class="badge bad">Missing Cycle-Aware Publication Refresh</span> entirely; "48-hour rolling window" contradicts canonical 90d retention</td></tr>
+    </tbody>
+  </table>
+
+  <details>
+    <summary>Ground truth (18 facts)</summary>
+    <p><strong>Atomic Pipeline Handler (APH):</strong></p>
+    <ol>
+      <li>One DagNats handler does archive + ingest as one atomic unit.</li>
+      <li>Crystallized via AWC build Ousterhout review (split → merged).</li>
+      <li>R2 keeps raw blob even if ingest fails; next cycle retries from scratch, no compensation logic.</li>
+      <li>One handler = one retry surface, one observability budget.</li>
+      <li>Pre-Ousterhout AWC split: archive + ingest as 2 tasks with depends_on — added orphan-archive failure mode.</li>
+      <li>Split doubled handler count without separating concerns.</li>
+    </ol>
+    <p><strong>Schema-Drift Manifest (SDM):</strong></p>
+    <ol start="7">
+      <li>Defends against FAA/NOAA shipping schema changes without notice.</li>
+      <li>Shared <code>source_schemas</code> table (migration 0005), reused across all pipelines.</li>
+      <li>One table, one CLI, one runbook — beats per-pipeline <code>*_parse_errors</code> tables.</li>
+      <li>Fingerprint = sha256 over sorted top-level JSON key set.</li>
+      <li>Upsert with <code>(source, file, fingerprint, blessed)</code>.</li>
+      <li>Ingest worker proceeds regardless of blessed state; emits <code>SchemaBlessed</code> for observability.</li>
+      <li>One table beats embedded JSON manifests (PreflightAPI Implementation A).</li>
+    </ol>
+    <p><strong>Cycle-Aware Publication Refresh (CAPR):</strong></p>
+    <ol start="14">
+      <li>FAA publishes on 28-day AIRAC cycles (NASR, d-TPP) or 56-day (DOF, charts, airspace) — schedule on cycles, not crons.</li>
+      <li>Persist <code>last_ingested_cycle</code> in <code>FaaPublicationCycle</code>; pull only when current cycle advances.</li>
+      <li>Prevents bandwidth waste (no 500 MB NASR re-pulls), prevents mid-cycle corruption.</li>
+      <li>Alert when current cycle leads <code>last_ingested</code> by >24h.</li>
+    </ol>
+    <p><strong>Lineage Invariant + Two-Tier Storage Architecture:</strong></p>
+    <ol start="18">
+      <li>Every operational row carries <code>source_object_key TEXT NOT NULL</code> (Impl B — converged from Impl A's <code>source_fetch_id</code>); R2 archive immutable + Object-Locked; parsed tier derived/derivable.</li>
+    </ol>
+  </details>
+
+  <div class="verdict">
+    <strong>Verdict:</strong> vault-query &gt; qkb &gt; graph &gt; bm25. <span class="skill-vq">vault-query</span>'s breadth advantage wins here — only skill to cover all 5 canonical patterns (APH, SDM, CAPR, Lineage, Two-Tier) without omitting one. <span class="skill-graph">graph</span> and <span class="skill-bm25">bm25</span> both missed Cycle-Aware Publication Refresh entirely, a structural error for an FAA-ingestion question (FAA = cycles).
+  </div>
+</section>
+
+<section id="findings">
+  <h2>v3 findings</h2>
+
+  <h3>Token capture validates the protocol upgrade</h3>
+  <p>The single new measurement (tokens per agent) flipped the cost story. v1/v2 framed the comparison as <em>latency vs coverage</em>; v3 reveals tokens as a third orthogonal axis where the rankings differ:</p>
+  <ul>
+    <li><strong>Latency rank:</strong> vault-query &gt; bm25 &gt; graph &gt; qkb</li>
+    <li><strong>Coverage rank:</strong> graph ≈ vault-query &gt; qkb &gt; bm25</li>
+    <li><strong>Token rank:</strong> qkb ≈ vault-query &gt; graph ≈ bm25</li>
+  </ul>
+  <p>No single skill wins all three axes on this question set. The right routing strategy depends on which cost matters most.</p>
+
+  <h3>qkb's <code>multi-get</code> is finally measurable</h3>
+  <p>In v2 the qkb skill's full-toolkit orchestration looked like a wash on quality. v3 shows it's a real <strong>token efficiency win</strong> — qkb v0.2 consumes 52.7k avg tokens, fewest of any skill, by using <code>qkb multi-get</code> to batch-fetch trimmed file content instead of 3–5 separate <code>Read</code> calls. The latency tradeoff (62s avg, slowest) buys the lowest API cost.</p>
+
+  <h3>vault-query has a context cliff</h3>
+  <p>Q12 (small concept pages): vault-query was fastest AND cheapest. Q13 (multi-pattern synthesis spread across 5 concept pages): vault-query still won on coverage by reading 4 distinct pages directly. But the v2 Q4/Q5 runs showed it degrading to 20-64% when meta-files exceeded read budget. The recommendation stands: vault-query is the fast/cheap choice <em>conditional on</em> the vault's hot/index pages fitting context.</p>
+
+  <h3>Updated routing table</h3>
+  <table>
+    <thead><tr><th>Optimization target</th><th>Primary skill</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>Quality (coverage)</td><td class="skill-graph">vault-query-graph</td><td>For relational/pairwise; <span class="skill-vq">vault-query</span> for multi-source synthesis</td></tr>
+      <tr><td>Wallclock latency</td><td class="skill-vq">vault-query</td><td>If meta-files fit; <span class="skill-bm25">bm25</span> as backup</td></tr>
+      <tr><td>Token cost (cloud API)</td><td class="skill-qkb">vault-query-qkb</td><td><code>multi-get</code> earns its keep on multi-file synthesis</td></tr>
+      <tr><td>All-around for proper-noun anchor</td><td class="skill-bm25">vault-query-bm25</td><td>Fast and good enough for single-page lookups</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<hr>
+
+<footer>
+  <p class="meta">Generated 2026-05-13 · qkb v0.0.2 · flight-planner-kb vault · v3 follow-up to <a href="skill-bench-v2-2026-05-13.html">v2</a> · Token capture protocol documented in <a href="BENCH-PROMPT.md"><code>BENCH-PROMPT.md</code></a></p>
+</footer>
+
+</body>
+</html>
