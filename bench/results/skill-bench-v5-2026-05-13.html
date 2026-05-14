@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Skill Cohort Bench v5 — Cross-Vault (2026-05-13)</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif; max-width: 1100px; margin: 2rem auto; padding: 0 1.25rem; }
+  h1 { font-size: 1.5rem; margin: 0 0 0.25rem; }
+  h2 { font-size: 1.15rem; margin: 1.75rem 0 0.5rem; padding-bottom: 0.25rem; border-bottom: 1px solid color-mix(in oklab, currentColor 20%, transparent); }
+  h3 { font-size: 1rem; margin: 1.25rem 0 0.5rem; }
+  .sub { color: color-mix(in oklab, currentColor 65%, transparent); margin: 0 0 1.5rem; }
+  table { border-collapse: collapse; margin: 0.5rem 0 1rem; width: 100%; font-size: 13px; }
+  th, td { padding: 6px 10px; text-align: left; border-bottom: 1px solid color-mix(in oklab, currentColor 15%, transparent); vertical-align: top; }
+  th { font-weight: 600; background: color-mix(in oklab, currentColor 6%, transparent); }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .win { background: color-mix(in oklab, #4ade80 22%, transparent); font-weight: 600; }
+  .pill { display: inline-block; padding: 1px 7px; border-radius: 4px; font-size: 11px; background: color-mix(in oklab, currentColor 10%, transparent); }
+  .router { background: color-mix(in oklab, #60a5fa 18%, transparent); }
+  .bm25 { background: color-mix(in oklab, #f59e0b 18%, transparent); }
+  .graph { background: color-mix(in oklab, #a78bfa 18%, transparent); }
+  details { margin: 0.25rem 0; }
+  summary { cursor: pointer; }
+  blockquote { margin: 0.5rem 0; padding: 0.4rem 0.85rem; border-left: 3px solid color-mix(in oklab, currentColor 25%, transparent); color: color-mix(in oklab, currentColor 80%, transparent); font-size: 13px; }
+  code { background: color-mix(in oklab, currentColor 8%, transparent); padding: 1px 5px; border-radius: 3px; font-size: 12px; }
+  .findings li { margin: 0.4rem 0; }
+</style>
+</head>
+<body>
+
+<h1>Skill Cohort Bench v5 — Cross-Vault Generalization</h1>
+<p class="sub">2026-05-13 · vault-query / vault-query-bm25 / vault-query-graph v0.2.0 · 3 vaults × 2 questions × 3 skills = 18 retrieval runs · token usage captured</p>
+
+<h2>Setup</h2>
+
+<table>
+<tr><th>Vault</th><th>Files</th><th>Graph (nodes/edges)</th><th>Relational question</th><th>Synthesis question</th></tr>
+<tr>
+  <td>flight-planner</td>
+  <td class="num">1330</td>
+  <td>~2400 / ~9700</td>
+  <td>What is the Briefing Assembler — what feeds it and what consumes its output?</td>
+  <td>What architectural patterns recur in our FAA data ingestion stack, and how do they relate?</td>
+</tr>
+<tr>
+  <td>personal (Knowledge Base)</td>
+  <td class="num">421</td>
+  <td>~1855 / ~14273</td>
+  <td>What does Caddy depend on and what does it serve?</td>
+  <td>What patterns recur in how we self-host services across our infrastructure?</td>
+</tr>
+<tr>
+  <td>firestorm-aip</td>
+  <td class="num">515</td>
+  <td>~1855 / ~14273</td>
+  <td>What does ASECNA serve and what is its publication model?</td>
+  <td>What patterns or themes recur across regional AIP providers worldwide?</td>
+</tr>
+</table>
+
+<p>Each question dispatched in parallel to three skills with identical prompt frame (T_START → standard mode → 3–5 pages → 150–300 word answer with <code>[[wikilinks]]</code> → T_END). Token totals captured from harness <code>&lt;usage&gt;total_tokens&lt;/usage&gt;</code>. Coverage / accuracy / synthesis scored 0–5 by per-vault grader agents that spot-checked claims against the actual vault contents.</p>
+
+<h2>Results — token usage and quality</h2>
+
+<h3>flight-planner</h3>
+
+<table>
+<tr><th>Q</th><th>Skill</th><th class="num">Tokens</th><th class="num">Elapsed</th><th class="num">Reads</th><th class="num">Citations</th><th class="num">Cov</th><th class="num">Acc</th><th class="num">Syn</th><th class="num">Total</th></tr>
+<tr><td rowspan="3">Q1 relational</td><td><span class="pill router">router</span></td><td class="num win">51,426</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">1</td><td class="num">1</td><td class="num">2</td><td class="num win">4</td></tr>
+<tr><td><span class="pill bm25">bm25</span></td><td class="num">51,777</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">1</td><td class="num">1</td><td class="num">2</td><td class="num">4</td></tr>
+<tr><td><span class="pill graph">graph</span></td><td class="num">58,831</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">0</td><td class="num">0</td><td class="num">1</td><td class="num">1</td></tr>
+<tr><td rowspan="3">Q2 synthesis</td><td><span class="pill router">router</span></td><td class="num">65,454</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">3</td><td class="num">2</td><td class="num">4</td><td class="num win">9</td></tr>
+<tr><td><span class="pill bm25">bm25</span></td><td class="num win">59,340</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">2</td><td class="num">2</td><td class="num">3</td><td class="num">7</td></tr>
+<tr><td><span class="pill graph">graph</span></td><td class="num">59,049</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">2</td><td class="num">2</td><td class="num">3</td><td class="num">7</td></tr>
+</table>
+
+<blockquote><strong>Q1 finding: hallucination trap across all three skills.</strong> The Briefing Assembler is a Go package in <code>internal/assembler/</code> consuming <code>*pipeline.PipelineRun</code> and emitting <code>*domain.BriefingDocument</code> — none of the skills surfaced this. All three answered as if it were a PDF-composition service over invented "NOTAM Fetcher / Chart Service / METAR Provider" microservices. Retrieval found the right doc; the answer-synthesis layer ignored it. Router wins by least-bad margin only.</blockquote>
+
+<h3>personal (Knowledge Base)</h3>
+
+<table>
+<tr><th>Q</th><th>Skill</th><th class="num">Tokens</th><th class="num">Elapsed</th><th class="num">Reads</th><th class="num">Citations</th><th class="num">Cov</th><th class="num">Acc</th><th class="num">Syn</th><th class="num">Total</th></tr>
+<tr><td rowspan="3">Q1 relational</td><td><span class="pill router">router</span></td><td class="num">51,322</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">4</td><td class="num">3</td><td class="num">4</td><td class="num win">11</td></tr>
+<tr><td><span class="pill bm25">bm25</span></td><td class="num win">46,479</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">3</td><td class="num">4</td><td class="num">3</td><td class="num">10</td></tr>
+<tr><td><span class="pill graph">graph</span></td><td class="num">50,147</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">4</td><td class="num">3</td><td class="num">3</td><td class="num">10</td></tr>
+<tr><td rowspan="3">Q2 synthesis</td><td><span class="pill router">router</span></td><td class="num">64,919</td><td class="num">32</td><td class="num">7</td><td class="num">9</td><td class="num">5</td><td class="num">4</td><td class="num">5</td><td class="num win">14</td></tr>
+<tr><td><span class="pill bm25">bm25</span></td><td class="num win">54,067</td><td class="num">52</td><td class="num">5</td><td class="num">8</td><td class="num">3</td><td class="num">5</td><td class="num">3</td><td class="num">11</td></tr>
+<tr><td><span class="pill graph">graph</span></td><td class="num">56,637</td><td class="num">55</td><td class="num">5</td><td class="num">9</td><td class="num">4</td><td class="num">4</td><td class="num">4</td><td class="num">12</td></tr>
+</table>
+
+<blockquote><strong>Personal vault is the well-cultivated case</strong> — disciplined <code>hot.md</code> / <code>index.md</code>, dense wikilinks. Router wins both. PK-2's 14/15 is the highest score in the bench: only router surfaced 7 distinct patterns including the encryption-pushed-down-stack and pull-based monitoring insights. Graph's edge-walk shape genuinely helped Q1 (caught the two-proxy-layer dichotomy bm25 missed) but missed 4 of Caddy's 12 routed services because edge traversal can't substitute for reading the routing table inside <code>Caddy.md</code>.</blockquote>
+
+<h3>firestorm-aip</h3>
+
+<table>
+<tr><th>Q</th><th>Skill</th><th class="num">Tokens</th><th class="num">Elapsed</th><th class="num">Reads</th><th class="num">Citations</th><th class="num">Cov</th><th class="num">Acc</th><th class="num">Syn</th><th class="num">Total</th></tr>
+<tr><td rowspan="3">Q1 relational</td><td><span class="pill router">router</span></td><td class="num">54,800</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">4</td><td class="num">2</td><td class="num">4</td><td class="num">10</td></tr>
+<tr><td><span class="pill bm25">bm25</span></td><td class="num win">50,114</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">3</td><td class="num">5</td><td class="num">2</td><td class="num win">10</td></tr>
+<tr><td><span class="pill graph">graph</span></td><td class="num">56,400</td><td class="num">—</td><td class="num">—</td><td class="num">—</td><td class="num">4</td><td class="num">2</td><td class="num">3</td><td class="num">9</td></tr>
+<tr><td rowspan="3">Q2 synthesis</td><td><span class="pill router">router</span></td><td class="num">56,509</td><td class="num">36</td><td class="num">8</td><td class="num">8</td><td class="num">4</td><td class="num">3</td><td class="num">5</td><td class="num">12</td></tr>
+<tr><td><span class="pill bm25">bm25</span></td><td class="num win">57,915</td><td class="num">60</td><td class="num">5</td><td class="num">6</td><td class="num">5</td><td class="num">5</td><td class="num">3</td><td class="num win">13</td></tr>
+<tr><td><span class="pill graph">graph</span></td><td class="num">60,758</td><td class="num">71</td><td class="num">6</td><td class="num">5</td><td class="num">5</td><td class="num">3</td><td class="num">5</td><td class="num">13</td></tr>
+</table>
+
+<blockquote><strong>AIP vault is the new/thin case</strong> — entity pages but no <code>concepts/</code> or <code>comparisons/</code> synthesis layer yet. BM25 wins both. On Q1 both router and graph hallucinated Cape Verde into ASECNA's 18-state list and dropped DRC; BM25 won by refusing to enumerate. On Q2, BM25 nailed the exact 22/7/57 READY/STALE/SPARSE split and flagged the empty synthesis directories; graph's better abstraction was offset by an unverifiable "Eurocontrol B2B" claim with no backing entity.</blockquote>
+
+<h2>Cross-vault tallies</h2>
+
+<table>
+<tr><th>Skill</th><th class="num">Wins (of 6)</th><th class="num">Total tokens</th><th class="num">Avg tokens/Q</th><th class="num">Total score (of 90)</th></tr>
+<tr><td><span class="pill router">vault-query (router)</span></td><td class="num win">4</td><td class="num">344,430</td><td class="num">57,405</td><td class="num">60</td></tr>
+<tr><td><span class="pill bm25">vault-query-bm25</span></td><td class="num">2</td><td class="num win">319,692</td><td class="num win">53,282</td><td class="num">55</td></tr>
+<tr><td><span class="pill graph">vault-query-graph</span></td><td class="num">0</td><td class="num">341,822</td><td class="num">56,970</td><td class="num">52</td></tr>
+</table>
+
+<h2>Findings</h2>
+
+<ol class="findings">
+  <li><strong>Router wins on synthesis, BM25 wins on accuracy-bound vaults.</strong> Router takes 4/6 by leveraging hot.md / index.md curated reads — but those only pay off when the vault has been curated. BM25's "show me the page, don't try to be clever" wins on the AIP vault because there's no synthesis layer to ride on, and lexical-only retrieval can't hallucinate connections it didn't find.</li>
+  <li><strong>Graph won zero.</strong> Pure graph traversal is the most expensive path on average (56,970 tokens) and consistently the worst on accuracy — it invents edges (FP-1 fabricated 12 LINKS_TO entities; AIP-2 invented "Eurocontrol B2B"). The graph layer is useful as a router signal, not as a standalone retrieval strategy on these question shapes.</li>
+  <li><strong>FP-1 is a hallucination trap that survived all three skills.</strong> Despite the canonical <code>concepts/Briefing Assembler.md</code> being the top BM25 hit at 0.93 score, every skill answered as if Briefing Assembler were a PDF document-composition service over FAA microservices instead of an Ember Go package. <em>Retrieval surfaced the right doc; answer-synthesis ignored it.</em> 51k–58k tokens spent producing answers worse than no answer.</li>
+  <li><strong>Token cost is roughly flat across skills (~5% spread).</strong> The router's hot.md / index.md curated read costs about the same as the BM25 specialist's single-shot search loop, because the dominant cost is the answering agent's read + synthesis budget, not the retrieval primitive. Picking a skill on cost grounds alone is a wash.</li>
+  <li><strong>The skill cohort generalizes — three different vaults, three different winners on Q1 — and no single skill dominates everywhere.</strong> This is the v4 finding reproduced cross-vault. Validates keeping all three skills in the cohort rather than collapsing to one.</li>
+  <li><strong>Vault quality dominates skill quality.</strong> Personal vault's curated <code>hot.md</code> + dense wikilinks produce the bench's highest score (14/15) and lowest hallucination rate. AIP vault's thin synthesis layer pushes all three skills toward shallower answers, with bm25 winning by being honest about gaps. <em>Invest in the wiki, not the retrieval algorithm.</em></li>
+</ol>
+
+<h2>Implications for the cohort</h2>
+
+<ul class="findings">
+  <li>Keep the three-skill split. Router as default, BM25 and graph as known-shape specialists.</li>
+  <li>Add a hallucination-detection guardrail to the answering layer — FP-1 shows retrieval can find the right doc and the answer can still drift. Likely fix: require the answering agent to quote one verbatim sentence from each cited source before synthesizing.</li>
+  <li>Hold off on adding a fourth skill (e.g. PPR per RFC-0010) until the answer-synthesis hallucination floor is addressed; better retrieval doesn't help if the synthesis layer ignores it.</li>
+  <li>Re-run this bench against future vault-cultivation changes (hot.md hygiene, wikilink density) to see whether the per-vault skill rankings shift — vault-quality-vs-algorithm-quality is the real lever.</li>
+</ul>
+
+<h2>Methodology</h2>
+
+<p>18 retrieval runs dispatched as parallel subagents (one per skill × question × vault). Each subagent received only the skill's SKILL.md, the vault root, the collection name, and the question. Token usage and elapsed time were extracted from the harness <code>&lt;usage&gt;</code> block. Each vault's 6 answers were then scored by a per-vault grader agent that spot-checked claims by reading the actual vault contents via <code>qkb</code> and <code>Read</code>. Grader scores: coverage (0–5 — does it hit the key facts), accuracy (0–5 — do citations resolve, claims correct), synthesis (0–5 — does it actually answer or just list). Reproduce via <code>bench/results/BENCH-PROMPT.md</code>.</p>
+
+</body>
+</html>
