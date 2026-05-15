@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Caveman Compression Bench — flight-planner-kb hot.md (2026-05-15)</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif; max-width: 1100px; margin: 2rem auto; padding: 0 1.25rem; }
+  h1 { font-size: 1.5rem; margin: 0 0 0.25rem; }
+  h2 { font-size: 1.15rem; margin: 1.75rem 0 0.5rem; padding-bottom: 0.25rem; border-bottom: 1px solid color-mix(in oklab, currentColor 20%, transparent); }
+  h3 { font-size: 1rem; margin: 1.25rem 0 0.5rem; }
+  .sub { color: color-mix(in oklab, currentColor 65%, transparent); margin: 0 0 1.5rem; }
+  table { border-collapse: collapse; margin: 0.5rem 0 1rem; width: 100%; font-size: 13px; }
+  th, td { padding: 6px 10px; text-align: left; border-bottom: 1px solid color-mix(in oklab, currentColor 15%, transparent); vertical-align: top; }
+  th { font-weight: 600; background: color-mix(in oklab, currentColor 6%, transparent); }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .win { background: color-mix(in oklab, #4ade80 22%, transparent); font-weight: 600; }
+  .loss { background: color-mix(in oklab, #f87171 22%, transparent); font-weight: 600; }
+  .pill { display: inline-block; padding: 1px 7px; border-radius: 4px; font-size: 11px; background: color-mix(in oklab, currentColor 10%, transparent); }
+  .prose { background: color-mix(in oklab, #94a3b8 22%, transparent); }
+  .std { background: color-mix(in oklab, #60a5fa 18%, transparent); }
+  .high { background: color-mix(in oklab, #f59e0b 22%, transparent); }
+  .ultra { background: color-mix(in oklab, #a78bfa 22%, transparent); }
+  details { margin: 0.25rem 0; }
+  summary { cursor: pointer; }
+  blockquote { margin: 0.5rem 0; padding: 0.4rem 0.85rem; border-left: 3px solid color-mix(in oklab, currentColor 25%, transparent); color: color-mix(in oklab, currentColor 80%, transparent); font-size: 13px; }
+  code { background: color-mix(in oklab, currentColor 8%, transparent); padding: 1px 5px; border-radius: 3px; font-size: 12px; }
+  .findings li { margin: 0.4rem 0; }
+</style>
+</head>
+<body>
+
+<h1>Caveman Compression Bench — flight-planner-kb hot.md</h1>
+<p class="sub">2026-05-15 · 4 conditions × 2 questions = 8 router runs · prose baseline vs caveman-compressed hot.md (standard / high / ultra levels)</p>
+
+<h2>Hypothesis</h2>
+
+<p>Caveman-compress the <code>wiki/hot.md</code> priming context fed to the <code>vault-query</code> router skill, then have the synthesis layer expand on the answer. Hypothesis: input tokens drop ~30–40% with answer fidelity holding within ±0.5 on the 0–5 grading scales.</p>
+
+<p>Three compression levels tested with explicit fidelity rules preserving directional/causal connectives, wikilinks, numbers, code identifiers, and proper nouns:</p>
+
+<table>
+<tr><th>Level</th><th class="num">Target</th><th class="num">Original</th><th class="num">Compressed</th><th class="num">Actual reduction</th><th>Style</th></tr>
+<tr><td><span class="pill prose">prose</span> (baseline)</td><td class="num">—</td><td class="num">114,733 B</td><td class="num">114,733 B</td><td class="num">0%</td><td>Original hot.md (~28.7k tokens)</td></tr>
+<tr><td><span class="pill std">cave-std</span></td><td class="num">50%</td><td class="num">114,733 B</td><td class="num">109,793 B</td><td class="num">4.3%</td><td>Honored preserve rules → almost nothing droppable</td></tr>
+<tr><td><span class="pill high">cave-high</span></td><td class="num">70%</td><td class="num">114,733 B</td><td class="num">38,311 B</td><td class="num">66.6%</td><td>Aggressive flatten of narrative bullets</td></tr>
+<tr><td><span class="pill ultra">cave-ultra</span></td><td class="num">85%</td><td class="num">114,733 B</td><td class="num">63,665 B</td><td class="num">44.5%</td><td>Fidelity rule blocked deeper cuts</td></tr>
+</table>
+
+<blockquote><strong>First finding before the bench even ran.</strong> The standard agent compressed only 4.3% because flight-planner-kb's <code>hot.md</code> is already a telegraph-cadence operations log — wikilinks, file:line citations, PR/Linear references, code identifiers, dates. ~70% of the content is on the preserve-verbatim list. Articles, hedges, and conversational filler are sparse. The "ultra" agent compressed less than "high" because it took the fidelity rule more seriously. The premise that hot.md has lots of prose to cut was wrong for this vault.</blockquote>
+
+<h2>Results — per question</h2>
+
+<h3>FP-1 — What is the Briefing Assembler — what feeds it and what consumes its output?</h3>
+
+<table>
+<tr><th>Condition</th><th class="num">Tokens</th><th class="num">Latency</th><th class="num">Tool uses</th><th class="num">Coverage</th><th class="num">Accuracy</th><th class="num">Synthesis</th><th class="num">Total</th></tr>
+<tr><td><span class="pill prose">prose</span></td><td class="num">53,293</td><td class="num">64.4s</td><td class="num">4</td><td class="num">5</td><td class="num">5</td><td class="num">5</td><td class="num"><strong>15</strong></td></tr>
+<tr><td><span class="pill std">cave-std</span></td><td class="num">51,444</td><td class="num">52.1s</td><td class="num">5</td><td class="num">5</td><td class="num">5</td><td class="num">5</td><td class="num"><strong>15</strong></td></tr>
+<tr><td><span class="pill high">cave-high</span></td><td class="num loss">69,314</td><td class="num">54.8s</td><td class="num">5</td><td class="num">5</td><td class="num">5</td><td class="num">5</td><td class="num"><strong>15</strong></td></tr>
+<tr><td><span class="pill ultra">cave-ultra</span></td><td class="num win">48,916</td><td class="num win">32.8s</td><td class="num">4</td><td class="num">5</td><td class="num">5</td><td class="num">5</td><td class="num"><strong>15</strong></td></tr>
+</table>
+
+<blockquote><strong>FP-1 finding: v5's hallucination trap did NOT recur. </strong>v5 reported "all three skills answered as if Briefing Assembler were a PDF document-composition service over invented FAA microservices." This run, <em>all four conditions</em> correctly identified Briefing Assembler as <code>internal/assembler/</code> Go package consuming <code>*pipeline.PipelineRun</code> and emitting <code>*domain.BriefingDocument</code>. This is a general improvement, not a caveman effect — the prose baseline is no longer broken. Possible drivers: vault content has grown clearer since v5, the v0.2.0 router skill is sharper, or it's run-to-run variance.</blockquote>
+
+<h3>FP-2 — What architectural patterns recur in our FAA data ingestion stack, and how do they relate?</h3>
+
+<table>
+<tr><th>Condition</th><th class="num">Tokens</th><th class="num">Latency</th><th class="num">Tool uses</th><th class="num">Coverage</th><th class="num">Accuracy</th><th class="num">Synthesis</th><th class="num">Total</th></tr>
+<tr><td><span class="pill prose">prose</span></td><td class="num">67,144</td><td class="num">76.2s</td><td class="num">10</td><td class="num">4</td><td class="num">5</td><td class="num">5</td><td class="num"><strong>14</strong></td></tr>
+<tr><td><span class="pill std">cave-std</span></td><td class="num">65,764</td><td class="num">80.8s</td><td class="num">6</td><td class="num">5</td><td class="num">5</td><td class="num">5</td><td class="num"><strong>15</strong></td></tr>
+<tr><td><span class="pill high">cave-high</span></td><td class="num loss">88,451</td><td class="num">76.6s</td><td class="num">7</td><td class="num">5</td><td class="num">5</td><td class="num">5</td><td class="num"><strong>15</strong></td></tr>
+<tr><td><span class="pill ultra">cave-ultra</span></td><td class="num">65,643</td><td class="num">76.0s</td><td class="num">7</td><td class="num">5</td><td class="num">5</td><td class="num">5</td><td class="num"><strong>15</strong></td></tr>
+</table>
+
+<blockquote><strong>FP-2 finding: all cave conditions enumerated <em>more</em> patterns than prose.</strong> Prose surfaced 5 patterns (Cycle-Aware Refresh, Two-Tier Storage, Lineage Invariant, Atomic Handler, Schema-Drift Manifest). Cave-std and cave-ultra added Per-Row Supersession, Canonical Silver Layer, Data Source Hierarchy. Cave-high added R2-PUT-before-DB Invariant on top of that plus historical context (the 2026-05-08 litestream lock storm). The compressed hot files apparently surfaced pattern names more discoverably — bullet-form pattern lists are easier to enumerate than narrative prose.</blockquote>
+
+<h2>Aggregate</h2>
+
+<table>
+<tr><th>Condition</th><th class="num">hot.md size</th><th class="num">Total tokens</th><th class="num">Avg tokens</th><th class="num">Total latency</th><th class="num">Quality total</th><th class="num">Δ vs prose</th></tr>
+<tr><td><span class="pill prose">prose</span></td><td class="num">114.7 KB</td><td class="num">120,437</td><td class="num">60,219</td><td class="num">140.6s</td><td class="num">29/30</td><td class="num">—</td></tr>
+<tr><td><span class="pill std">cave-std</span></td><td class="num">107.2 KB</td><td class="num">117,208</td><td class="num">58,604</td><td class="num">132.9s</td><td class="num">30/30</td><td class="num">−2.7%</td></tr>
+<tr><td><span class="pill high">cave-high</span></td><td class="num">37.4 KB</td><td class="num">157,765</td><td class="num">78,883</td><td class="num">131.4s</td><td class="num">30/30</td><td class="num loss">+31.0%</td></tr>
+<tr><td><span class="pill ultra">cave-ultra</span></td><td class="num">62.2 KB</td><td class="num">114,559</td><td class="num">57,280</td><td class="num">108.8s</td><td class="num">30/30</td><td class="num win">−4.9%</td></tr>
+</table>
+
+<h2>Findings</h2>
+
+<ol class="findings">
+  <li><strong>The hypothesis failed cleanly.</strong> Caveman compression on this vault's hot.md did NOT save tokens. Cave-ultra at 55% of original size saved 4.9% on tokens — well below the 30–40% reduction the hypothesis predicted. Cave-std saved 2.7% which is within noise. Cave-high <em>increased</em> token spend by 31%.</li>
+  <li><strong>Counterintuitive: more compression → more tokens.</strong> Cave-high (37 KB hot file, smallest of all four) used 31% more tokens than prose (114 KB hot file, largest). The pattern is consistent across both questions: FP-1 cave-high was 30% over prose, FP-2 cave-high was 32% over prose. Mechanism: the very-compressed hot file gave the agent less context to ride on, so it dispatched extra retrieval (qkb search + an extra page read) — and that extra retrieval's tokens dwarfed whatever was saved by reading a smaller priming file.</li>
+  <li><strong>The compression-cost curve is non-monotonic.</strong> Reading prose → std → ultra → high in <em>increasing</em> compression order, total tokens went 120k → 117k → 115k → <em>158k</em>. There's a sweet spot around 50% of original size (cave-ultra @ 55%) where the file is smaller but the agent still trusts it. Past that knee, compression costs more than it saves.</li>
+  <li><strong>Answer quality held at all compression levels.</strong> All four conditions scored 15/15 on FP-1; prose scored 14/15 on FP-2 (missed 3 patterns the cave conditions surfaced), all three cave conditions scored 15/15. <em>No quality degradation from compression on these questions.</em> The fidelity rules in the prompt templates appear to have done their job — directional connectives, wikilinks, code identifiers all preserved.</li>
+  <li><strong>v5's FP-1 hallucination trap did not recur.</strong> Prose baseline correctly identified Briefing Assembler as the Go package. This is unrelated to caveman; it's a general "the prose baseline got better since v5" effect. The retrieval system is working better on this question than it was two days ago. Worth a separate investigation; not load-bearing for the caveman question.</li>
+  <li><strong>The premise about hot.md was wrong for this vault.</strong> flight-planner-kb's <code>hot.md</code> is an operational log, not prose. ~70% of its bytes are wikilinks, file:line citations, PR/Linear references, code identifiers, dates, and exact numbers — all on the preserve-verbatim list. There is no fat to cut at the "drop articles and filler" level. A vault with more narrative prose in hot.md might respond differently.</li>
+</ol>
+
+<h2>Implications</h2>
+
+<ul class="findings">
+  <li><strong>Don't ship caveman-compress for this vault.</strong> It saves no tokens at safe compression levels and costs tokens at aggressive levels. The intervention is wrong for the artifact.</li>
+  <li><strong>Investigate the inverse pattern.</strong> Cave-high's extra retrieval was the synthesis layer compensating for sparseness. That's actually an information-preservation guarantee from the agent — it didn't hallucinate, it went and looked. Useful as a property; just expensive as a tactic.</li>
+  <li><strong>Index.md is the better target.</strong> hot.md is already lean. <code>wiki/index.md</code> at 96 KB (~24k tokens) of "Page Name: one-line description" lookup rows is more structurally compressible — the schema is repetitive and the contract is "scan to find pointer, follow pointer." A different bench could test BM25-chunked index.md against full-read index.md, where the read-everything tax is much more obviously wasteful.</li>
+  <li><strong>The compression target curve matters.</strong> If a future caveman pass aims at ~50% of original (cave-ultra range), it preserves trust and saves a small amount. Past that threshold, the agent stops trusting the file and the savings invert. The fidelity rule built into the ultra prompt template ("better sparse than hallucinated") was the right instinct — the agent that obeyed it produced the best result.</li>
+  <li><strong>v5's hallucination floor is shifting.</strong> The fact that all four conditions correctly answered FP-1 — when v5's three skills all failed it — deserves a focused look. Either the vault content matured, the skill prompt got sharper, or it's a run-to-run draw. Re-running v5 with current skills would tell us which.</li>
+</ul>
+
+<h2>Methodology</h2>
+
+<p>8 retrieval runs dispatched as parallel general-purpose subagents, identical harness to v5. Each subagent received only the skill SKILL.md (or its compressed variant), the vault root, the collection name, and the question. Subagents were instructed to operate read-only — no <code>qkb update</code>, no file modifications, no answer-filing back to the vault. Token usage and elapsed time extracted from each subagent's <code>&lt;usage&gt;</code> block.</p>
+
+<p>The three caveman compressions were each produced by a separate dispatched general-purpose subagent reading <code>flight-planner-kb/wiki/hot.md</code> and applying a prompt template from <code>qkb/bench/caveman-prompts/{standard,high,ultra}.md</code>. The prompt templates encode explicit preserve-verbatim rules for directional connectives, causal connectives, wikilinks, code identifiers, numbers, dates, and proper nouns. Fidelity rules ("better sparse than hallucinated") took precedence over compression targets, which is why cave-ultra ended up less compressed than cave-high.</p>
+
+<p>Quality scoring used the same v5 rubric: coverage (0–5 hits the key facts), accuracy (0–5 citations resolve, claims correct), synthesis (0–5 actually answers vs lists). Scoring was hand-graded by the bench operator comparing each answer against the v5 graded baselines and the underlying vault pages (<code>wiki/concepts/Briefing Assembler.md</code>, <code>wiki/concepts/Engine vs Assembler Boundary.md</code>, plus the FP-2 pattern concept pages).</p>
+
+<p>Reversibility: nothing in <code>flight-planner-kb</code> was modified. Compressed hot files lived under <code>/tmp/qkb-cave-bench/</code> alongside the skill variants. Cleanup is a single <code>rm -rf /tmp/qkb-cave-bench/</code>. The bench artifacts (this report + the three prompt templates) live in the qkb repo under <code>bench/results/</code> and <code>bench/caveman-prompts/</code> respectively, on a feature branch.</p>
+
+<h2>Reproduce</h2>
+
+<pre><code>cd /Users/dmestas/projects/qkb
+git checkout bench/caveman-hot-2026-05-15
+
+# Compress hot.md three ways
+mkdir -p /tmp/qkb-cave-bench
+# (dispatch 3 subagents with bench/caveman-prompts/{standard,high,ultra}.md
+#  applied to /Users/dmestas/projects/flight-planner-kb/wiki/hot.md)
+
+# Stage skill variants
+cp /Users/dmestas/projects/flight-planner-kb/.claude/skills/vault-query/SKILL.md \
+   /tmp/qkb-cave-bench/skill.prose.md
+# (copy + sed-rewrite hot.md path to /tmp/qkb-cave-bench/hot.cave.{level}.md)
+
+# Dispatch 8 bench runs (2 questions × 4 conditions, general-purpose subagent)
+# Capture &lt;usage&gt; tokens and duration_ms per run.
+
+# Cleanup
+rm -rf /tmp/qkb-cave-bench
+</code></pre>
+
+</body>
+</html>

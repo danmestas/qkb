@@ -18,6 +18,7 @@ texts/
 !.github/**/*.md
 !bench/results/graph-bench-baseline.md
 !bench/results/BENCH-PROMPT.md
+!bench/caveman-prompts/**/*.md
 finetune/outputs/
 finetune/data/train/
 .claude/
