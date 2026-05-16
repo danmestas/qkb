@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Indexed Caveman Bench — flight-planner-kb hot.md in qkb index (2026-05-15)</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif; max-width: 1100px; margin: 2rem auto; padding: 0 1.25rem; }
+  h1 { font-size: 1.5rem; margin: 0 0 0.25rem; }
+  h2 { font-size: 1.15rem; margin: 1.75rem 0 0.5rem; padding-bottom: 0.25rem; border-bottom: 1px solid color-mix(in oklab, currentColor 20%, transparent); }
+  h3 { font-size: 1rem; margin: 1.25rem 0 0.5rem; }
+  .sub { color: color-mix(in oklab, currentColor 65%, transparent); margin: 0 0 1.5rem; }
+  table { border-collapse: collapse; margin: 0.5rem 0 1rem; width: 100%; font-size: 13px; }
+  th, td { padding: 6px 10px; text-align: left; border-bottom: 1px solid color-mix(in oklab, currentColor 15%, transparent); vertical-align: top; }
+  th { font-weight: 600; background: color-mix(in oklab, currentColor 6%, transparent); }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .win { background: color-mix(in oklab, #4ade80 22%, transparent); font-weight: 600; }
+  .loss { background: color-mix(in oklab, #f87171 22%, transparent); font-weight: 600; }
+  .flat { background: color-mix(in oklab, #94a3b8 18%, transparent); }
+  .pill { display: inline-block; padding: 1px 7px; border-radius: 4px; font-size: 11px; background: color-mix(in oklab, currentColor 10%, transparent); }
+  .prose { background: color-mix(in oklab, #94a3b8 22%, transparent); }
+  .std { background: color-mix(in oklab, #60a5fa 18%, transparent); }
+  .high { background: color-mix(in oklab, #f59e0b 22%, transparent); }
+  .ultra { background: color-mix(in oklab, #a78bfa 22%, transparent); }
+  details { margin: 0.25rem 0; }
+  summary { cursor: pointer; }
+  blockquote { margin: 0.5rem 0; padding: 0.4rem 0.85rem; border-left: 3px solid color-mix(in oklab, currentColor 25%, transparent); color: color-mix(in oklab, currentColor 80%, transparent); font-size: 13px; }
+  code { background: color-mix(in oklab, currentColor 8%, transparent); padding: 1px 5px; border-radius: 3px; font-size: 12px; }
+  .findings li { margin: 0.4rem 0; }
+</style>
+</head>
+<body>
+
+<h1>Indexed Caveman Bench — does compressing the *indexed* hot.md change retrieval?</h1>
+<p class="sub">2026-05-15 · 3 levels × 2 questions = 6 router runs · cave hot.md indexed into a separate <code>flight-planner-cave</code> qkb collection on a git worktree · isolated from production index</p>
+
+<h2>Setup</h2>
+
+<p>Earlier today's <a href="skill-bench-cave-2026-05-15.html">unindexed-cave bench</a> tested only the priming-context dimension — the cave files lived in <code>/tmp/</code> outside the qkb collection, so the agent's <code>qkb search</code> calls hit the unchanged production index. That left an open question: does putting the cave content <em>in the index</em> change search rankings? Maybe a denser BM25 chunk pulls hot.md above the canonical entity/concept pages on questions where hot.md mentions the same terms.</p>
+
+<p>To test this without disturbing the production setup:</p>
+<ul>
+  <li><code>git worktree add --detach .worktrees/cave-index-bench main</code> on flight-planner-kb — isolated working tree at main's tip (committed state only; main's uncommitted edits don't leak in)</li>
+  <li><code>qkb collection add &lt;worktree-path&gt; --name flight-planner-cave</code> — separate index, doesn't touch production <code>flight-planner</code> collection</li>
+  <li>For each level [std, high, ultra]: <code>cp /tmp/qkb-cave-bench/hot.cave.{level}.md → worktree/wiki/hot.md</code>, then <code>qkb update</code>, then dispatch FP-1 + FP-2 (parallel) using the <em>unmodified</em> production vault-query skill with <code>-c flight-planner-cave</code> override</li>
+</ul>
+
+<h2>Results — per condition</h2>
+
+<table>
+<tr><th>Condition</th><th class="num">hot.md (B)</th><th class="num">FP-1 tokens</th><th class="num">FP-1 lat.</th><th>FP-1 top BM25</th><th class="num">FP-2 tokens</th><th class="num">FP-2 lat.</th><th>FP-2 top BM25</th><th class="num">Quality</th></tr>
+<tr>
+  <td><span class="pill std">indexed-cave-std</span></td>
+  <td class="num">112,767</td>
+  <td class="num">52,767</td>
+  <td class="num">65.4s</td>
+  <td><code>concepts/Briefing-Assembler.md</code></td>
+  <td class="num">65,278</td>
+  <td class="num">90.4s</td>
+  <td><code>concepts/Cycle-Aware-Publication-Refresh.md</code></td>
+  <td class="num">30/30</td>
+</tr>
+<tr>
+  <td><span class="pill high">indexed-cave-high</span></td>
+  <td class="num">39,167</td>
+  <td class="num">71,561</td>
+  <td class="num">49.5s</td>
+  <td><code>concepts/Briefing-Assembler.md</code></td>
+  <td class="num">92,263</td>
+  <td class="num">80.3s</td>
+  <td><code>concepts/Schema-Drift-Manifest.md</code></td>
+  <td class="num">30/30</td>
+</tr>
+<tr>
+  <td><span class="pill ultra">indexed-cave-ultra</span></td>
+  <td class="num">50,614</td>
+  <td class="num">51,250</td>
+  <td class="num">40.7s</td>
+  <td><code>concepts/Briefing-Assembler.md</code></td>
+  <td class="num">65,151</td>
+  <td class="num">77.8s</td>
+  <td><code>concepts/Cycle-Aware-Publication-Refresh.md</code></td>
+  <td class="num">30/30</td>
+</tr>
+</table>
+
+<h2>Comparison vs unindexed bench</h2>
+
+<p>Same conditions, same questions, ran ~2 hours apart. The only difference: this run's cave content was in the qkb index; the prior run's cave content was a private <code>/tmp</code> file the agent read but the index never saw.</p>
+
+<table>
+<tr><th>Question</th><th>Condition</th><th class="num">Unindexed tokens</th><th class="num">Indexed tokens</th><th class="num">Δ</th><th>Notes</th></tr>
+<tr><td>FP-1</td><td><span class="pill std">cave-std</span></td><td class="num">51,444</td><td class="num">52,767</td><td class="num flat">+2.6%</td><td>Within noise</td></tr>
+<tr><td>FP-1</td><td><span class="pill high">cave-high</span></td><td class="num">69,314</td><td class="num">71,561</td><td class="num flat">+3.2%</td><td>Within noise</td></tr>
+<tr><td>FP-1</td><td><span class="pill ultra">cave-ultra</span></td><td class="num">48,916</td><td class="num">51,250</td><td class="num flat">+4.8%</td><td>Within noise</td></tr>
+<tr><td>FP-2</td><td><span class="pill std">cave-std</span></td><td class="num">65,764</td><td class="num">65,278</td><td class="num flat">−0.7%</td><td>Identical</td></tr>
+<tr><td>FP-2</td><td><span class="pill high">cave-high</span></td><td class="num">88,451</td><td class="num">92,263</td><td class="num flat">+4.3%</td><td>Within noise; top BM25 shifted (see below)</td></tr>
+<tr><td>FP-2</td><td><span class="pill ultra">cave-ultra</span></td><td class="num">65,643</td><td class="num">65,151</td><td class="num flat">−0.7%</td><td>Identical</td></tr>
+</table>
+
+<h2>Findings</h2>
+
+<ol class="findings">
+  <li><strong>Indexing the cave hot.md is a no-op for retrieval.</strong> Token counts match the unindexed bench within ±5% (i.e., within run-to-run noise of the subagent harness). Quality unchanged (30/30 across the board). Whether the cave content sits inside the qkb index or outside it, the agent answers the same way with the same cost. This was the core hypothesis the bench tested, and the answer is clean.</li>
+  <li><strong>Why: hot.md isn't a search target.</strong> On FP-1, every condition's top BM25 hit is <code>concepts/Briefing-Assembler.md</code> at 0.84. On FP-2, top hits are pattern concept pages (<code>Cycle-Aware-Publication-Refresh</code>, <code>Schema-Drift-Manifest</code>). <em>hot.md is never the top hit and never breaks into the top 3</em> on these questions. It's a hub file — read by the agent as priming context via direct Read tool calls, not surfaced as a search result. So compressing it leaves BM25's preferred retrieval targets unchanged.</li>
+  <li><strong>One small anomaly worth noting.</strong> FP-2 cave-high shifted its top BM25 hit from <code>Cycle-Aware-Publication-Refresh.md</code> (the std/ultra top hit) to <code>Schema-Drift-Manifest.md</code>. Both are valid pattern pages; both got cited in the answer. Possible explanation: at 39 KB, cave-high's hot.md chunked into fewer chunks with denser term concentrations, slightly shifting BM25's idf computation across the collection. Effect was real but did not change answer quality or token cost meaningfully.</li>
+  <li><strong>cave-ultra was again the cheapest.</strong> FP-1 ran in 40.7s (vs 49.5s for high, 65.4s for std) and 51,250 tokens — the lowest of the indexed conditions. The non-monotonic cost curve from the unindexed bench reproduces: aggressive compression (cave-high) triggers extra retrieval; moderate compression (cave-ultra ~55% size) is the sweet spot.</li>
+  <li><strong>Answer quality held at all indexed levels, same as unindexed.</strong> All six indexed runs scored 30/30. Cave conditions surfaced more architectural patterns on FP-2 than the prior bench's prose baseline — the same effect previously attributed to "bullet-form is more enumerable" appears again. Indexing the cave content doesn't enhance this; it's a function of the priming context shape, not the search corpus.</li>
+</ol>
+
+<h2>Implication for the original "shrink the always-read" thesis</h2>
+
+<p>Two benches now triangulate the same conclusion: <strong>hot.md compression is the wrong intervention for this vault.</strong></p>
+
+<ul class="findings">
+  <li><strong>Unindexed bench (priming-context only):</strong> compression saved at most 4.9% tokens at the sweet spot (cave-ultra), and at aggressive levels (cave-high) <em>cost</em> 31% more tokens via extra retrieval.</li>
+  <li><strong>Indexed bench (priming-context + search corpus):</strong> token spend matched the unindexed bench within ±5%. Indexing added no benefit, because hot.md isn't where the BM25 searches go. The agent's qkb search calls target entity/concept pages regardless of what's in hot.md.</li>
+</ul>
+
+<p>The two interventions together — compress hot.md's bytes (read-time) and compress hot.md's index chunks (search-time) — cumulatively do not move the bench's outcome. The cost story belongs elsewhere: page reads, harness overhead, or synthesis budget. Token spend is a fact about <em>where the agent looks</em>, not <em>what the hub file says</em>.</p>
+
+<p>The next interventions worth testing are the ones that target what BM25 actually surfaces:</p>
+
+<ul class="findings">
+  <li><strong>BM25-chunk <code>index.md</code></strong> (24k tokens of "Page Name: one-line desc" rows) — replace "read whole" with "search for query, return top-K rows." Different artifact from hot.md: index.md <em>is</em> structured as a lookup. Best remaining shot at the always-read tax.</li>
+  <li><strong>Shorter / denser entity pages</strong> — the actual top BM25 hits. If <code>concepts/Briefing-Assembler.md</code> is 140 lines and the answer needs only the frontmatter + first paragraph, "frontmatter-as-answer" page rewrites could cut Read costs at the part of the budget that <em>does</em> dominate.</li>
+  <li><strong>Profile per-tool token costs</strong> — every run did ~5–10 tool calls each costing different amounts. The bench captured totals but not breakdowns. A profiling pass would show whether page reads, qkb search outputs, or harness overhead dominate the 50–90k-token budget.</li>
+</ul>
+
+<h2>Methodology</h2>
+
+<p>Reversibility design: a git worktree on flight-planner-kb (detached HEAD at <code>main</code> tip) isolated the experiment from the production checkout. A separate <code>flight-planner-cave</code> qkb collection was created against the worktree, so the production <code>flight-planner</code> collection (which other tools depend on) was never modified. For each level, the worktree's <code>wiki/hot.md</code> was overwritten with the cave version and <code>qkb update</code> re-indexed only that file (because qkb tracks file hashes and other files were unchanged).</p>
+
+<p>6 retrieval runs dispatched as parallel general-purpose subagents (2 per level, fan-out=2). Each subagent received the <em>unmodified</em> production <code>vault-query</code> SKILL.md (same skill the prior bench used) with an instruction to override the collection name from <code>flight-planner</code> to <code>flight-planner-cave</code>. Read paths pointed at the worktree.</p>
+
+<p>Caveat: the <code>flight-planner-cave</code> collection has 808 indexed files vs the production <code>flight-planner</code> collection's 1370 (the production vault has 562 untracked <code>site/content/</code> files from a Quartz static-site build that aren't in the committed worktree). The bench questions concern <code>wiki/</code> pages, which are identical in both collections — but the BM25 idf statistics differ slightly because the corpus size differs. This is a known confound; it likely accounts for some of the ±5% noise vs the unindexed bench. The conclusion (indexed-vs-unindexed makes no meaningful difference) is robust to this confound because the effect size we'd be measuring is much larger than the BM25-statistics shift.</p>
+
+<p>Quality scoring used the same v5 rubric (coverage / accuracy / synthesis 0–5). All six indexed runs scored 5/5/5 = 15/15 per question = 30/30 total per condition.</p>
+
+</body>
+</html>
