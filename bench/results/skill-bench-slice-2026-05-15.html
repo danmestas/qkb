@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Slice-Fetch Bench — qkb get :line vs full Read (2026-05-15)</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif; max-width: 1100px; margin: 2rem auto; padding: 0 1.25rem; }
+  h1 { font-size: 1.5rem; margin: 0 0 0.25rem; }
+  h2 { font-size: 1.15rem; margin: 1.75rem 0 0.5rem; padding-bottom: 0.25rem; border-bottom: 1px solid color-mix(in oklab, currentColor 20%, transparent); }
+  h3 { font-size: 1rem; margin: 1.25rem 0 0.5rem; }
+  .sub { color: color-mix(in oklab, currentColor 65%, transparent); margin: 0 0 1.5rem; }
+  table { border-collapse: collapse; margin: 0.5rem 0 1rem; width: 100%; font-size: 13px; }
+  th, td { padding: 6px 10px; text-align: left; border-bottom: 1px solid color-mix(in oklab, currentColor 15%, transparent); vertical-align: top; }
+  th { font-weight: 600; background: color-mix(in oklab, currentColor 6%, transparent); }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .win { background: color-mix(in oklab, #4ade80 22%, transparent); font-weight: 600; }
+  .loss { background: color-mix(in oklab, #f87171 22%, transparent); font-weight: 600; }
+  .flat { background: color-mix(in oklab, #94a3b8 18%, transparent); }
+  .pill { display: inline-block; padding: 1px 7px; border-radius: 4px; font-size: 11px; background: color-mix(in oklab, currentColor 10%, transparent); }
+  .prose { background: color-mix(in oklab, #94a3b8 22%, transparent); }
+  .slice { background: color-mix(in oklab, #60a5fa 22%, transparent); }
+  blockquote { margin: 0.5rem 0; padding: 0.4rem 0.85rem; border-left: 3px solid color-mix(in oklab, currentColor 25%, transparent); color: color-mix(in oklab, currentColor 80%, transparent); font-size: 13px; }
+  code { background: color-mix(in oklab, currentColor 8%, transparent); padding: 1px 5px; border-radius: 3px; font-size: 12px; }
+  .findings li { margin: 0.4rem 0; }
+</style>
+</head>
+<body>
+
+<h1>Slice-Fetch Bench — does <code>qkb get :line -l 40</code> beat full Read?</h1>
+<p class="sub">2026-05-15 · 2 conditions × 2 questions = 4 router runs · baseline (production vault-query skill) vs slice-fetch variant (explicit <code>qkb get</code> with line targeting, no Read tool on entity pages)</p>
+
+<h2>Hypothesis</h2>
+
+<p>Speculation from the post-bench discussion: agents reading whole entity/concept pages via the <code>Read</code> tool spend most of the per-query budget on file content the question doesn't need. Replace "Read N pages" with "<code>qkb get &lt;path&gt;:&lt;line&gt; -l 40</code>" — a 40-line slice centered on the BM25 hit line — and recover ~50% of input tokens.</p>
+
+<p>The slice variant modified the production skill in three places: standard-mode step 5 ("Read 3–5 candidates" → "Slice-fetch 3–5 candidates via <code>qkb get :line -l 40</code>"), the index-pointer step (same swap), and deep-mode batch-fetch (multi-get with <code>-l 60</code>).</p>
+
+<h2>Results</h2>
+
+<table>
+<tr><th>Question</th><th>Condition</th><th class="num">Tokens</th><th class="num">Latency</th><th class="num">Read calls</th><th class="num">qkb get calls</th><th>Top BM25 hit</th><th class="num">Quality</th></tr>
+<tr><td>FP-1</td><td><span class="pill prose">baseline</span></td><td class="num">45,938</td><td class="num">39.6s</td><td class="num">1</td><td class="num">1</td><td><code>concepts/Briefing-Assembler.md</code></td><td class="num">15/15</td></tr>
+<tr><td>FP-1</td><td><span class="pill slice">slice-fetch</span></td><td class="num loss">53,152</td><td class="num loss">56.2s</td><td class="num">1</td><td class="num">4</td><td><code>concepts/Briefing-Assembler.md</code></td><td class="num">15/15</td></tr>
+<tr><td>FP-2</td><td><span class="pill prose">baseline</span></td><td class="num">59,556</td><td class="num">61.6s</td><td class="num">1</td><td class="num">5</td><td>—</td><td class="num">15/15</td></tr>
+<tr><td>FP-2</td><td><span class="pill slice">slice-fetch</span></td><td class="num loss">60,804</td><td class="num">63.9s</td><td class="num">1</td><td class="num">7</td><td>—</td><td class="num">15/15</td></tr>
+</table>
+
+<h2>Headline</h2>
+
+<blockquote><strong>Hypothesis failed. Slice-fetch as implemented made things slightly worse, not better.</strong> FP-1 spent 16% more tokens and 42% more wall-clock; FP-2 was effectively flat (+2% tokens, +4% latency). Quality unchanged at 15/15 both ways. Sign-off declined.</blockquote>
+
+<h2>Why the intervention didn't help</h2>
+
+<ol class="findings">
+  <li><strong>The "Read whole files" failure mode I was targeting wasn't actually happening at baseline.</strong> Look at the baseline column's <code>read_tool_calls: 1</code> and <code>qkb_get_calls: 1–5</code>. The baseline agents were already using <code>qkb multi-get</code> / <code>qkb get</code> organically, because the production skill mentions multi-get explicitly in the deep-mode section. The agents read instructions holistically and didn't actually default to full Read on entity pages. <em>The cost I thought I was attacking was a phantom.</em></li>
+  <li><strong>Forcing per-file <code>qkb get :line</code> traded fewer-but-bigger tool calls for more-but-smaller ones — and lost.</strong> Baseline does 1 batched <code>qkb multi-get</code> call returning N pages. Slice does N separate <code>qkb get :line</code> calls. Each tool call carries harness overhead (system prompt injection, response wrapping). On FP-1 that overhead exceeded the content savings: 4 slice calls cost more total tokens than 1 multi-get even though each individual slice returned less text.</li>
+  <li><strong>The patched skill is itself bigger (12.1 → 13.2 KB).</strong> ~270 extra tokens just to load the slice-variant skill. Small but contributes to the regression.</li>
+  <li><strong>Run-to-run variance is significant.</strong> Today's baseline ran cheaper than the prior bench's baseline by 11–14% (FP-1: 53,293 → 45,938; FP-2: 67,144 → 59,556). Same skill, same vault, same model — different runs. The +2% to +16% slice-vs-baseline gap in this bench is within that variance window. <em>The gap could be noise.</em></li>
+</ol>
+
+<h2>What we learned</h2>
+
+<ul class="findings">
+  <li><strong>The production skill is already efficient on this vault.</strong> Three benches now (caveman unindexed, caveman indexed, slice-fetch) have failed to find an intervention that reliably beats it. Token spend lives somewhere the priming/page-fetch layer can't reach.</li>
+  <li><strong>Batched multi-get beats per-file slice on this question shape.</strong> Tool-call overhead matters at the 10+ k-token scale. Future skill changes should optimize for <em>fewer</em> tool calls, not <em>smaller</em> tool calls.</li>
+  <li><strong>Bench reliability needs N&gt;2.</strong> Two-question benches can't distinguish a +5% intervention from a +5% noise floor. To resolve a "small but real" win like a slice-fetch tweak might be, the bench needs ≥6 questions per condition. The cheap synthesis questions (FP-2 shape) are particularly noisy.</li>
+  <li><strong>The next experiment should profile per-tool token costs, not assume where the slack is.</strong> Three failed-or-flat benches in a row is the system telling us we don't know what we're attacking. A profiling pass on a single v5-style run — capturing tokens per tool call — would settle whether the dominant cost is hot.md reads, entity page reads, qkb multi-get outputs, or harness overhead.</li>
+</ul>
+
+<h2>Reversibility</h2>
+
+<p>Nothing in <code>flight-planner-kb</code> modified. Skill variants lived only in <code>/tmp/qkb-slice-bench/</code> throughout. Production <code>vault-query</code> skill untouched. Production <code>flight-planner</code> qkb collection untouched. Single <code>rm -rf /tmp/qkb-slice-bench/</code> restores pre-bench state.</p>
+
+<h2>Methodology</h2>
+
+<p>4 retrieval runs dispatched as parallel general-purpose subagents. Each received a path to either <code>skill.prose.md</code> (a copy of the production skill) or <code>skill.slice.md</code> (the same skill with sections 1, 5, and deep-mode batch-fetch rewritten to use <code>qkb get :line -l 40</code> / <code>qkb multi-get -l 60</code> instead of <code>Read</code>). Both pointed at the production <code>flight-planner</code> qkb collection. Subagents were instructed to operate read-only.</p>
+
+<p>Token / latency captured from each subagent's <code>&lt;usage&gt;</code> block. Tool-call counts self-reported in the bench metadata block. Quality hand-graded on the v5 rubric (coverage / accuracy / synthesis 0–5).</p>
+
+</body>
+</html>
