@@ -28,11 +28,10 @@ import {
   resolveLinks,
 } from "./wikilink-extraction.js";
 import {
-  runUpsertNodesBulk,
-  runUpsertEdgesBulk,
   type UpsertNodeArgs,
   type UpsertEdgeArgs,
 } from "./sdk.js";
+import { fastBulkWrite } from "./fast-writer.js";
 
 export interface GraphPassResult {
   /** Total edges upserted (resolved wikilinks + embeds + md-refs). */
@@ -148,24 +147,32 @@ export function runGraphPass(
     }
   }
 
-  // 4. Upsert WikiTarget placeholders first (so resolved targets always
-  //    have a node to point at by the time edges land).
-  if (wikiTargets.size > 0) {
-    const wtNodes: UpsertNodeArgs[] = [...wikiTargets].map((name) => ({
+  // 4-6. Bulk-write nodes + edges via the direct-SQL fast path.
+  //
+  //   The Cypher MERGE path resolves every edge endpoint by `{id: $x}`,
+  //   which scans the (unindexed) `node_props_text` table — O(nodes) per
+  //   endpoint, so O(nodes × edges) overall. On a densely-linked vault
+  //   (~11.5k nodes / ~97k edges) that never completes in practice.
+  //   `fastBulkWrite` builds the id→PK map once and batch-inserts the
+  //   underlying tables directly: O(nodes + edges), measured ~0.3s at
+  //   that scale. Semantics (id identity, idempotent re-runs, one label +
+  //   string props per node) are preserved. See fast-writer.ts.
+  //
+  //   WikiTarget placeholders are written in the same pass; ordering no
+  //   longer matters because edges are resolved against the in-memory
+  //   id→PK map, not a prior graph state.
+  const allNodes: UpsertNodeArgs[] = [];
+  for (const name of wikiTargets) {
+    allNodes.push({
       id: `wikitarget:${name}`,
       label: "WikiTarget",
       properties: { name },
-    }));
-    runUpsertNodesBulk(db, wtNodes);
+    });
   }
-
-  // 5. Upsert all real doc nodes, label by label.
   for (const [, nodes] of nodesByLabel) {
-    runUpsertNodesBulk(db, nodes);
+    for (const n of nodes) allNodes.push(n);
   }
-
-  // 6. Upsert all edges in batches.
-  runUpsertEdgesBulk(db, edges);
+  fastBulkWrite(db, allNodes, edges);
 
   // 7+8. Orphan GC. Hidden inside `runGraphPass()` so callers don't
   //       coordinate it. Also exposed standalone via `pruneGraphOrphans`

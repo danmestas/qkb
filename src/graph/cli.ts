@@ -601,26 +601,33 @@ export async function graphLink(
     }
   }
 
-  // Upsert WikiTarget placeholders first (for unresolved wikilinks).
-  if (wikiTargets.size > 0) {
-    const wtNodes = [...wikiTargets].map((name) => ({
+  // Fast-path bulk write via direct SQL (see fast-writer.ts). The
+  // Cypher MERGE path used by `store.graph.upsert*Bulk` resolves every
+  // edge endpoint by `{id: $x}`, scanning the unindexed `node_props_text`
+  // table — O(nodes) per endpoint, i.e. O(nodes × edges) overall. On a
+  // densely-linked vault (~11.5k nodes / ~97k edges) that never finishes.
+  // `fastBulkWrite` builds the id→PK map once and batch-inserts the
+  // underlying tables: O(nodes + edges), ~0.3s at that scale. Node/edge
+  // identity + idempotent re-run semantics are preserved.
+  const { fastBulkWrite } = await import("./fast-writer.js");
+  const allNodes: Array<{
+    id: string;
+    label: string;
+    properties: Record<string, unknown>;
+  }> = [];
+  for (const name of wikiTargets) {
+    allNodes.push({
       id: `wikitarget:${name}`,
       label: "WikiTarget",
       properties: { name },
-    }));
-    store.graph.upsertNodesBulk(wtNodes);
+    });
   }
-
-  // Upsert all real doc nodes, label by label.
-  let totalNodes = wikiTargets.size;
   for (const [, nodes] of nodesByLabel) {
-    store.graph.upsertNodesBulk(nodes);
-    totalNodes += nodes.length;
+    for (const n of nodes) allNodes.push(n);
   }
-
-  // Upsert all edges. Bulk insertion goes inside a single tx already
-  // (per upsertEdgesBulk semantics).
-  store.graph.upsertEdgesBulk(edges);
+  const db = store.db as unknown as import("../internals/db.js").Database;
+  fastBulkWrite(db, allNodes, edges);
+  const totalNodes = allNodes.length;
 
   return {
     stdout:

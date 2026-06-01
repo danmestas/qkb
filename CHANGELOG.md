@@ -1,5 +1,10 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+- **Graph build no longer scales O(nodes × edges).** `graphLink` (the `qkb update` "Linking graph" pass) inserted edges via Cypher `MATCH (a {id:$x}),(b {id:$y}) MERGE ...`; GraphQLite resolves `{id:...}` by scanning the unindexed `node_props_text` table, so each edge endpoint was O(nodes). On a densely-linked vault (~11.5k nodes / ~97k edges) the build pegged a CPU core for 30+ minutes without finishing. New `src/graph/fast-writer.ts` (`fastBulkWrite`) builds the `id → node-PK` map once and bulk-inserts GraphQLite's underlying tables directly — O(nodes + edges), ~50s for that vault. Also indexes `node_props_text(key_id, value, node_id)` for fast query-time `{id}` lookups. Node/edge identity and idempotent re-run semantics are unchanged; Cypher reads the results back identically.
+
 ## [0.0.2] - 2026-05-11
 
 ### Changed
