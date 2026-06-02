@@ -5,11 +5,11 @@ description = "QMD query expansion fine-tuning tools"
 requires-python = ">=3.10"
 dependencies = [
   "torch",
-  "trl>=1.4.0",
+  "trl>=1.5.1",
   "peft>=0.19.1",
-  "transformers>=5.8.1",
+  "transformers>=5.9.0",
   "accelerate>=0.24.0",
-  "huggingface_hub>=1.15.0",
+  "huggingface_hub>=1.17.0",
   "trackio",
   "datasets",
   "pyyaml",
