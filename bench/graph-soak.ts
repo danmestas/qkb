@@ -24,8 +24,8 @@ import { mkdtempSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { performance } from "node:perf_hooks";
-import { setConfigSource } from "../src/collections.js";
-import { createStore } from "../src/store.js";
+import { setConfigSource } from "../src/internals/collections-yaml.js";
+import { createStore } from "../src/internals/store-engine.js";
 import { generateSyntheticGraph } from "../src/graph/bench.js";
 import { runCypher, runPageRank, type CypherQuery } from "../src/graph/sdk.js";
 
