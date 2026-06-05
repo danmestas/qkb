@@ -13,8 +13,8 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { setConfigSource } from "../src/collections.js";
-import { createStore } from "../src/store.js";
+import { setConfigSource } from "../src/internals/collections-yaml.js";
+import { createStore } from "../src/internals/store-engine.js";
 import {
   generateSyntheticGraph,
   measureColdLoad,
