@@ -23,7 +23,7 @@ jobs:
           echo "PR has 'skip-changelog' label — skipping check."
           exit 0
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         if: ${{ !contains(github.event.pull_request.labels.*.name, 'skip-changelog') }}
         with:
           fetch-depth: 0
