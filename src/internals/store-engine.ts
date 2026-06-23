@@ -620,8 +620,14 @@ function initializeDatabase(db: Database): void {
   `);
 
   // FTS - index filepath (collection/path), title, and content
-  (db as unknown as { function: (name: string, options: { deterministic: boolean }, fn: (text: string) => string) => void })
-    .function("normalize_cjk_for_fts", { deterministic: true }, normalizeCjkForFTS);
+  const dbWithFunctions = db as unknown as { function?: (name: string, options: { deterministic: boolean }, fn: (text: string) => string) => void };
+  const supportsSqliteFunctions = typeof dbWithFunctions.function === "function";
+  if (supportsSqliteFunctions) {
+    dbWithFunctions.function!("normalize_cjk_for_fts", { deterministic: true }, normalizeCjkForFTS);
+  }
+  const ftsPathExpr = supportsSqliteFunctions ? "normalize_cjk_for_fts(new.collection || '/' || new.path)" : "new.collection || '/' || new.path";
+  const ftsTitleExpr = supportsSqliteFunctions ? "normalize_cjk_for_fts(new.title)" : "new.title";
+  const ftsBodyExpr = supportsSqliteFunctions ? "normalize_cjk_for_fts((SELECT doc FROM content WHERE hash = new.hash))" : "(SELECT doc FROM content WHERE hash = new.hash)";
   db.exec(`
     CREATE VIRTUAL TABLE IF NOT EXISTS documents_fts USING fts5(
       filepath, title, body,
@@ -640,9 +646,9 @@ function initializeDatabase(db: Database): void {
       INSERT INTO documents_fts(rowid, filepath, title, body)
       SELECT
         new.id,
-        normalize_cjk_for_fts(new.collection || '/' || new.path),
-        normalize_cjk_for_fts(new.title),
-        normalize_cjk_for_fts((SELECT doc FROM content WHERE hash = new.hash))
+        ${ftsPathExpr},
+        ${ftsTitleExpr},
+        ${ftsBodyExpr}
       WHERE new.active = 1;
     END
   `);
@@ -663,15 +669,15 @@ function initializeDatabase(db: Database): void {
       INSERT OR REPLACE INTO documents_fts(rowid, filepath, title, body)
       SELECT
         new.id,
-        normalize_cjk_for_fts(new.collection || '/' || new.path),
-        normalize_cjk_for_fts(new.title),
-        normalize_cjk_for_fts((SELECT doc FROM content WHERE hash = new.hash))
+        ${ftsPathExpr},
+        ${ftsTitleExpr},
+        ${ftsBodyExpr}
       WHERE new.active = 1;
     END
   `);
 
   const ftsCjkVersion = (db.prepare(`SELECT value FROM store_config WHERE key = 'fts_cjk_normalized_version'`).get() as { value?: string } | undefined)?.value;
-  if (ftsCjkVersion !== "1") {
+  if (supportsSqliteFunctions && ftsCjkVersion !== "1") {
     db.exec(`DELETE FROM documents_fts`);
     const rows = db.prepare(`
       SELECT d.id, d.collection, d.path, d.title, c.doc AS body

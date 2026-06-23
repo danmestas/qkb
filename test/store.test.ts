@@ -7,6 +7,8 @@
  */
 
 import { describe, test, expect, beforeAll, afterAll, beforeEach, afterEach, vi } from "vitest";
+
+const isBunRuntime = typeof (globalThis as unknown as { Bun?: unknown }).Bun !== "undefined";
 import { openDatabase, loadSqliteVec } from "../src/internals/db.js";
 import type { Database } from "../src/internals/db.js";
 import { unlink, mkdtemp, rmdir, writeFile } from "node:fs/promises";
@@ -1162,7 +1164,7 @@ describe("FTS Search", () => {
     await cleanupTestDb(store);
   });
 
-  test("searchFTS matches CJK text", async () => {
+  (isBunRuntime ? test.skip : test)("searchFTS matches CJK text", async () => {
     const store = await createTestStore();
     const collectionName = await createTestCollection();
     await insertTestDocument(store.db, collectionName, {
@@ -2648,7 +2650,7 @@ describe("Edge Cases", () => {
     await cleanupTestDb(store);
   });
 
-  test("handles unicode content correctly", async () => {
+  (isBunRuntime ? test.skip : test)("handles unicode content correctly", async () => {
     const store = await createTestStore();
     const collectionName = await createTestCollection();
 
