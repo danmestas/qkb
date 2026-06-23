@@ -5,9 +5,9 @@
     "": {
       "name": "2025-12-07-bm25-q",
       "dependencies": {
-        "@huggingface/transformers": "^3.8.0",
+        "@huggingface/transformers": "3.8.0",
         "@modelcontextprotocol/sdk": "1.29.0",
-        "@tobilu/qmd": "~2.5.3",
+        "@tobilu/qmd": "2.5.3",
         "better-sqlite3": "12.9.0",
         "fast-glob": "3.3.3",
         "node-llama-cpp": "3.18.1",
@@ -97,7 +97,7 @@
 
     "@huggingface/jinja": ["@huggingface/jinja@0.5.6", "", {}, "sha512-MyMWyLnjqo+KRJYSH7oWNbsOn5onuIvfXYPcc0WOGxU0eHUV7oAYUoQTl2BMdu7ml+ea/bu11UM+EshbeHwtIA=="],
 
-    "@huggingface/transformers": ["@huggingface/transformers@3.8.1", "", { "dependencies": { "@huggingface/jinja": "^0.5.3", "onnxruntime-node": "1.21.0", "onnxruntime-web": "1.22.0-dev.20250409-89f8206ba4", "sharp": "^0.34.1" } }, "sha512-tsTk4zVjImqdqjS8/AOZg2yNLd1z9S5v+7oUPpXaasDRwEDhB+xnglK1k5cad26lL5/ZIaeREgWWy0bs9y9pPA=="],
+    "@huggingface/transformers": ["@huggingface/transformers@3.8.0", "", { "dependencies": { "@huggingface/jinja": "^0.5.1", "onnxruntime-node": "1.21.0", "onnxruntime-web": "1.22.0-dev.20250409-89f8206ba4", "sharp": "^0.34.1" } }, "sha512-bEvx9k/fnhjKtekc1pDYLGDhVwxW5mO3k4UkP/mJQtQI5dC34daCQ28O1B19lkyM0QYFwAj+RGl0qOjE9Upt/w=="],
 
     "@img/colour": ["@img/colour@1.1.0", "", {}, "sha512-Td76q7j57o/tLVdgS746cYARfSyxk8iEfRxewL9h4OMzYhbW4TAcppl0mT4eyqXddh6L/jwoM75mo7ixa/pCeQ=="],
 
