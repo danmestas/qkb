@@ -2927,7 +2927,13 @@ export function validateLexQuery(query: string): string | null {
   return null;
 }
 
-export function searchFTS(db: Database, query: string, limit: number = 20, collectionName?: string): SearchResult[] {
+function searchFTSWeighted(
+  db: Database,
+  query: string,
+  limit: number = 20,
+  collectionName?: string,
+  weights: [number, number, number] = [1.5, 4.0, 1.0]
+): SearchResult[] {
   const ftsQuery = buildFTS5Query(query);
   if (!ftsQuery) return [];
 
@@ -2942,10 +2948,11 @@ export function searchFTS(db: Database, query: string, limit: number = 20, colle
   // since some will be filtered out. Without a collection filter we can
   // fetch exactly the requested limit.
   const ftsLimit = collectionName ? limit * 10 : limit;
+  const [filepathWeight, titleWeight, bodyWeight] = weights;
 
   let sql = `
     WITH fts_matches AS (
-      SELECT rowid, bm25(documents_fts, 1.5, 4.0, 1.0) as bm25_score
+      SELECT rowid, bm25(documents_fts, ${filepathWeight}, ${titleWeight}, ${bodyWeight}) as bm25_score
       FROM documents_fts
       WHERE documents_fts MATCH ?
       ORDER BY bm25_score ASC
@@ -2996,6 +3003,17 @@ export function searchFTS(db: Database, query: string, limit: number = 20, colle
       source: "fts" as const,
     };
   });
+}
+
+export function searchFTS(db: Database, query: string, limit: number = 20, collectionName?: string): SearchResult[] {
+  return searchFTSWeighted(db, query, limit, collectionName);
+}
+
+export function searchFTSTitleWeighted(db: Database, query: string, limit: number = 20, collectionName?: string): SearchResult[] {
+  // Benchmark-backed standalone expansion alternative: add a cheap FTS stream
+  // that heavily weights document titles. This improved hit@1/MRR with ~1ms
+  // extra p95 cost and avoids generative query expansion noise.
+  return searchFTSWeighted(db, query, limit, collectionName, [0.2, 5.0, 0.2]);
 }
 
 // =============================================================================
@@ -3877,19 +3895,31 @@ export interface HybridQueryOptions {
   chunkStrategy?: ChunkStrategy;
   hooks?: SearchHooks;
   /**
-   * Enable RFC-0008 strategy #2: edge-weighted 1-hop graph expansion.
-   * Top-N post-RRF candidates seed an outgoing-edge expansion via the
-   * graph layer; per-edge-type weights determine each neighbor's
-   * contribution to the candidate pool.
-   *
-   * **Default**: `true` when undefined — graph expansion runs whenever
-   * the graph layer is available. PR #56's append+bumped-pool strategy
-   * means this is recall-positive (parity at @5, +3pp at @10 on the
-   * flight-planner-kb bench) with predictable +50% rerank latency. The
-   * graph layer no-ops cleanly if empty. Set to `false` explicitly via
-   * `qkb query --no-graph` for the strict pre-RFC-0008 behavior.
+   * Legacy graph-as-candidate mode. When true, top post-RRF candidates seed a
+   * 1-hop graph expansion and novel graph neighbors are appended to the rerank
+   * pool. Benchmarking showed this is not a good default for standalone search:
+   * graph neighbors are usually supporting context, not primary answers. Leave
+   * false unless the caller explicitly wants graph candidates to compete.
    */
   useGraph?: boolean;
+  /**
+   * Add a cheap title-weighted FTS candidate stream to the primary RRF pool.
+   * This is the benchmark-backed standalone default: it improved hit@1/MRR with
+   * negligible latency and no generative-model dependency.
+   */
+  useTitleWeightedFts?: boolean;
+  /**
+   * Harness-supplied query expansions. When provided, qkb fuses these typed
+   * queries with the original query. Agents should prefer this over qkb-owned
+   * generation.
+   */
+  expandedQueries?: ExpandedQuery[];
+  /**
+   * Opt into legacy local generative query expansion. Defaults false because
+   * benchmark results favored title-weighted FTS plus harness expansions, which
+   * removes the runtime need for a local GGUF generator model.
+   */
+  useLocalExpansion?: boolean;
   /**
    * Override per-edge-type weights for graph expansion. Only meaningful
    * when {@link useGraph} is true. Defaults to
@@ -3970,7 +4000,7 @@ export async function hybridQuery(
   const expandStart = Date.now();
   const expanded = hasStrongSignal
     ? []
-    : await store.expandQuery(query, undefined, intent);
+    : (options?.expandedQueries ?? (options?.useLocalExpansion ? await store.expandQuery(query, undefined, intent) : []));
 
   hooks?.onExpand?.(query, expanded, Date.now() - expandStart);
 
@@ -3982,6 +4012,21 @@ export async function hybridQuery(
       title: r.title, body: r.body || "", score: r.score,
     })));
     rankedListMeta.push({ source: "fts", queryType: "original", query });
+  }
+
+  // Add a title-weighted lexical stream by default. The standalone expansion
+  // benchmark showed this is the best quality/latency tradeoff: it improves
+  // hit@1/MRR without introducing generative expansion noise.
+  if (options?.useTitleWeightedFts !== false) {
+    const titleFts = searchFTSTitleWeighted(store.db, query, 20, collection);
+    if (titleFts.length > 0) {
+      for (const r of titleFts) docidMap.set(r.filepath, r.docid);
+      rankedLists.push(titleFts.map(r => ({
+        file: r.filepath, displayPath: r.displayPath,
+        title: r.title, body: r.body || "", score: r.score,
+      })));
+      rankedListMeta.push({ source: "fts", queryType: "original", query });
+    }
   }
 
   // Step 3: Route searches by query type
@@ -4079,8 +4124,10 @@ export async function hybridQuery(
   // Best-effort: if the graph layer is unavailable, empty, or throws,
   // we keep `candidates` as-is and proceed.
   const GRAPH_POOL_BUMP = 20;
-  // useGraph defaults to true — explicit `false` opts out (qkb query --no-graph).
-  const useGraph = options?.useGraph !== false;
+  // useGraph defaults to false. Benchmarking showed graph neighbors are better
+  // as post-retrieval context than as primary ranked candidates; callers can
+  // still opt into the legacy graph-candidate pool with --graph/useGraph:true.
+  const useGraph = options?.useGraph === true;
   if (useGraph && candidates.length > 0 && isGraphLayerAvailable()) {
     try {
       const expansion = runEdgeWeightedRank(store, {

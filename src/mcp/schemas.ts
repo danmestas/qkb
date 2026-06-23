@@ -123,16 +123,32 @@ export const schemaEmbed = {
  */
 export const schemaQuery = {
   description:
-    "Hybrid graph-aware search: query expansion, BM25, vector, 1-hop graph " +
-    "expansion via wikilinks, then cross-encoder rerank. The recommended search tool.",
+    "Hybrid search: BM25 + vector + title-weighted lexical retrieval with optional " +
+    "harness-supplied expansions and optional rerank. Graph neighbors are better " +
+    "used as labeled context; set graphCandidates only when you want legacy graph " +
+    "neighbors to compete in the rerank pool.",
   inputSchema: {
     query: z.string().describe("Natural-language query."),
+    expandedQueries: z
+      .array(z.union([
+        z.string(),
+        z.object({
+          type: z.enum(["lex", "vec", "hyde"]).optional(),
+          query: z.string(),
+        }),
+      ]))
+      .optional()
+      .describe("Agent/harness-supplied expansion queries. Untyped strings are searched as both lex and vec; typed objects can use lex, vec, or hyde."),
     limit: z.number().int().positive().optional().describe("Max results (default 10)."),
     collection: z.string().optional().describe("Filter to a single collection."),
     intent: z
       .string()
       .optional()
       .describe("Optional disambiguating context — does not search on its own."),
+    graphCandidates: z
+      .boolean()
+      .optional()
+      .describe("Opt into legacy graph-neighbor candidate injection. Defaults false; prefer graph neighbors as post-retrieval context."),
   },
 };
 

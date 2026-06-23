@@ -46,6 +46,7 @@
  *     `src/orchestrator/index-orchestrator.ts`.
  */
 import type { QMDStore, HybridQueryResult } from "@tobilu/qmd";
+import type { ExpandedQuery } from "../internals/store-engine.js";
 import {
   runEdgeWeightedRank,
   DEFAULT_EDGE_WEIGHTS,
@@ -81,6 +82,10 @@ export interface QueryWithGraphOpts {
   weights?: Record<string, number>;
   /** Domain intent hint forwarded to qmd's expand + rerank stages. */
   intent?: string;
+  /** Harness-supplied typed expansions. Skips local qmd/qkb query generation. */
+  expandedQueries?: ExpandedQuery[];
+  /** Opt into legacy graph-neighbor candidate injection. Defaults to false. */
+  useGraph?: boolean;
 }
 
 /**
@@ -97,16 +102,32 @@ export async function queryWithGraph(
 ): Promise<HybridQueryResult[]> {
   const userLimit = opts.limit ?? 10;
   const weights = opts.weights ?? DEFAULT_EDGE_WEIGHTS;
+  const searchArgs = opts.expandedQueries?.length
+    ? {
+        queries: opts.expandedQueries,
+        limit: opts.useGraph === true ? FUSED_LIMIT : userLimit,
+        rerank: opts.useGraph !== true,
+        collection: opts.collection,
+        intent: opts.intent,
+      }
+    : {
+        query,
+        limit: opts.useGraph === true ? FUSED_LIMIT : userLimit,
+        rerank: opts.useGraph !== true,
+        collection: opts.collection,
+        intent: opts.intent,
+      };
 
-  // 1. qmd does expand + BM25 + vec + RRF; skip rerank so we can inject
-  //    graph candidates before the cross-encoder sees the pool.
-  const fused = await store.search({
-    query,
-    limit: FUSED_LIMIT,
-    rerank: false,
-    collection: opts.collection,
-    intent: opts.intent,
-  });
+  // Default mode: let qmd/qkb do primary retrieval/rerank without injecting graph
+  // neighbors into the candidate pool. The June 2026 benchmark showed graph
+  // neighbors are better consumed as labeled context after primary selection.
+  if (opts.useGraph !== true) {
+    return store.search(searchArgs as Parameters<QMDStore["search"]>[0]);
+  }
+
+  // Legacy graph-candidate mode: qmd does expand + BM25 + vec + RRF; skip rerank
+  // so we can inject graph candidates before the cross-encoder sees the pool.
+  const fused = await store.search(searchArgs as Parameters<QMDStore["search"]>[0]);
 
   if (fused.length === 0) return [];
 

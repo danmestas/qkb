@@ -108,6 +108,25 @@ function boolOpt(
   return !!v;
 }
 
+function expandedQueriesOpt(args: Record<string, unknown>): QueryWithGraphOpts["expandedQueries"] {
+  const v = args.expandedQueries;
+  if (!Array.isArray(v)) return undefined;
+  const out: NonNullable<QueryWithGraphOpts["expandedQueries"]> = [];
+  for (const item of v) {
+    if (typeof item === "string") {
+      const text = item.trim();
+      if (text) out.push({ type: "lex", query: text }, { type: "vec", query: text });
+      continue;
+    }
+    if (item && typeof item === "object") {
+      const row = item as { type?: unknown; query?: unknown };
+      const type = row.type === "lex" || row.type === "vec" || row.type === "hyde" ? row.type : "lex";
+      if (typeof row.query === "string" && row.query.trim()) out.push({ type, query: row.query.trim() });
+    }
+  }
+  return out.length ? out : undefined;
+}
+
 const handlers: Record<string, Handler> = {
   // ── Collections ────────────────────────────────────────────────
   "collection.add": async (a, c) => {
@@ -200,6 +219,8 @@ const handlers: Record<string, Handler> = {
       limit: numOpt(a, "limit"),
       collection: strOpt(a, "collection"),
       intent: strOpt(a, "intent"),
+      expandedQueries: expandedQueriesOpt(a),
+      useGraph: boolOpt(a, "graphCandidates"),
     } as QueryWithGraphOpts),
 
   // ── Graph ──────────────────────────────────────────────────────

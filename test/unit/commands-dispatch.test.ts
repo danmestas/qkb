@@ -221,15 +221,25 @@ describe("dispatchCommand", () => {
     });
   });
 
-  it("query → queryWithGraph (via store.search + rerank)", async () => {
-    // queryWithGraph internally calls store.search with rerank:false. We
-    // verify dispatch reaches it by spying on store.search.
+  it("query → store.search with rerank by default and harness expansions", async () => {
     const search = vi.fn().mockResolvedValue([]);
     const ctx = makeCtx({ search });
-    await dispatchCommand("query", { query: "hi", limit: 5 }, ctx);
+    await dispatchCommand("query", {
+      query: "hi",
+      limit: 5,
+      expandedQueries: ["airspace", { type: "hyde", query: "a page about airspace" }],
+    }, ctx);
     expect(search).toHaveBeenCalled();
-    const callArgs = search.mock.calls[0]?.[0] as { rerank: boolean };
-    expect(callArgs.rerank).toBe(false);
+    const callArgs = search.mock.calls[0]?.[0] as {
+      rerank: boolean;
+      queries: Array<{ type: string; query: string }>;
+    };
+    expect(callArgs.rerank).toBe(true);
+    expect(callArgs.queries).toEqual([
+      { type: "lex", query: "airspace" },
+      { type: "vec", query: "airspace" },
+      { type: "hyde", query: "a page about airspace" },
+    ]);
   });
 
   it("unknown subcommand throws", async () => {
