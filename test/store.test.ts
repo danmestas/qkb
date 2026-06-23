@@ -1146,6 +1146,38 @@ describe("FTS Search", () => {
     await cleanupTestDb(store);
   });
 
+  test("searchFTS matches dotted version tokens", async () => {
+    const store = await createTestStore();
+    const collectionName = await createTestCollection();
+    await insertTestDocument(store.db, collectionName, {
+      name: "release",
+      title: "Release Notes",
+      body: "The 2026.4.10 release fixes planner ingestion.",
+      displayPath: "test/release.md",
+    });
+
+    const results = store.searchFTS("2026.4.10", 10);
+    expect(results.map(r => r.displayPath)).toContain(`${collectionName}/test/release.md`);
+
+    await cleanupTestDb(store);
+  });
+
+  test("searchFTS matches CJK text", async () => {
+    const store = await createTestStore();
+    const collectionName = await createTestCollection();
+    await insertTestDocument(store.db, collectionName, {
+      name: "cjk",
+      title: "中文计划",
+      body: "飞行计划需要更新。",
+      displayPath: "test/cjk.md",
+    });
+
+    const results = store.searchFTS("飞行计划", 10);
+    expect(results.map(r => r.displayPath)).toContain(`${collectionName}/test/cjk.md`);
+
+    await cleanupTestDb(store);
+  });
+
   test("searchFTS ranks title matches higher", async () => {
     const store = await createTestStore();
     const collectionName = await createTestCollection();
