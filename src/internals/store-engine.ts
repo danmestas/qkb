@@ -60,8 +60,8 @@ import type {
 // =============================================================================
 
 const HOME = process.env.HOME || process.env.USERPROFILE || "/tmp";
-export const DEFAULT_EMBED_MODEL = "embeddinggemma";
-export const DEFAULT_RERANK_MODEL = "ExpedientFalcon/qwen3-reranker:0.6b-q8_0";
+export const DEFAULT_EMBED_MODEL = "Xenova/all-MiniLM-L6-v2";
+export const DEFAULT_RERANK_MODEL = "Xenova/ms-marco-MiniLM-L-4-v2";
 export const DEFAULT_QUERY_MODEL = "Qwen/Qwen3-1.7B";
 export const DEFAULT_GLOB = "**/*.md";
 export const DEFAULT_MULTI_GET_MAX_BYTES = 10 * 1024; // 10KB

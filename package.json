@@ -46,6 +46,7 @@
     "url": "https://github.com/danmestas/qkb/issues"
   },
   "dependencies": {
+    "@huggingface/transformers": "^3.8.0",
     "@modelcontextprotocol/sdk": "1.29.0",
     "@tobilu/qmd": "~2.1.0",
     "better-sqlite3": "12.9.0",

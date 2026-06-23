@@ -151,8 +151,8 @@ describe("LlamaCpp expand context size config", () => {
 });
 
 describe("LlamaCpp model resolution (config > env > default)", () => {
-  const HARDCODED_EMBED = "hf:ggml-org/embeddinggemma-300M-GGUF/embeddinggemma-300M-Q8_0.gguf";
-  const HARDCODED_RERANK = "hf:ggml-org/Qwen3-Reranker-0.6B-Q8_0-GGUF/qwen3-reranker-0.6b-q8_0.gguf";
+  const HARDCODED_EMBED = "Xenova/all-MiniLM-L6-v2";
+  const HARDCODED_RERANK = "Xenova/ms-marco-MiniLM-L-4-v2";
   const HARDCODED_GENERATE = "hf:tobil/qmd-query-expansion-1.7B-gguf/qmd-query-expansion-1.7B-q4_k_m.gguf";
 
   test("uses hardcoded default when no config or env is set", () => {
@@ -196,7 +196,8 @@ describe("LlamaCpp model resolution (config > env > default)", () => {
 
 describe("LlamaCpp embedding truncation", () => {
   test("truncates against the active embedding context limit, not the model train context", async () => {
-    const llm = new LlamaCpp({}) as any;
+    const llm = new LlamaCpp({ embedModel: "hf:legacy/embed.gguf" }) as any;
+    llm._ciMode = false; // mocked legacy embedding path, no real model load
     const getEmbeddingFor = vi.fn(async (text: string) => ({
       vector: new Float32Array([0.25, 0.5]),
       text,
@@ -222,7 +223,7 @@ describe("LlamaCpp embedding truncation", () => {
 
 describe("LlamaCpp rerank deduping", () => {
   test("deduplicates identical document texts before scoring", async () => {
-    const llm = new LlamaCpp({}) as any;
+    const llm = new LlamaCpp({ rerankModel: "hf:legacy/reranker.gguf" }) as any;
     llm._ciMode = false; // allow unit test even in CI (mocked, no real models)
     const rankAll = vi.fn(async (_query: string, docs: string[]) =>
       docs.map((doc) => doc === "shared chunk" ? 0.9 : 0.2)
