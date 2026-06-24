@@ -29,10 +29,18 @@ if [[ -n "$(git status --porcelain)" ]]; then
   exit 1
 fi
 
+# Use global bun when present; otherwise fall back to npx so Linux CI/agent
+# environments without a global Bun install can still run the release script.
+if command -v bun >/dev/null 2>&1; then
+  BUN_CMD=(bun)
+else
+  BUN_CMD=(npx --yes bun)
+fi
+
 # Verify bun.lock is in sync with package.json
-if ! bun install --frozen-lockfile &>/dev/null; then
+if ! "${BUN_CMD[@]}" install --frozen-lockfile &>/dev/null; then
   echo "Error: bun.lock is out of sync with package.json" >&2
-  echo "Run 'bun install' and commit the updated lockfile." >&2
+  echo "Run '${BUN_CMD[*]} install' and commit the updated lockfile." >&2
   exit 1
 fi
 echo "bun.lock: in sync ✓"
@@ -55,6 +63,7 @@ bump_version() {
 
 NEW=$(bump_version "$CURRENT" "$BUMP")
 DATE=$(date +%Y-%m-%d)
+export NEW DATE
 echo "New version:     $NEW"
 echo ""
 
@@ -93,22 +102,27 @@ echo ""
 
 # --- Rename [Unreleased] -> [X.Y.Z] - date, add fresh [Unreleased] ---
 
-sed -i '' "s/^## \[Unreleased\].*/## [$NEW] - $DATE/" CHANGELOG.md
+python3 - <<'PY'
+from pathlib import Path
+import os
+path = Path('CHANGELOG.md')
+text = path.read_text()
+new = os.environ['NEW']
+date = os.environ['DATE']
+text = text.replace('## [Unreleased]', f'## [{new}] - {date}', 1)
+marker = f'## [{new}] - {date}'
+idx = text.index(marker)
+text = text[:idx] + '## [Unreleased]\n\n' + text[idx:]
+path.write_text(text)
+PY
 
-# Insert a new empty [Unreleased] section after the header
-awk '
-  /^## \['"$NEW"'\]/ && !done {
-    print "## [Unreleased]\n"
-    done = 1
-  }
-  { print }
-' CHANGELOG.md > CHANGELOG.md.tmp && mv CHANGELOG.md.tmp CHANGELOG.md
-
-# --- Bump version and commit ---
+# --- Bump version and refresh lockfile metadata ---
 
 jq --arg v "$NEW" '.version = $v' package.json > package.json.tmp && mv package.json.tmp package.json
+npm install --package-lock-only >/dev/null
+"${BUN_CMD[@]}" install >/dev/null
 
-git add package.json CHANGELOG.md
+git add package.json package-lock.json bun.lock CHANGELOG.md
 git commit -m "release: v$NEW"
 git tag -a "v$NEW" -m "v$NEW"
 

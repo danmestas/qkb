@@ -1285,25 +1285,3 @@ focused semantic signal.
   coverage, time since last update.
 - Search: weighted RRF — original query gets 2x weight relative to expanded
   queries since the user's actual words are a more reliable signal.
-
-## [0.1.0] - 2025-12-07
-
-Initial implementation. Built in a single day for searching personal markdown
-notes, journals, and meeting transcripts.
-
-### Changes
-
-- Search: SQLite FTS5 with BM25 ranking. Chose SQLite over Elasticsearch
-  because QMD is a personal tool — single binary, no server dependencies.
-- Search: sqlite-vec for vector similarity. Same rationale: in-process, no
-  external vector database.
-- Search: Reciprocal Rank Fusion to combine BM25 and vector results. RRF is
-  parameter-free and handles missing signals gracefully.
-- LLM: Ollama for embeddings, reranking, and query expansion. Later replaced
-  with node-llama-cpp in 0.6.0.
-- CLI: `qmd add`, `qmd embed`, `qmd search`, `qmd vsearch`, `qmd query`,
-  `qmd get`. ~1800 lines of TypeScript in a single `qmd.ts` file.
-
-[Unreleased]: https://github.com/tobi/qmd/compare/v1.0.0...HEAD
-[1.0.0]: https://github.com/tobi/qmd/releases/tag/v1.0.0
-[0.9.0]: https://github.com/tobi/qmd/compare/v0.8.0...v0.9.0
