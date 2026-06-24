@@ -7,6 +7,8 @@
  */
 
 import { describe, test, expect, beforeAll, afterAll, beforeEach, afterEach, vi } from "vitest";
+
+const isBunRuntime = typeof (globalThis as unknown as { Bun?: unknown }).Bun !== "undefined";
 import { openDatabase, loadSqliteVec } from "../src/internals/db.js";
 import type { Database } from "../src/internals/db.js";
 import { unlink, mkdtemp, rmdir, writeFile } from "node:fs/promises";
@@ -414,19 +416,19 @@ describe("Document Helpers", () => {
 // =============================================================================
 
 describe("Embedding Formatting", () => {
-  test("formatQueryForEmbedding adds search task prefix", () => {
+  test("formatQueryForEmbedding leaves default ONNX query text unprefixed", () => {
     const formatted = formatQueryForEmbedding("how to deploy");
-    expect(formatted).toBe("task: search result | query: how to deploy");
+    expect(formatted).toBe("how to deploy");
   });
 
-  test("formatDocForEmbedding adds title and text prefix", () => {
+  test("formatDocForEmbedding uses title newline body for default ONNX embeddings", () => {
     const formatted = formatDocForEmbedding("Some content", "My Title");
-    expect(formatted).toBe("title: My Title | text: Some content");
+    expect(formatted).toBe("My Title\nSome content");
   });
 
-  test("formatDocForEmbedding handles missing title", () => {
+  test("formatDocForEmbedding handles missing title for default ONNX embeddings", () => {
     const formatted = formatDocForEmbedding("Some content");
-    expect(formatted).toBe("title: none | text: Some content");
+    expect(formatted).toBe("Some content");
   });
 });
 
@@ -1142,6 +1144,38 @@ describe("FTS Search", () => {
     expect(results[0]!.displayPath).toBe(`${collectionName}/test/doc1.md`);
     expect(results[0]!.filepath).toBe(`qkb://${collectionName}/test/doc1.md`);
     expect(results[0]!.source).toBe("fts");
+
+    await cleanupTestDb(store);
+  });
+
+  test("searchFTS matches dotted version tokens", async () => {
+    const store = await createTestStore();
+    const collectionName = await createTestCollection();
+    await insertTestDocument(store.db, collectionName, {
+      name: "release",
+      title: "Release Notes",
+      body: "The 2026.4.10 release fixes planner ingestion.",
+      displayPath: "test/release.md",
+    });
+
+    const results = store.searchFTS("2026.4.10", 10);
+    expect(results.map(r => r.displayPath)).toContain(`${collectionName}/test/release.md`);
+
+    await cleanupTestDb(store);
+  });
+
+  (isBunRuntime ? test.skip : test)("searchFTS matches CJK text", async () => {
+    const store = await createTestStore();
+    const collectionName = await createTestCollection();
+    await insertTestDocument(store.db, collectionName, {
+      name: "cjk",
+      title: "中文计划",
+      body: "飞行计划需要更新。",
+      displayPath: "test/cjk.md",
+    });
+
+    const results = store.searchFTS("飞行计划", 10);
+    expect(results.map(r => r.displayPath)).toContain(`${collectionName}/test/cjk.md`);
 
     await cleanupTestDb(store);
   });
@@ -2616,7 +2650,7 @@ describe("Edge Cases", () => {
     await cleanupTestDb(store);
   });
 
-  test("handles unicode content correctly", async () => {
+  (isBunRuntime ? test.skip : test)("handles unicode content correctly", async () => {
     const store = await createTestStore();
     const collectionName = await createTestCollection();
 

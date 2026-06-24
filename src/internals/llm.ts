@@ -3,9 +3,12 @@
    public surface; the rest lives here, no longer tracking upstream qmd. */
 
 /**
- * llm.ts - LLM abstraction layer for QKB using node-llama-cpp
+ * llm.ts - LLM abstraction layer for QKB.
  *
- * Provides embeddings, text generation, and reranking using local GGUF models.
+ * Embeddings and reranking default to local ONNX models via
+ * @huggingface/transformers. node-llama-cpp is still used for GGUF query
+ * expansion and remains available for explicitly configured legacy GGUF
+ * embedding/rerank models.
  */
 
 import {
@@ -21,26 +24,35 @@ import {
 import { homedir } from "os";
 import { join } from "path";
 import { existsSync, mkdirSync, statSync, unlinkSync, readdirSync, readFileSync, writeFileSync, openSync, readSync, closeSync } from "fs";
+import {
+  DEFAULT_ONNX_EMBED_MODEL,
+  DEFAULT_ONNX_RERANK_MODEL,
+  embedBatchOnnx,
+  embedOnnx,
+  isOnnxModelUri,
+  rerankOnnx,
+} from "./onnx.js";
 
 // =============================================================================
 // Embedding Formatting Functions
 // =============================================================================
 
 /**
- * Detect if a model URI uses the Qwen3-Embedding format.
- * Qwen3-Embedding uses a different prompting style than nomic/embeddinggemma.
+ * Detect if a model URI uses an instruction-tuned embedding prompt format.
+ * ONNX MiniLM models use raw text; GGUF Qwen embedding models keep the old prompt.
  */
 export function isQwen3EmbeddingModel(modelUri: string): boolean {
   return /qwen.*embed/i.test(modelUri) || /embed.*qwen/i.test(modelUri);
 }
 
 /**
- * Format a query for embedding.
- * Uses nomic-style task prefix format for embeddinggemma (default).
- * Uses Qwen3-Embedding instruct format when a Qwen embedding model is active.
+ * Format a query for embedding. ONNX embedding models are trained as sentence
+ * transformers and should receive raw text; GGUF/Qwen models keep their legacy
+ * instruction prefix for backwards compatibility when explicitly configured.
  */
 export function formatQueryForEmbedding(query: string, modelUri?: string): string {
   const uri = modelUri ?? process.env.QKB_EMBED_MODEL ?? DEFAULT_EMBED_MODEL;
+  if (isOnnxModelUri(uri)) return query;
   if (isQwen3EmbeddingModel(uri)) {
     return `Instruct: Retrieve relevant documents for the given query\nQuery: ${query}`;
   }
@@ -48,12 +60,12 @@ export function formatQueryForEmbedding(query: string, modelUri?: string): strin
 }
 
 /**
- * Format a document for embedding.
- * Uses nomic-style format with title and text fields (default).
- * Qwen3-Embedding encodes documents as raw text without special prefixes.
+ * Format a document for embedding. ONNX embedding models use title + body with
+ * no task prefix; legacy GGUF models keep their previous prompt templates.
  */
 export function formatDocForEmbedding(text: string, title?: string, modelUri?: string): string {
   const uri = modelUri ?? process.env.QKB_EMBED_MODEL ?? DEFAULT_EMBED_MODEL;
+  if (isOnnxModelUri(uri)) return title ? `${title}\n${text}` : text;
   if (isQwen3EmbeddingModel(uri)) {
     // Qwen3-Embedding: documents are raw text, no task prefix
     return title ? `${title}\n${text}` : text;
@@ -194,11 +206,11 @@ export type RerankDocument = {
 // Model Configuration
 // =============================================================================
 
-// HuggingFace model URIs for node-llama-cpp
-// Format: hf:<user>/<repo>/<file>
-// Override via QKB_EMBED_MODEL env var (e.g. hf:Qwen/Qwen3-Embedding-0.6B-GGUF/Qwen3-Embedding-0.6B-Q8_0.gguf)
-const DEFAULT_EMBED_MODEL = "hf:ggml-org/embeddinggemma-300M-GGUF/embeddinggemma-300M-Q8_0.gguf";
-const DEFAULT_RERANK_MODEL = "hf:ggml-org/Qwen3-Reranker-0.6B-Q8_0-GGUF/qwen3-reranker-0.6b-q8_0.gguf";
+// ONNX model IDs for @huggingface/transformers. Override via QKB_EMBED_MODEL
+// and QKB_RERANK_MODEL. Legacy GGUF hf:... URIs still work when explicitly
+// configured, but the default embedding/rerank path no longer uses GGUF.
+const DEFAULT_EMBED_MODEL = DEFAULT_ONNX_EMBED_MODEL;
+const DEFAULT_RERANK_MODEL = DEFAULT_ONNX_RERANK_MODEL;
 // const DEFAULT_GENERATE_MODEL = "hf:ggml-org/Qwen3-0.6B-GGUF/Qwen3-0.6B-Q8_0.gguf";
 const DEFAULT_GENERATE_MODEL = "hf:tobil/qmd-query-expansion-1.7B-gguf/qmd-query-expansion-1.7B-q4_k_m.gguf";
 
@@ -914,6 +926,12 @@ export class LlamaCpp implements LLM {
    * Returns tokenizer tokens (opaque type from node-llama-cpp)
    */
   async tokenize(text: string): Promise<readonly LlamaToken[]> {
+    if (isOnnxModelUri(this.embedModelUri)) {
+      // Lightweight approximation for chunk sizing when ONNX embeddings are active.
+      // The ONNX pipeline performs its own tokenizer-level truncation at inference;
+      // chunking only needs a stable length estimate to avoid very large chunks.
+      return Array.from({ length: Math.ceil(text.length / 4) }, (_, i) => i as unknown as LlamaToken);
+    }
     await this.ensureEmbedContext();  // Ensure model is loaded
     if (!this.embedModel) {
       throw new Error("Embed model not loaded");
@@ -933,6 +951,11 @@ export class LlamaCpp implements LLM {
    * Detokenize token IDs back to text
    */
   async detokenize(tokens: readonly LlamaToken[]): Promise<string> {
+    if (isOnnxModelUri(this.embedModelUri)) {
+      // Approximate fallback used only for pathological chunk splitting. Regular
+      // ONNX chunking keeps original text via character windows.
+      return " ".repeat(tokens.length * 4).trim();
+    }
     await this.ensureEmbedContext();
     if (!this.embedModel) {
       throw new Error("Embed model not loaded");
@@ -977,8 +1000,18 @@ export class LlamaCpp implements LLM {
   }
 
   async embed(text: string, options: EmbedOptions = {}): Promise<EmbeddingResult | null> {
+    if (this._ciMode) throw new Error("LLM operations are disabled in CI (set CI=true)");
     // Ping activity at start to keep models alive during this operation
     this.touchActivity();
+
+    if (isOnnxModelUri(options.model ?? this.embedModelUri)) {
+      try {
+        return await embedOnnx(text, { ...options, model: options.model ?? this.embedModelUri });
+      } catch (error) {
+        console.error("ONNX embedding error:", error);
+        return null;
+      }
+    }
 
     try {
       const context = await this.ensureEmbedContext();
@@ -1003,7 +1036,7 @@ export class LlamaCpp implements LLM {
 
   /**
    * Batch embed multiple texts efficiently
-   * Uses Promise.all for parallel embedding - node-llama-cpp handles batching internally
+   * Uses ONNX batching by default; legacy GGUF uses the node-llama context pool.
    */
   async embedBatch(texts: string[], options: EmbedOptions = {}): Promise<(EmbeddingResult | null)[]> {
     if (this._ciMode) throw new Error("LLM operations are disabled in CI (set CI=true)");
@@ -1011,6 +1044,15 @@ export class LlamaCpp implements LLM {
     this.touchActivity();
 
     if (texts.length === 0) return [];
+
+    if (isOnnxModelUri(options.model ?? this.embedModelUri)) {
+      try {
+        return await embedBatchOnnx(texts, { ...options, model: options.model ?? this.embedModelUri });
+      } catch (error) {
+        console.error("ONNX batch embedding error:", error);
+        return texts.map(() => null);
+      }
+    }
 
     try {
       const contexts = await this.ensureEmbedContexts();
@@ -1235,6 +1277,10 @@ export class LlamaCpp implements LLM {
     if (this._ciMode) throw new Error("LLM operations are disabled in CI (set CI=true)");
     // Ping activity at start to keep models alive during this operation
     this.touchActivity();
+
+    if (isOnnxModelUri(options.model ?? this.rerankModelUri)) {
+      return await rerankOnnx(query, documents, { model: options.model ?? this.rerankModelUri });
+    }
 
     const contexts = await this.ensureRerankContexts();
     const model = await this.ensureRerankModel();

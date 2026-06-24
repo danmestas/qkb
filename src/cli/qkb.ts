@@ -1838,8 +1838,10 @@ type OutputOptions = {
   intent?: string;       // Domain intent for disambiguation
   skipRerank?: boolean;  // Skip LLM reranking, use RRF scores only
   chunkStrategy?: ChunkStrategy;  // "auto" (default) or "regex"
-  useGraph?: boolean;    // RFC-0008 #2: edge-weighted graph expansion
+  useGraph?: boolean;    // Opt into legacy edge-weighted graph candidate expansion
+  useLocalExpansion?: boolean; // Opt into legacy GGUF-backed local query expansion
   graphWeights?: Record<string, number>;  // override per-edge-type weights
+  expandedQueries?: ExpandedQuery[]; // Harness-supplied expansion strings (--expanded-query)
 };
 
 // Highlight query terms in text (skip short words < 3 chars)
@@ -2261,6 +2263,31 @@ function parseStructuredQuery(query: string): ParsedStructuredQuery | null {
   return typed.length > 0 ? { searches: typed, intent } : null;
 }
 
+function parseExpandedQueryArgs(raw: string | string[] | undefined): ExpandedQuery[] | undefined {
+  if (!raw) return undefined;
+  const values = Array.isArray(raw) ? raw : [raw];
+  const out: ExpandedQuery[] = [];
+  const prefixRe = /^(lex|vec|hyde):\s*/i;
+
+  for (const value of values) {
+    const text = String(value).trim();
+    if (!text) continue;
+    const match = text.match(prefixRe);
+    if (match) {
+      const type = match[1]!.toLowerCase() as 'lex' | 'vec' | 'hyde';
+      const query = text.slice(match[0].length).trim();
+      if (query) out.push({ type, query });
+      continue;
+    }
+    // Untyped harness expansions are useful for both lexical and semantic
+    // candidate generation. Add both streams explicitly so qkb does not need
+    // to invoke local generative expansion.
+    out.push({ type: 'lex', query: text }, { type: 'vec', query: text });
+  }
+
+  return out.length > 0 ? out : undefined;
+}
+
 function search(query: string, opts: OutputOptions): void {
   const db = getDb();
 
@@ -2425,7 +2452,14 @@ async function querySearch(query: string, opts: OutputOptions, _embedModel: stri
         },
       });
     } else {
-      // Standard hybrid query with automatic expansion
+      // Standard hybrid query. If the harness supplied expanded queries, qkb
+      // fuses those typed queries. Local GGUF-backed generation is legacy and
+      // only runs when --local-expand is passed.
+      if (opts.expandedQueries?.length) {
+        process.stderr.write(`${c.dim}Harness expansions: ${opts.expandedQueries.length} typed queries${c.reset}\n`);
+      } else if (opts.useLocalExpansion) {
+        process.stderr.write(`${c.dim}Local generative expansion enabled${c.reset}\n`);
+      }
       results = await hybridQuery(store, query, {
         collection: singleCollection,
         limit: opts.all ? 500 : (opts.limit || 10),
@@ -2434,9 +2468,12 @@ async function querySearch(query: string, opts: OutputOptions, _embedModel: stri
         skipRerank: opts.skipRerank,
         explain: !!opts.explain,
         intent,
+        expandedQueries: opts.expandedQueries,
+        useLocalExpansion: opts.useLocalExpansion,
         chunkStrategy: opts.chunkStrategy,
-        // useGraph: undefined → default-true; false → opt out; true → explicit on
-        ...(opts.useGraph === false ? { useGraph: false } : {}),
+        // Graph-as-candidate expansion is now opt-in. Graph is better used as
+        // labeled context after primary retrieval; --graph keeps legacy mode.
+        ...(opts.useGraph === true ? { useGraph: true } : {}),
         ...(opts.graphWeights ? { graphWeights: opts.graphWeights } : {}),
         hooks: {
           onStrongSignal: (score) => {
@@ -2560,6 +2597,8 @@ function parseCLI() {
       "candidate-limit": { type: "string", short: "C" },
       "no-rerank": { type: "boolean", default: false },
       intent: { type: "string" },
+      "expanded-query": { type: "string", multiple: true },
+      "local-expand": { type: "boolean" },
       // Chunking options
       "chunk-strategy": { type: "string" },  // "regex" (default) or "auto" (AST for code files)
       // MCP HTTP transport options
@@ -2631,12 +2670,12 @@ function parseCLI() {
     skipRerank: !!values["no-rerank"],
     explain: !!values.explain,
     intent: values.intent as string | undefined,
+    expandedQueries: parseExpandedQueryArgs(values["expanded-query"] as string[] | undefined),
+    useLocalExpansion: !!values["local-expand"],
     chunkStrategy: parseChunkStrategy(values["chunk-strategy"]),
-    // Graph expansion is default-on. `--no-graph` opts out; `--graph`
-    // is kept as a legacy explicit-on (no-op now). The internal value
-    // is undefined unless `--no-graph` was passed, so hybridQuery's
-    // `useGraph !== false` default-true logic kicks in.
-    ...(values["no-graph"] ? { useGraph: false } : {}),
+    // Graph-as-candidate expansion is opt-in. `--graph` keeps the legacy
+    // behavior; `--no-graph` remains accepted as a no-op compatibility flag.
+    ...(values.graph ? { useGraph: true } : {}),
     ...(graphWeights ? { graphWeights } : {}),
   };
 
@@ -2782,7 +2821,7 @@ function showHelp(): void {
   console.log("  qkb <command> [options]");
   console.log("");
   console.log("Primary commands:");
-  console.log("  qkb query <query>             - Hybrid search with auto expansion + reranking (recommended)");
+  console.log("  qkb query <query>             - Hybrid search with title-weighted FTS + ONNX vector/rerank");
   console.log("  qkb query 'lex:..\\nvec:...'   - Structured query document (you provide lex/vec/hyde lines)");
   console.log("  qkb search <query>            - Full-text BM25 keywords (no LLM)");
   console.log("  qkb vsearch <query>           - Vector similarity only");
@@ -2806,13 +2845,14 @@ function showHelp(): void {
   console.log("  qkb cleanup                   - Clear caches, vacuum DB");
   console.log("");
   console.log("Query syntax (qkb query):");
-  console.log("  QKB queries are either a single expand query (no prefix) or a multi-line");
-  console.log("  document where every line is typed with lex:, vec:, or hyde:. This grammar");
-  console.log("  matches the docs in docs/SYNTAX.md and is enforced in the CLI.");
+  console.log("  QKB queries are either a single primary query (no prefix) or a multi-line");
+  console.log("  document where every line is typed with lex:, vec:, or hyde:. Use");
+  console.log("  --expanded-query for harness-supplied expansion; use --local-expand only");
+  console.log("  when you explicitly want legacy GGUF-backed local expansion.");
   console.log("");
   const grammar = [
-    `query          = expand_query | query_document ;`,
-    `expand_query   = text | explicit_expand ;`,
+    `query          = primary_query | query_document ;`,
+    `primary_query  = text | explicit_expand ;`,
     `explicit_expand= "expand:" text ;`,
     `query_document = [ intent_line ] { typed_line } ;`,
     `intent_line    = "intent:" text newline ;`,
@@ -2829,7 +2869,7 @@ function showHelp(): void {
   }
   console.log("");
   console.log("  Examples:");
-  console.log("    qkb query \"how does auth work\"                # single-line → implicit expand");
+  console.log("    qkb query \"how does auth work\"                # single-line primary query");
   console.log("    qkb query $'lex: CAP theorem\\nvec: consistency'  # typed query document");
   console.log("    qkb query $'lex: \"exact matches\" sports -baseball'  # phrase + negation lex search");
   console.log("    qkb query $'hyde: Hypothetical answer text'       # hyde-only document");
@@ -2857,6 +2897,9 @@ function showHelp(): void {
   console.log("  --full                     - Output full document instead of snippet");
   console.log("  -C, --candidate-limit <n>  - Max candidates to rerank (default 40, lower = faster)");
   console.log("  --no-rerank                - Skip LLM reranking (use RRF scores only, much faster on CPU)");
+  console.log("  --expanded-query <q>       - Harness-supplied expansion; repeatable; prefix with lex:, vec:, or hyde:");
+  console.log("  --local-expand             - Legacy GGUF-backed local query expansion (off by default)");
+  console.log("  --graph                    - Legacy graph-neighbor candidate injection (off by default)");
   console.log("  --line-numbers             - Include line numbers in output");
   console.log("  --explain                  - Include retrieval score traces (query --json/CLI)");
   console.log("  --files | --json | --csv | --md | --xml  - Output format");

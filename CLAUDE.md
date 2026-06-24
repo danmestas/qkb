@@ -18,7 +18,7 @@ qkb get <file>                    # Get document by path or docid (#abc123)
 qkb multi-get <pattern>           # Get multiple docs by glob or comma-separated list
 qkb status                        # Show index status and collections
 qkb update [--pull]               # Re-index all collections (--pull: git pull first)
-qkb embed                         # Generate vector embeddings (uses node-llama-cpp)
+qkb embed                         # Generate vector embeddings (uses ONNX MiniLM by default)
 qkb query <query>                 # Search with query expansion + reranking (recommended)
 qkb search <query>                # Full-text keyword search (BM25, no LLM)
 qkb vsearch <query>               # Vector similarity search (no reranking)
@@ -135,7 +135,7 @@ bun test --preload ./src/test-preload.ts test/
 
 - SQLite FTS5 for full-text search (BM25)
 - sqlite-vec for vector similarity search
-- node-llama-cpp for embeddings (embeddinggemma), reranking (qwen3-reranker), and query expansion (Qwen3)
+- @huggingface/transformers for ONNX embeddings (Xenova/all-MiniLM-L6-v2) and reranking (Xenova/ms-marco-MiniLM-L-4-v2); node-llama-cpp remains for GGUF query expansion and explicitly configured legacy models
 - Reciprocal Rank Fusion (RRF) for combining results
 - Smart chunking: 900 tokens/chunk with 15% overlap, prefers markdown headings as boundaries
 - AST-aware chunking: use `--chunk-strategy auto` to chunk code files (.ts/.js/.py/.go/.rs) at function/class/import boundaries via tree-sitter. Default is `regex` (existing behavior). Markdown and unknown file types always use regex chunking.
