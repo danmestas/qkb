@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-06-23
+
 ### Changed
 - **Embeddings and reranking now default to ONNX models.** `qkb embed` uses `Xenova/all-MiniLM-L6-v2` via `@huggingface/transformers`, and reranking uses `Xenova/ms-marco-MiniLM-L-4-v2`. Legacy GGUF/node-llama embedding and reranker paths remain opt-in for explicit `hf:...gguf` overrides; query expansion still uses the existing GGUF generation model.
 
