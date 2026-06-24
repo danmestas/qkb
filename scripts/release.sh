@@ -122,7 +122,10 @@ jq --arg v "$NEW" '.version = $v' package.json > package.json.tmp && mv package.
 npm install --package-lock-only >/dev/null
 "${BUN_CMD[@]}" install >/dev/null
 
-git add package.json package-lock.json bun.lock CHANGELOG.md
+git add package.json bun.lock CHANGELOG.md
+if git ls-files --error-unmatch package-lock.json >/dev/null 2>&1; then
+  git add package-lock.json
+fi
 git commit -m "release: v$NEW"
 git tag -a "v$NEW" -m "v$NEW"
 
