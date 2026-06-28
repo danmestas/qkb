@@ -3,7 +3,13 @@
 ## [Unreleased]
 
 ### Fixed
-- Keep the npm Trusted Publisher workflow at `.github/workflows/release.yml` and align the release runtime with the package's Node 22 engine floor so the next publish can authenticate and smoke-install correctly.
+- Restore the publish workflow filename to `.github/workflows/publish.yml` so npm Trusted Publishing matches the proven `@agent-ops/qkb@0.0.1` package provenance path.
+- Bump the next publish attempt to `0.1.2` because `v0.1.1` is already tagged on the bad workflow path.
+
+## [0.1.2] - 2026-06-28
+
+### Fixed
+- Restore the publish workflow filename to `.github/workflows/publish.yml` so npm Trusted Publishing matches the proven `@agent-ops/qkb@0.0.1` package provenance path.
 
 ## [0.1.1] - 2026-06-28
 
