@@ -40,9 +40,11 @@ jobs:
 
       - run: npm run build
       - name: Publish to npm (via OIDC Trusted Publishing)
-        # Pure OIDC — Trusted Publisher entry configured for @agent-ops/qkb
-        # on npm pointing at this workflow. Same pattern as @agent-ops/suit.
+        # OIDC Trusted Publishing keeps provenance enabled, while NODE_AUTH_TOKEN
+        # from NPM_TOKEN restores the registry-write fallback for @agent-ops/qkb.
         # See: https://docs.npmjs.com/trusted-publishers
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
           if [[ "$VERSION" == *-* ]]; then
