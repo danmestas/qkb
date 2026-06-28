@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+### Fixed
+- Keep the npm Trusted Publisher workflow at `.github/workflows/release.yml` and align the release runtime with the package's Node 22 engine floor so the next publish can authenticate and smoke-install correctly.
+
 ## [0.1.1] - 2026-06-28
 
 ### Changed
