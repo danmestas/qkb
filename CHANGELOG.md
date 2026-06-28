@@ -3,8 +3,15 @@
 ## [Unreleased]
 
 ### Fixed
-- Restore the publish workflow filename to `.github/workflows/publish.yml` so npm Trusted Publishing matches the proven `@agent-ops/qkb@0.0.1` package provenance path.
-- Bump the next publish attempt to `0.1.2` because `v0.1.1` is already tagged on the bad workflow path.
+- Restore `NPM_TOKEN` as `NODE_AUTH_TOKEN` on the OIDC/provenance npm publish step so registry writes have a token fallback if Trusted Publishing cannot write `@agent-ops/qkb`.
+- Move the next publish attempt to `0.1.3` because `v0.1.2` is already tagged on the auth-failing workflow.
+- Keep the publish workflow at `.github/workflows/publish.yml` so npm Trusted Publishing continues to match the proven `@agent-ops/qkb@0.0.1` package provenance path.
+
+## [0.1.3] - 2026-06-28
+
+### Fixed
+- Restore the `NPM_TOKEN` fallback for the npm registry write while keeping OIDC provenance enabled.
+- Move the publish retry to `0.1.3` because `v0.1.2` is already tagged on the auth-failing workflow.
 
 ## [0.1.2] - 2026-06-28
 
