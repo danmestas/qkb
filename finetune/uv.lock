@@ -785,7 +785,7 @@ wheels = [
 
 [[package]]
 name = "huggingface-hub"
-version = "1.20.1"
+version = "1.21.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "click" },
@@ -799,9 +799,9 @@ dependencies = [
     { name = "typer" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/e6/7e/fad82ad491b226e832d2da90a1a59f36acd4526cda8c726f639834754aa4/huggingface_hub-1.20.1.tar.gz", hash = "sha256:9f6d63bfbeab2d2a8357200a9bc4f18cd2c8bfac9579f792f5922e77bf6471d0", size = 859910, upload-time = "2026-06-18T22:06:53.348Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/8f/77/ce3331f40cb2d021fe9b24c46c41e72faf74493621138e5eddac12bf5e1c/huggingface_hub-1.21.0.tar.gz", hash = "sha256:a44f222cd8f2f7c2eade30b5e7a04cac984a3235fa61ea87a0a5a31db77d561f", size = 861572, upload-time = "2026-06-25T13:09:26.356Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/8e/b5/ff8516e74b459da3dce9567540c39f2d305ee7a2655109f6802873ff1588/huggingface_hub-1.20.1-py3-none-any.whl", hash = "sha256:274448a45c1ba6f112fe2fb168ead05574c654faa156904157a84085cfae14bd", size = 719837, upload-time = "2026-06-18T22:06:51.486Z" },
+    { url = "https://files.pythonhosted.org/packages/4f/85/b505a99a133d9f99d21af182af416e9baef70bdeef019983479651e494c2/huggingface_hub-1.21.0-py3-none-any.whl", hash = "sha256:eadaa3678c512c82aea69e8675d90a184861e68de32f1105668628b4dce0e7cd", size = 721078, upload-time = "2026-06-25T13:09:24.402Z" },
 ]
 
 [[package]]
@@ -2173,7 +2173,7 @@ requires-dist = [
     { name = "accelerate", specifier = ">=1.14.0" },
     { name = "datasets" },
     { name = "gguf" },
-    { name = "huggingface-hub", specifier = ">=1.20.1" },
+    { name = "huggingface-hub", specifier = ">=1.21.0" },
     { name = "nvidia-ml-py" },
     { name = "peft", specifier = ">=0.19.1" },
     { name = "pydantic", specifier = ">=2.13.4" },
@@ -2182,7 +2182,7 @@ requires-dist = [
     { name = "torch" },
     { name = "trackio" },
     { name = "transformers", specifier = ">=5.12.1" },
-    { name = "trl", specifier = ">=1.6.0" },
+    { name = "trl", specifier = ">=1.7.0" },
 ]
 
 [package.metadata.requires-dev]
@@ -2626,7 +2626,7 @@ wheels = [
 
 [[package]]
 name = "trackio"
-version = "0.27.0"
+version = "0.28.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "gradio-client" },
@@ -2641,7 +2641,7 @@ dependencies = [
     { name = "uvicorn", extra = ["standard"] },
 ]
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/55/a1/af5437b3c3f04a0de85f6af2fb43db69c03cdebcea0330356e13724c2c3a/trackio-0.27.0-py3-none-any.whl", hash = "sha256:2cb14d766d4798430e89d77c47b9e96af56062294ab9dcc555f5b42331aceba3", size = 1677374, upload-time = "2026-06-10T17:38:07.948Z" },
+    { url = "https://files.pythonhosted.org/packages/61/80/909ec1c9a3e3a0b6ad85cb5a705e6acb09ae66beb67ef1007a2f8de438c7/trackio-0.28.0-py3-none-any.whl", hash = "sha256:5c968f7633923c531e10dcda8fa3a2c3209d35a9f2e048f75f186176496aab4a", size = 1684548, upload-time = "2026-06-26T19:10:01.93Z" },
 ]
 
 [[package]]
@@ -2686,7 +2686,7 @@ wheels = [
 
 [[package]]
 name = "trl"
-version = "1.6.0"
+version = "1.7.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "accelerate" },
@@ -2695,9 +2695,9 @@ dependencies = [
     { name = "packaging" },
     { name = "transformers" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/15/71/053cfddac9ec13a444b48167180e8c6c7dbd9d7b02dcfc6ad400b11e8274/trl-1.6.0.tar.gz", hash = "sha256:c24692f6436eb0ee8666965f37513b198b828eb76690cd330446bce67182a029", size = 673487, upload-time = "2026-06-11T21:45:34.256Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/41/83/82ac8591ebefbdfec60d643e5473bb0a138f2b7dc94bf30c54777c3e78b3/trl-1.7.0.tar.gz", hash = "sha256:c22b6b59f919abf327ccae7bbec4ec8df308bc8b0df9de7f4bf1b8bdcd960947", size = 687760, upload-time = "2026-06-25T22:47:22.022Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ae/55/9779cb8a5fd066afa719531f740018078a4ca4c83406f2d68bda2b4b26e6/trl-1.6.0-py3-none-any.whl", hash = "sha256:78023ee1e8ba11e9b7eaa9077c8d37b3581ff7c7ddf32fbe1f19a22fe2c76360", size = 825130, upload-time = "2026-06-11T21:45:32.526Z" },
+    { url = "https://files.pythonhosted.org/packages/8a/1f/470d5f68d4056604e7acf56b8a42693a94d4890f423557ea1eea5c0d2589/trl-1.7.0-py3-none-any.whl", hash = "sha256:097358a35caec99477d9fcc5284bcf349319fca1e6e507e8f7efa3988e23727a", size = 838829, upload-time = "2026-06-25T22:47:19.91Z" },
 ]
 
 [[package]]
