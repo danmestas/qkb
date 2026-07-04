@@ -498,7 +498,7 @@ export function verifySqliteVecLoaded(db: Database): void {
 
 let _sqliteVecAvailable: boolean | null = null;
 
-function initializeDatabase(db: Database): void {
+export function initializeDatabase(db: Database): void {
   try {
     loadSqliteVec(db);
     verifySqliteVecLoaded(db);
@@ -595,6 +595,31 @@ function initializeDatabase(db: Database): void {
     )
   `);
 
+  // Migration: pre-#118 databases created documents_fts and its sync triggers
+  // with every column wrapped in a custom normalize_cjk_for_fts() SQL function.
+  // That function is no longer registered, so any INSERT into `documents` throws
+  // "no such function: normalize_cjk_for_fts". The CREATE ... IF NOT EXISTS
+  // statements below never replace the stale objects, so detect them and drop
+  // them here; the current plain DDL then recreates them, and the FTS index is
+  // repopulated from documents/content once the triggers are back in place.
+  // Embeddings live in separate tables and are untouched.
+  const ftsNeedsRebuild = !!db
+    .prepare(
+      `SELECT 1 FROM sqlite_master
+        WHERE name IN ('documents_ai', 'documents_au', 'documents_fts')
+          AND sql LIKE '%normalize_cjk_for_fts%'
+        LIMIT 1`,
+    )
+    .get();
+  if (ftsNeedsRebuild) {
+    db.exec(`
+      DROP TRIGGER IF EXISTS documents_ai;
+      DROP TRIGGER IF EXISTS documents_ad;
+      DROP TRIGGER IF EXISTS documents_au;
+      DROP TABLE IF EXISTS documents_fts;
+    `);
+  }
+
   // FTS - index filepath (collection/path), title, and content
   db.exec(`
     CREATE VIRTUAL TABLE IF NOT EXISTS documents_fts USING fts5(
@@ -640,6 +665,18 @@ function initializeDatabase(db: Database): void {
       WHERE new.active = 1;
     END
   `);
+
+  if (ftsNeedsRebuild) {
+    // Triggers only fire on new writes; backfill the FTS index from the rows
+    // that already existed in the stale database.
+    db.exec(`
+      INSERT INTO documents_fts(rowid, filepath, title, body)
+      SELECT d.id, d.collection || '/' || d.path, d.title,
+             (SELECT doc FROM content WHERE hash = d.hash)
+      FROM documents d
+      WHERE d.active = 1
+    `);
+  }
 
   // One-time data migration: rewrite legacy `qmd://` virtual-path literals to
   // `qkb://`. Idempotent — the LIKE filter matches no rows on the second run.
