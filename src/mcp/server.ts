@@ -61,6 +61,7 @@ import {
   type QMDStore,
 } from "@tobilu/qmd";
 import { openStore } from "../store-bridge.js";
+import { disposeOnnx } from "../internals/onnx.js";
 import {
   dispatchCommand,
   type CommandContext,
@@ -492,11 +493,13 @@ export async function startMcpHttpServer(
   process.on("SIGTERM", async () => {
     console.error("Shutting down (SIGTERM)...");
     await stop();
+    await disposeOnnx();
     process.exit(0);
   });
   process.on("SIGINT", async () => {
     console.error("Shutting down (SIGINT)...");
     await stop();
+    await disposeOnnx();
     process.exit(0);
   });
 

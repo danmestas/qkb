@@ -7,6 +7,9 @@
 - Keep `NODE_AUTH_TOKEN` wired to `secrets.NPM_TOKEN` so the publish job is non-interactive and registry-authenticated.
 - Move the next publish attempt to `0.1.4` because `v0.1.1`, `v0.1.2`, and `v0.1.3` were already tagged by failed publish workflow attempts.
 - Leave GitHub release creation on `contents: write`; npm publishing no longer requests OIDC provenance.
+- **`qkb vsearch` no longer downloads/loads the GGUF query-expansion model unless `--local-expand` is passed.** Vector-only search now mirrors the hybrid path's opt-in expansion gate: harness-supplied `--expanded-query` values are used when provided, and local GGUF expansion runs only with `--local-expand` (#128).
+- Relevance scores are now normalized to 0–100% and comparable across `query`/`search`/`vsearch`: raw ONNX reranker logits are passed through a sigmoid before blending, the rerank cache namespace is bumped to `rerank:v2` to drop stale raw-logit entries, and score display clamps to [0,1] (#129).
+- `qkb embed` (and other commands) no longer abort with a native ONNX Runtime "mutex lock failed" error on exit; sessions are released before exit (#127).
 
 ## [0.1.4] - 2026-06-28
 

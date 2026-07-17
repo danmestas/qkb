@@ -107,6 +107,12 @@ export async function embedBatchOnnx(
   return tensorRows(output).map((embedding) => ({ embedding, model }));
 }
 
+// Map a raw cross-encoder logit (unbounded) to a bounded [0,1] relevance score.
+// Sigmoid is monotonic, so document ordering is preserved.
+export function normalizeRerankLogit(logit: number): number {
+  return 1 / (1 + Math.exp(-logit));
+}
+
 export async function rerankOnnx(
   query: string,
   documents: RerankDocument[],
@@ -127,12 +133,42 @@ export async function rerankOnnx(
   const dims = outputs.logits.dims as number[];
 
   const results: RerankDocumentResult[] = documents.map((doc, index) => {
-    const score = dims.length === 2 && (dims[1] ?? 0) > 1
+    const logit = dims.length === 2 && (dims[1] ?? 0) > 1
       ? logits[index * dims[1]! + dims[1]! - 1]!
       : logits[index] ?? 0;
-    return { file: doc.file, score, index };
+    return { file: doc.file, score: normalizeRerankLogit(logit), index };
   });
 
   results.sort((a, b) => b.score - a.score);
   return { results, model: modelName };
+}
+
+/**
+ * Release cached ONNX Runtime sessions so the process can exit cleanly.
+ *
+ * ONNX Runtime aborts with a native "mutex lock failed" error if the process
+ * exits while inference sessions are still alive. Best-effort teardown: each
+ * dispose is wrapped in try/catch so a failing session never blocks exit.
+ */
+export async function disposeOnnx(): Promise<void> {
+  const extractors = [...extractorCache.values()];
+  const rerankers = [...rerankerCache.values()];
+  extractorCache.clear();
+  rerankerCache.clear();
+
+  for (const p of extractors) {
+    try {
+      await (await p).dispose();
+    } catch {
+      // best-effort teardown
+    }
+  }
+  for (const p of rerankers) {
+    try {
+      // Only the model holds a native session; the tokenizer has none.
+      await (await p).model.dispose();
+    } catch {
+      // best-effort teardown
+    }
+  }
 }

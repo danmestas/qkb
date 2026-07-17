@@ -3445,9 +3445,8 @@ export async function rerank(query: string, documents: { file: string; text: str
   // File path is excluded from the new cache key because the reranker score
   // depends on the chunk content, not where it came from.
   for (const doc of documents) {
-    const cacheKey = getCacheKey("rerank", { query: rerankQuery, model, chunk: doc.text });
-    const legacyCacheKey = getCacheKey("rerank", { query, file: doc.file, model, chunk: doc.text });
-    const cached = getCachedResult(db, cacheKey) ?? getCachedResult(db, legacyCacheKey);
+    const cacheKey = getCacheKey("rerank:v2", { query: rerankQuery, model, chunk: doc.text });
+    const cached = getCachedResult(db, cacheKey);
     if (cached !== null) {
       cachedResults.set(doc.text, parseFloat(cached));
     } else {
@@ -3465,7 +3464,7 @@ export async function rerank(query: string, documents: { file: string; text: str
     const textByFile = new Map(uncachedDocs.map(d => [d.file, d.text]));
     for (const result of rerankResult.results) {
       const chunk = textByFile.get(result.file) || "";
-      const cacheKey = getCacheKey("rerank", { query: rerankQuery, model, chunk });
+      const cacheKey = getCacheKey("rerank:v2", { query: rerankQuery, model, chunk });
       setCachedResult(db, cacheKey, result.score.toString());
       cachedResults.set(chunk, result.score);
     }
@@ -4545,6 +4544,10 @@ export interface VectorSearchOptions {
   limit?: number;           // default 10
   minScore?: number;        // default 0.3
   intent?: string;          // domain intent hint for disambiguation
+  /** Harness-supplied query expansions — preferred over qkb-owned generation */
+  expandedQueries?: ExpandedQuery[];
+  /** Opt into legacy GGUF-backed local query expansion (default false) */
+  useLocalExpansion?: boolean;
   hooks?: Pick<SearchHooks, 'onExpand'>;
 }
 
@@ -4559,10 +4562,11 @@ export interface VectorSearchResult {
 }
 
 /**
- * Vector-only semantic search with query expansion.
+ * Vector-only semantic search with optional query expansion.
  *
  * Pipeline:
- * 1. expandQuery() → typed variants, filter to vec/hyde only (lex irrelevant here)
+ * 1. expandedQueries (harness-supplied) or expandQuery() when useLocalExpansion
+ *    is set → typed variants, filter to vec/hyde only (lex irrelevant here)
  * 2. searchVec() for original + vec/hyde variants (sequential — node-llama-cpp embed limitation)
  * 3. Dedup by filepath (keep max score)
  * 4. Sort by score descending, filter by minScore, slice to limit
@@ -4582,9 +4586,11 @@ export async function vectorSearchQuery(
   ).get();
   if (!hasVectors) return [];
 
-  // Expand query — filter to vec/hyde only (lex queries target FTS, not vector)
+  // Expand query — filter to vec/hyde only (lex queries target FTS, not vector).
+  // Local GGUF expansion is opt-in (useLocalExpansion); harness-supplied
+  // expandedQueries take precedence. Mirrors the hybrid-path gate.
   const expandStart = Date.now();
-  const allExpanded = await store.expandQuery(query, undefined, intent);
+  const allExpanded = options?.expandedQueries ?? (options?.useLocalExpansion ? await store.expandQuery(query, undefined, intent) : []);
   const vecExpanded = allExpanded.filter(q => q.type !== 'lex');
   options?.hooks?.onExpand?.(query, vecExpanded, Date.now() - expandStart);
 
