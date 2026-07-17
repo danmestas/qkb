@@ -4545,6 +4545,10 @@ export interface VectorSearchOptions {
   limit?: number;           // default 10
   minScore?: number;        // default 0.3
   intent?: string;          // domain intent hint for disambiguation
+  /** Harness-supplied query expansions — preferred over qkb-owned generation */
+  expandedQueries?: ExpandedQuery[];
+  /** Opt into legacy GGUF-backed local query expansion (default false) */
+  useLocalExpansion?: boolean;
   hooks?: Pick<SearchHooks, 'onExpand'>;
 }
 
@@ -4559,10 +4563,11 @@ export interface VectorSearchResult {
 }
 
 /**
- * Vector-only semantic search with query expansion.
+ * Vector-only semantic search with optional query expansion.
  *
  * Pipeline:
- * 1. expandQuery() → typed variants, filter to vec/hyde only (lex irrelevant here)
+ * 1. expandedQueries (harness-supplied) or expandQuery() when useLocalExpansion
+ *    is set → typed variants, filter to vec/hyde only (lex irrelevant here)
  * 2. searchVec() for original + vec/hyde variants (sequential — node-llama-cpp embed limitation)
  * 3. Dedup by filepath (keep max score)
  * 4. Sort by score descending, filter by minScore, slice to limit
@@ -4582,9 +4587,11 @@ export async function vectorSearchQuery(
   ).get();
   if (!hasVectors) return [];
 
-  // Expand query — filter to vec/hyde only (lex queries target FTS, not vector)
+  // Expand query — filter to vec/hyde only (lex queries target FTS, not vector).
+  // Local GGUF expansion is opt-in (useLocalExpansion); harness-supplied
+  // expandedQueries take precedence. Mirrors the hybrid-path gate.
   const expandStart = Date.now();
-  const allExpanded = await store.expandQuery(query, undefined, intent);
+  const allExpanded = options?.expandedQueries ?? (options?.useLocalExpansion ? await store.expandQuery(query, undefined, intent) : []);
   const vecExpanded = allExpanded.filter(q => q.type !== 'lex');
   options?.hooks?.onExpand?.(query, vecExpanded, Date.now() - expandStart);
 

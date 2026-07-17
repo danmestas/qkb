@@ -2355,6 +2355,8 @@ async function vectorSearch(query: string, opts: OutputOptions, _model: string =
       limit: opts.all ? 500 : (opts.limit || 10),
       minScore: opts.minScore || 0.3,
       intent: opts.intent,
+      expandedQueries: opts.expandedQueries,
+      useLocalExpansion: opts.useLocalExpansion,
       hooks: {
         onExpand: (original, expanded) => {
           logExpansionTree(original, expanded);
@@ -2898,7 +2900,7 @@ function showHelp(): void {
   console.log("  -C, --candidate-limit <n>  - Max candidates to rerank (default 40, lower = faster)");
   console.log("  --no-rerank                - Skip LLM reranking (use RRF scores only, much faster on CPU)");
   console.log("  --expanded-query <q>       - Harness-supplied expansion; repeatable; prefix with lex:, vec:, or hyde:");
-  console.log("  --local-expand             - Legacy GGUF-backed local query expansion (off by default)");
+  console.log("  --local-expand             - Legacy GGUF-backed local query expansion (off by default; applies to query and vsearch)");
   console.log("  --graph                    - Legacy graph-neighbor candidate injection (off by default)");
   console.log("  --line-numbers             - Include line numbers in output");
   console.log("  --explain                  - Include retrieval score traces (query --json/CLI)");
