@@ -1858,7 +1858,7 @@ function highlightTerms(text: string, query: string): string {
 
 // Format score with color based on value
 function formatScore(score: number): string {
-  const pct = (score * 100).toFixed(0).padStart(3);
+  const pct = (Math.min(1, Math.max(0, score)) * 100).toFixed(0).padStart(3);
   if (!useColor) return `${pct}%`;
   if (score >= 0.7) return `${c.green}${pct}%${c.reset}`;
   if (score >= 0.4) return `${c.yellow}${pct}%${c.reset}`;

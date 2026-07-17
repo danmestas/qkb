@@ -3445,9 +3445,8 @@ export async function rerank(query: string, documents: { file: string; text: str
   // File path is excluded from the new cache key because the reranker score
   // depends on the chunk content, not where it came from.
   for (const doc of documents) {
-    const cacheKey = getCacheKey("rerank", { query: rerankQuery, model, chunk: doc.text });
-    const legacyCacheKey = getCacheKey("rerank", { query, file: doc.file, model, chunk: doc.text });
-    const cached = getCachedResult(db, cacheKey) ?? getCachedResult(db, legacyCacheKey);
+    const cacheKey = getCacheKey("rerank:v2", { query: rerankQuery, model, chunk: doc.text });
+    const cached = getCachedResult(db, cacheKey);
     if (cached !== null) {
       cachedResults.set(doc.text, parseFloat(cached));
     } else {
@@ -3465,7 +3464,7 @@ export async function rerank(query: string, documents: { file: string; text: str
     const textByFile = new Map(uncachedDocs.map(d => [d.file, d.text]));
     for (const result of rerankResult.results) {
       const chunk = textByFile.get(result.file) || "";
-      const cacheKey = getCacheKey("rerank", { query: rerankQuery, model, chunk });
+      const cacheKey = getCacheKey("rerank:v2", { query: rerankQuery, model, chunk });
       setCachedResult(db, cacheKey, result.score.toString());
       cachedResults.set(chunk, result.score);
     }
