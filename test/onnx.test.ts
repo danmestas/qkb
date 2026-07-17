@@ -2,7 +2,7 @@ import { describe, expect, test } from "vitest";
 
 import { formatDocForEmbedding, formatQueryForEmbedding } from "../src/internals/llm.js";
 import { DEFAULT_EMBED_MODEL, DEFAULT_RERANK_MODEL } from "../src/internals/store-engine.js";
-import { isOnnxModelUri } from "../src/internals/onnx.js";
+import { disposeOnnx, isOnnxModelUri } from "../src/internals/onnx.js";
 
 describe("ONNX model defaults", () => {
   test("uses ONNX models for embedding and reranking by default", () => {
@@ -25,5 +25,12 @@ describe("ONNX model defaults", () => {
   test("preserves Qwen GGUF query embedding prompt when explicitly configured", () => {
     const model = "hf:Qwen/Qwen3-Embedding-0.6B-GGUF/Qwen3-Embedding-0.6B-Q8_0.gguf";
     expect(formatQueryForEmbedding("airport card", model)).toContain("Instruct:");
+  });
+});
+
+describe("disposeOnnx", () => {
+  test("is a function and resolves with empty caches (no model load)", async () => {
+    expect(typeof disposeOnnx).toBe("function");
+    await expect(disposeOnnx()).resolves.toBeUndefined();
   });
 });

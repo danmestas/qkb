@@ -142,3 +142,33 @@ export async function rerankOnnx(
   results.sort((a, b) => b.score - a.score);
   return { results, model: modelName };
 }
+
+/**
+ * Release cached ONNX Runtime sessions so the process can exit cleanly.
+ *
+ * ONNX Runtime aborts with a native "mutex lock failed" error if the process
+ * exits while inference sessions are still alive. Best-effort teardown: each
+ * dispose is wrapped in try/catch so a failing session never blocks exit.
+ */
+export async function disposeOnnx(): Promise<void> {
+  const extractors = [...extractorCache.values()];
+  const rerankers = [...rerankerCache.values()];
+  extractorCache.clear();
+  rerankerCache.clear();
+
+  for (const p of extractors) {
+    try {
+      await (await p).dispose();
+    } catch {
+      // best-effort teardown
+    }
+  }
+  for (const p of rerankers) {
+    try {
+      // Only the model holds a native session; the tokenizer has none.
+      await (await p).model.dispose();
+    } catch {
+      // best-effort teardown
+    }
+  }
+}
