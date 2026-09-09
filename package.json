@@ -72,7 +72,7 @@
   "devDependencies": {
     "@types/better-sqlite3": "7.6.13",
     "tsx": "4.21.0",
-    "vitest": "4.1.5"
+    "vitest": "4.1.11"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
